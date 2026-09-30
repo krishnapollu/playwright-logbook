@@ -44,6 +44,11 @@
   Done when: `npx vitest run test/history.test.ts` passed:
   `Test Files 1 passed (1); Tests 8 passed (8)`.
 
+- [x] T8 Report model and summaries
+
+  Done when: `npx vitest run test/model.test.ts` passed:
+  `Test Files 1 passed (1); Tests 6 passed (6)`.
+
 ## Blockers
 
 None.
