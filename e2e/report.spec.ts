@@ -17,10 +17,14 @@ test('offline report navigation and debugging', async ({ page }) => {
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   page.on('request', (request) => { if (!request.url().startsWith('file:')) network.push(request.url()); });
   await page.goto(report);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(page.locator('#lb-header')).toBeVisible();
+  await expect(page.locator('#lb-header .eyebrow')).toContainText('demo');
+  await expect(page.getByRole('region', { name: 'Changes since previous run' })).toBeVisible();
   await expect(page.locator('#lb-cards')).toBeVisible();
   await expect(page.getByRole('tablist', { name: 'Report sections' })).toBeVisible();
   await expect(page.locator('#lb-tests-body tr[data-test-id]')).toHaveCount(80);
+  await expect(page.locator('#lb-pagination')).toBeHidden();
   for (const tab of ['failures', 'trends', 'flaky', 'run', 'project']) {
     await page.locator(`[data-tab="${tab}"]`).click();
     await expect(page.locator(`#tab-${tab}`)).toBeVisible();
@@ -45,6 +49,7 @@ test('offline report navigation and debugging', async ({ page }) => {
   await page.locator('#lb-panel-close').click();
   await page.locator('#lb-theme').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', /light|dark/);
+  await expect(page.locator('#lb-theme')).toHaveText('Light mode');
   expect(errors).toEqual([]);
   expect(network).toEqual([]);
 });
@@ -67,7 +72,9 @@ test('measures filtering a 10,000-test report', async ({ page }) => {
     const file = path.join(dir, 'index.html');
     await fs.writeFile(file, renderReport(buildReportModel({ run: source, summaries: [] })));
     await page.goto(pathToFileURL(file).href);
-    await expect(page.locator('#lb-tests-body tr[data-test-id]')).toHaveCount(200);
+  await expect(page.locator('#lb-tests-body tr[data-test-id]')).toHaveCount(200);
+  await expect(page.locator('#lb-pagination')).toBeVisible();
+  await expect(page.locator('#lb-more')).toHaveText('Show next 200 tests');
     const milliseconds = await page.evaluate(() => {
       const start = performance.now();
       (document.querySelector('[data-status="passed"]') as HTMLButtonElement).click();
@@ -75,5 +82,8 @@ test('measures filtering a 10,000-test report', async ({ page }) => {
     });
     console.log(`10,000-test browser filter: ${milliseconds.toFixed(1)}ms`);
     await expect(page.locator('#lb-result-count')).toHaveText('10000 of 10000 tests');
+    await page.locator('#lb-more').click();
+    await expect(page.locator('#lb-tests-body tr[data-test-id]')).toHaveCount(400);
+    await expect(page.locator('#lb-pagination-note')).toContainText('Showing 400 of 10000 matching tests');
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
 });

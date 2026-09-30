@@ -18,9 +18,9 @@ function setState(patch){state={...state,...patch};const hash=buildHash(state);i
 function validateState(){if(state.project&&!allTests.some(test=>test.project===state.project))state.project='';if(state.tag&&!allTests.some(test=>test.tags.includes(state.tag)))state.tag='';if(state.test&&!byId.has(state.test))state.test='';if(state.test&&state.attempt>=byId.get(state.test).attempts.length)state.attempt=0}
 function toast(message){const el=document.getElementById('lb-toast');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.hidden=true},2300)}
 async function copyText(value){try{await navigator.clipboard.writeText(value);toast('Copied')}catch{const area=h('textarea',{'aria-label':'Copy text'});area.value=value;document.body.appendChild(area);area.select();try{document.execCommand('copy');toast('Copied')}catch{toast('Select and copy the text')}area.remove()}}
-function applyTheme(theme){if(theme==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',theme);try{localStorage.setItem('logbook-theme',theme)}catch{}}
-function toggleTheme(){const current=document.documentElement.getAttribute('data-theme')||'auto';applyTheme(current==='auto'?'light':current==='light'?'dark':'auto');toast('Theme: '+(document.documentElement.getAttribute('data-theme')||'auto'))}
-function renderAll(){for(const button of tabButtons){const active=button.dataset.tab===state.tab;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;document.getElementById('tab-'+button.dataset.tab).hidden=!active}if(state.tab==='tests'){renderTests();decorateTestRows();makeGroupsCollapsible()}else if(state.tab==='failures')renderFailures();else if(state.tab==='trends')renderTrends();else if(state.tab==='flaky')renderFlaky();else if(state.tab==='run')renderRun();else renderProject();renderPanel()}
+function applyTheme(theme){document.documentElement.setAttribute('data-theme',theme);const button=document.getElementById('lb-theme');button.textContent=theme==='dark'?'Light mode':'Dark mode';button.setAttribute('aria-label',theme==='dark'?'Switch to light mode':'Switch to dark mode');try{localStorage.setItem('logbook-theme',theme)}catch{}}
+function toggleTheme(){const next=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';applyTheme(next);toast(next==='dark'?'Dark mode on':'Light mode on')}
+function renderAll(){for(const button of tabButtons){const active=button.dataset.tab===state.tab;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;document.getElementById('tab-'+button.dataset.tab).hidden=!active}if(state.tab==='tests'){renderTests();renderPagination();decorateTestRows();makeGroupsCollapsible()}else if(state.tab==='failures')renderFailures();else if(state.tab==='trends')renderTrends();else if(state.tab==='flaky')renderFlaky();else if(state.tab==='run')renderRun();else renderProject();renderPanel()}
 function decorateTestRows(){for(const row of document.querySelectorAll('#lb-tests-body tr[data-test-id]')){
   const test=byId.get(row.dataset.testId),name=row.children[1],tags=row.children[3];
   if(test.titlePath.length>1)name.appendChild(h('small',{text:test.titlePath.slice(0,-1).join(' › ')}));
@@ -53,7 +53,7 @@ function closePanel(){setState({test:'',attempt:0});if(panelReturn&&panelReturn.
 function handleKeys(event){if(event.metaKey||event.ctrlKey||event.altKey||/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName))return;const key=event.key;if(key>='1'&&key<='6'){selectTab(tabs[Number(key)-1],true);return}if(key==='Escape'){if(state.test){closePanel();return}const dialog=document.querySelector('dialog[open]');if(dialog)dialog.close();return}if(key==='t'){toggleTheme();return}if(key==='?'){showHelp();return}if(key==='/'&&state.tab==='tests'){event.preventDefault();document.getElementById('lb-search')?.focus();return}if(key==='['||key===']'){moveFailure(key===']'?1:-1);return}if(state.tab==='tests'&&(key==='j'||key==='k')){const rows=[...document.querySelectorAll('#lb-tests-body tr[data-test-id]')];const at=rows.indexOf(document.activeElement);rows[Math.max(0,Math.min(rows.length-1,at+(key==='j'?1:-1)))]?.focus();return}if((key==='Enter'||key==='o')&&document.activeElement?.dataset?.testId){openTest(document.activeElement.dataset.testId,document.activeElement)}}
 function moveFailure(step){const ids=allTests.filter(test=>test.outcome==='unexpected'||test.outcome==='flaky').map(test=>test.testId);if(!ids.length)return;const at=ids.indexOf(state.test);openTest(ids[(at+step+ids.length)%ids.length])}
 function init(){
-  try{const saved=localStorage.getItem('logbook-theme');if(saved==='light'||saved==='dark')applyTheme(saved)}catch{}
+  let saved='light';try{if(localStorage.getItem('logbook-theme')==='dark')saved='dark'}catch{}applyTheme(saved);
   for(const button of tabButtons){
     button.addEventListener('click',()=>selectTab(button.dataset.tab));
     button.addEventListener('keydown',event=>{if(event.key==='ArrowRight'||event.key==='ArrowLeft'){
@@ -78,7 +78,7 @@ function init(){
   document.getElementById('lb-backdrop').addEventListener('click',closePanel);
   const mark=document.querySelector('.wordmark');mark.textContent='logbook';mark.prepend(icon('book'));
   const topStatus=document.querySelector('.topbar .status-chip');topStatus.prepend(h('span',{class:'mark','aria-hidden':'true',text:model.run.status==='passed'?'✓':'×'}));
-  if(model.comparison){const delta=document.querySelector('.delta');delta.appendChild(h('button',{class:'button',type:'button',onclick:()=>selectTab('failures'),text:'View new failures'}))}
+  document.getElementById('lb-new-failures')?.addEventListener('click',()=>selectTab('failures'));
   window.addEventListener('hashchange',()=>{state=parseHash(location.hash);validateState();renderAll()});
   document.addEventListener('keydown',handleKeys);
   for(const button of document.querySelectorAll('[data-card-kind]'))button.addEventListener('click',()=>setState({tab:'tests',status:button.dataset.cardKind==='total'?[]:[button.dataset.cardKind]}));

@@ -10,10 +10,10 @@ const out = path.join(root, 'docs', 'img');
 await fs.mkdir(out, { recursive: true });
 const browser = await chromium.launch();
 try {
-  for (const [name, theme, width] of [['report-dark', 'dark', 1440], ['report-light', 'light', 1440], ['report-mobile', 'dark', 360]]) {
+  for (const [name, theme, width] of [['report-dark', 'dark', 1440], ['report-light', 'light', 1440], ['report-mobile', 'light', 360]]) {
     const page = await browser.newPage({ viewport: { width, height: width === 360 ? 1200 : 900 }, deviceScaleFactor: 1 });
+    await page.addInitScript((value) => globalThis.localStorage.setItem('logbook-theme', value), theme);
     await page.goto(report);
-    await page.evaluate((value) => globalThis.document.documentElement.setAttribute('data-theme', value), theme);
     await page.waitForTimeout(450);
     await page.screenshot({ path: path.join(out, `${name}.png`) });
     await page.close();

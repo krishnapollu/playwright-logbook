@@ -8,7 +8,7 @@ Logbook adds a reporter to your existing Playwright suite. After a run, open the
 
 ![Dark report showing run summary and test history](docs/img/report-dark.png)
 
-The report has a searchable test table, status filters, a detail panel with errors and rerun commands, failure groups, trends, flaky history, and project breakdowns. It works from a local file without a server. Use the theme control for light or dark mode; the layout also fits narrow screens.
+The report has a searchable test table, status filters, a detail panel with errors and rerun commands, failure groups, trends, flaky history, and project breakdowns. It works from a local file without a server. Light mode is the default; use the theme control to switch to dark mode. The layout also fits narrow screens.
 
 ![Light report](docs/img/report-light.png)
 

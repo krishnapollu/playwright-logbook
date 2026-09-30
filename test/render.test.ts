@@ -20,6 +20,10 @@ describe('renderReport', () => {
     }
     expect(html).toContain('id="lb-header"');
     expect(html).toContain('id="lb-cards"');
+    expect(html).toContain('Project <strong>sample</strong>');
+    expect(html).toContain('<dt>Run ID</dt>');
+    expect(html).toContain('<summary>Environment details</summary>');
+    expect(html).toContain('No earlier run to compare yet');
   });
   it('escapes script-breaking titles and special JSON characters', () => {
     const source = run('hostile');
@@ -73,5 +77,15 @@ describe('renderReport', () => {
     expect(renderReport(data)).toContain('INCOMPLETE');
     expect(renderReport(data)).toBe(renderReport(data));
     expect(renderReport(data)).not.toContain('Generated ');
+  });
+  it('labels changes against the previous run', () => {
+    const data = model();
+    data.delta = { previousRunId: 'earlier-run', passRatePp: 2.5, failed: -1, flaky: 0, durationPct: 10 };
+    const html = renderReport(data);
+    expect(html).toContain('Changes since previous run');
+    expect(html).toContain('Compared with <code>earlier-run</code>');
+    expect(html).toContain('<span>Pass rate change</span><strong>+2.5 pp</strong>');
+    expect(html).toContain('<span>Failed change</span><strong>-1</strong>');
+    expect(html).not.toContain('id="lb-new-failures"');
   });
 });
