@@ -16,7 +16,8 @@
 
 - [x] T3 Case ids
 
-  Done when: `npx vitest run test/caseids.test.ts` passed (1 test).
+  Done when: `npx vitest run test/caseids.test.ts` passed:
+  `Test Files 1 passed (1); Tests 5 passed (5)`.
 
 - [x] T4 Collect
 
