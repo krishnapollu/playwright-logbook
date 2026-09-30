@@ -1,14 +1,60 @@
 {
   "name": "playwright-logbook",
-  "version": "0.1.0-dev",
-  "private": true,
+  "version": "0.1.0-beta.0",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": { "playwright-logbook": "./dist/cli/bin.js", "logbook": "./dist/cli/bin.js" },
-  "scripts": { "build": "tsc -b", "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit", "lint": "eslint .", "test": "vitest run", "check": "npm run lint && npm run typecheck && npm run build && npm test" },
-  "dependencies": { "commander": "^14.0.0", "zod": "^4.1.0" },
-  "peerDependencies": { "@playwright/test": ">=1.42" },
-  "devDependencies": { "@playwright/test": "^1.55.0", "@types/node": "^24.0.0", "eslint": "^9.0.0", "eslint-config-prettier": "^10.0.0", "prettier": "^3.0.0", "typescript": "^5.0.0", "typescript-eslint": "^8.0.0", "vitest": "^3.0.0" }
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "bin": {
+    "playwright-logbook": "dist/cli/bin.js",
+    "logbook": "dist/cli/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "playwright",
+    "reporter",
+    "test-reporting",
+    "flaky-tests",
+    "ci",
+    "sharding"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b && esbuild src/index.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/index.cjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check": "npm run lint && npm run typecheck && npm run build && npm test"
+  },
+  "dependencies": {
+    "commander": "^14.0.0",
+    "zod": "^4.1.0"
+  },
+  "peerDependencies": {
+    "@playwright/test": ">=1.42"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
 }

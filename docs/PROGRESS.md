@@ -80,6 +80,20 @@
   Two public-project dry runs were attempted but did not finish; see `docs/DECISIONS.md`
   for the environment limitation and human follow-up.
 
+- [x] T13 Release preparation (assistant-owned work)
+
+  Done when: `npm run check` passed with `Test Files 18 passed (18); Tests 100 passed (100)`.
+  `npm pack --dry-run --json` reported version `0.1.0-beta.0`, 79 entries,
+  with only `LICENSE`, `README.md`, `dist/` and npm's mandatory `package.json`.
+  The packed tarball was installed into a fresh temporary project;
+  `require.resolve('playwright-logbook')` resolved `dist/index.cjs` and
+  `LOGBOOK_RUN_ID=tarball-smoke npm test` exited 0 with `1 passed` and
+  `[logbook] run tarball-smoke: 1 passed, 0 failed, 0 flaky, 0 skipped -> .logbook/report/index.html`.
+  Publishing under `next` and installing from the registry are human-only and remain undone.
+
 ## Blockers
 
-None.
+Human-only release steps remain: replace the LICENSE placeholder, check npm name
+availability, publish under the `next` tag, install from the registry, and visually
+review the report in a browser. The two external-project dry runs need a working
+networked Playwright environment (see `docs/DECISIONS.md`).

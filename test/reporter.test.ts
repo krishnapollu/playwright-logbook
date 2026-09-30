@@ -11,7 +11,7 @@ const setup = (config = baseConfig, overrides: ConstructorParameters<typeof Logb
   const lines: string[] = [];
   const shards: ShardFile[] = [];
   const runs: string[] = [];
-  const reporter = new LogbookReporter({ runId: 'test-run', quiet }, { env: {}, exec: () => { throw new Error('no git'); }, clock: () => new Date('2026-01-01T00:00:00.000Z'), stderr: (line) => lines.push(line), sink: { write: async (shard) => { shards.push(shard); return 'shards/test-run/shard-1-of-1.json'; } }, historyStore: { saveRun: async (run) => { runs.push(run.runId); }, listSummaries: async () => [], loadRun: async () => { throw new Error('not implemented'); }, loadRuns: async () => [] }, ...overrides });
+  const reporter = new LogbookReporter({ runId: 'test-run', quiet, autoReport: false }, { env: {}, exec: () => { throw new Error('no git'); }, clock: () => new Date('2026-01-01T00:00:00.000Z'), stderr: (line) => lines.push(line), sink: { write: async (shard) => { shards.push(shard); return 'shards/test-run/shard-1-of-1.json'; } }, historyStore: { saveRun: async (run) => { runs.push(run.runId); }, listSummaries: async () => [], loadRun: async () => { throw new Error('not implemented'); }, loadRuns: async () => [] }, ...overrides });
   reporter.onBegin(config, { allTests: () => [] });
   return { reporter, lines, shards, runs };
 };
