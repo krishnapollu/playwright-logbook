@@ -148,6 +148,31 @@
   `docs/img/report-light.png`, and `docs/img/report-mobile.png`.
   Remote CI execution and human visual/screenshot approval remain pending.
 
+## v3 Playwright reporting and AI debugging
+
+- [x] V0 Playwright baseline and debugging fixtures
+
+  Baseline `npm run check`: `Test Files 24 passed (24); Tests 119 passed (119)`.
+  Baseline `npm run test:e2e`: `3 passed (1.2s)` outside the macOS sandbox;
+  the first sandboxed attempt could not launch Chromium (`MachPortRendezvousServer: Permission denied`).
+  Baseline demo report: `.logbook-demo/report/index.html`, 117,029 bytes.
+  Real fixture: `fixtures/real-world-project/.logbook/report/index.html`, 147,918 bytes,
+  from `LOGBOOK_RUN_ID=v3-probe2 ... test --config=playwright.config.ts`.
+  The deliberately failing Playwright suite exited 1 and reported
+  `3 passed, 2 failed, 1 flaky, 1 skipped` across two projects.
+  `test/integration/scenarios.test.ts` validates retries, attempt-level artifacts,
+  trace on retry 1, expected failure, metadata and a deleted screenshot in a temporary copy.
+  Playwright 1.63.0 attachment and step observations are in `docs/DECISIONS.md`.
+  Done when: `npm run check` passed: `Test Files 25 passed (25); Tests 120 passed (120)`;
+  the new scenario test passed and no production behavior changed.
+
+- [ ] V1 Attachment/trace UX and collision safety
+- [ ] V2 Deterministic debug packet
+- [ ] V3 Evidence-backed debugging signals
+- [ ] V4 Analyzer contract and provider decision
+- [ ] V5 First real analyzer
+- [ ] V6 Focused config, CI guidance, release readiness
+
 ## Blockers
 
 Human-only release steps remain: replace the LICENSE placeholder, check npm name

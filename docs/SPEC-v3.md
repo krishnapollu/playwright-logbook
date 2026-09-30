@@ -74,6 +74,8 @@ Defaults preserve v0.2 output. Persist only normalized, safe settings needed to 
 
 **V0 — Playwright baseline and debugging fixtures.** Record current `npm run check`, browser-suite output, report sizes, and a trace-enabled Playwright fixture with one assertion failure, one locator timeout, one flaky retry, and one missing-artifact case. Verify actual attachment/step API fields with the installed Playwright version. Add an unticked “v3” section to `docs/PROGRESS.md`. **Done when:** the fixture is deterministic where applicable, the probe facts are recorded in `docs/DECISIONS.md`, and the full check is green. No production behavior change.
 
+The practical scenario inventory and Monocart feature assessment live in [PLAYWRIGHT-MATRIX.md](PLAYWRIGHT-MATRIX.md) and [REPORTER-COMPARISON.md](REPORTER-COMPARISON.md). They inform V1–V6 priorities, but do not authorize unrelated feature breadth.
+
 **V1 — attachment/trace UX and collision safety.** Implement F1 and the narrow collision guard in section 3. Tests: `render.test.ts`, `reporter.test.ts`, `store.test.ts`, new isolated trace integration, and e2e link/missing-file cases. **Done when:** a trace recorded by the fixture appears only on its actual attempt, its command works on the retained file, a missing artifact is not offered as a link, distinct-content overwrite is prevented, and `npm run check` plus browser tests pass.
 
 **V2 — debug packet.** Implement F2 as pure code, CLI, and UI copy/preview. Tests: `debug-packet.test.ts`, CLI JSON/Markdown round-trip, hostile input/privacy caps, old-run compatibility, deterministic output, and browser clipboard behavior. **Done when:** full check and browser suite pass; paste a real fixture packet and byte count into progress without exposing a secret.
