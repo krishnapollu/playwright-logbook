@@ -91,6 +91,16 @@
   `[logbook] run tarball-smoke: 1 passed, 0 failed, 0 flaky, 0 skipped -> .logbook/report/index.html`.
   Publishing under `next` and installing from the registry are human-only and remain undone.
 
+## Report v2
+
+- [x] R0 Baseline and demo data
+
+  Baseline `npm run check` passed: `Test Files 18 passed (18); Tests 100 passed (100)`.
+  Done when: `npm run check` passed: `Test Files 19 passed (19); Tests 101 passed (101)`.
+  `npm run demo` printed `/Users/krishnapollu/Projects/pw-logbook/.logbook-demo/report/index.html`.
+  Current v0.1 renderer demo report size: 59,586 bytes (`wc -c .logbook-demo/report/index.html`).
+  Open `.logbook-demo/report/index.html` for the human visual review.
+
 ## Blockers
 
 Human-only release steps remain: replace the LICENSE placeholder, check npm name
