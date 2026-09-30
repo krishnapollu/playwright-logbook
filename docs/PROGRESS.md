@@ -61,6 +61,14 @@
   `npm run check` passed with `Test Files 15 passed (15); Tests 94 passed (94)`,
   including all 18 tests in the unchanged golden integration file.
 
+- [x] T11 Documentation
+
+  Done when: the README quickstart was run on the sample project with
+  `LOGBOOK_RUN_ID=docs-example node ../../node_modules/@playwright/test/cli.js test`.
+  It exited 1 as expected for the deliberately failing suite and printed
+  `[logbook] run docs-example: 3 passed, 2 failed, 1 flaky, 1 skipped -> .logbook/report/index.html`.
+  `npm run check` passed: `Test Files 15 passed (15); Tests 94 passed (94)`.
+
 ## Blockers
 
 None.
