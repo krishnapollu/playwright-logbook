@@ -101,9 +101,57 @@
   Current v0.1 renderer demo report size: 59,586 bytes (`wc -c .logbook-demo/report/index.html`).
   Open `.logbook-demo/report/index.html` for the human visual review.
 
+- [x] R1 Design system, shell, hero
+
+  Done when: `npm run check` passed: `Test Files 24 passed (24); Tests 118 passed (118)`.
+  Review `.logbook-demo/report/index.html` for the visual sign-off.
+
+- [x] R2 Tests tab
+
+  Done when: `npm run check` passed: `Test Files 24 passed (24); Tests 118 passed (118)`.
+  The deterministic demo report is `.logbook-demo/report/index.html`.
+
+- [x] R3 Detail panel
+
+  Done when: `npm run check` passed: `Test Files 24 passed (24); Tests 118 passed (118)`.
+
+- [x] R4 Failures tab
+
+  Done when: `npm run check` passed: `Test Files 24 passed (24); Tests 118 passed (118)`.
+
+- [x] R5 Trends, Flaky, Timeline
+
+  Done when: `npm run check` passed: `Test Files 24 passed (24); Tests 118 passed (118)`.
+  Review `.logbook-demo/report/index.html` for the visual sign-off.
+
+- [x] R6 Run, Project, print, help, export
+
+  Done when: `npm run check` passed: `Test Files 24 passed (24); Tests 118 passed (118)`.
+  Review `.logbook-demo/report/index.html` for the visual sign-off, including print preview.
+
+- [x] R7 Phase B capture
+
+  Done when: `npm run check` passed: `Test Files 24 passed (24); Tests 118 passed (118)`.
+  `test/integration/details.test.ts` passed with the isolated Playwright fixture.
+  The Phase B probe facts are recorded in `docs/DECISIONS.md` and the untracked
+  working copy of `docs/SPEC-v2.md`.
+
+- [x] R8 Phase B UI
+
+  Done when: `npm run check` passed: `Test Files 24 passed (24); Tests 118 passed (118)`.
+
+- [x] R9 Browser smoke, screenshots, docs
+
+  Done when: `npm run check` passed: `Test Files 24 passed (24); Tests 118 passed (118)`.
+  `npm run test:e2e` passed: `3 passed (1.1s)`; its 10,000-test browser filter
+  logged `3.8ms`. `npm run shots` wrote `docs/img/report-dark.png`,
+  `docs/img/report-light.png`, and `docs/img/report-mobile.png`.
+  Remote CI execution and human visual/screenshot approval remain pending.
+
 ## Blockers
 
 Human-only release steps remain: replace the LICENSE placeholder, check npm name
 availability, publish under the `next` tag, install from the registry, and visually
-review the report in a browser. The two external-project dry runs need a working
-networked Playwright environment (see `docs/DECISIONS.md`).
+review and approve the v2 report and screenshots at 360, 768, and 1440 px in both
+themes and print preview. Remote CI has not run yet. The two external-project dry
+runs need a working networked Playwright environment (see `docs/DECISIONS.md`).

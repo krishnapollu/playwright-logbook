@@ -8,6 +8,8 @@ Logbook writes UTF-8 JSON with two-space indentation and a final newline. `schem
 
 Each test has `testId`, `title`, `titlePath`, `file`, location (`line`, `column`), `project`, sorted `tags` and `caseIds`, `annotations`, `expectedStatus`, `outcome`, last-attempt `status`, durations, `attemptCount`, `repeatEachIndex`, `firstError` and `attempts`. An attempt stores retry number, status, duration, start time, worker index, errors and attachment metadata. Inline attachment bodies are not stored. Errors have message, stack, snippet and optional relative location.
 
+With the opt-in `captureDetails` reporter option, attempts may also have `steps`, `stdout`, and `stderr`. A step has sanitized `title`, `category`, `durationMs`, nesting `depth` (0–2), and `failed`. Output fields are strings or null and keep a bounded tail. Image attachments from failed or flaky tests may have a `dataUri` (`data:image/png;base64,...` or `data:image/jpeg;base64,...`). These keys are omitted entirely when capture is disabled, so existing schema v1 files remain valid. Image pixels are not redacted; review them before sharing.
+
 `env` contains CI provider/build metadata, git commit/branch/PR/repository, machine OS/architecture/Node/CPU count, Playwright version and worker count. It never includes a hostname, username or environment variable values. `project` stores the package name, relative config path, project names and relative test directories, and worker count.
 
 `.logbook/index.jsonl` contains one `RunSummaryRecord` per line: schema version, run ID/title/start/duration/status/completeness/summary plus branch, commit, CI provider and build URL. It is append-only; the last valid line for a run ID wins. A damaged line is ignored, and readers can rebuild from run files.

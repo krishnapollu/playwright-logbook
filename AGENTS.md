@@ -23,4 +23,4 @@ Spec: docs/SPEC.md (LARGE — never read it whole). Progress: docs/PROGRESS.md.
 - One Conventional Commit per task.
 
 ## Layout
-src/ = library + reporter, src/cli/ = commands, fixtures/sample-project = real Playwright project used by the golden test.
+src/ = library + reporter, src/cli/ = commands, src/clientlib.ts and src/template/ = report UI, scripts/ = demo and screenshot generation, e2e/ = browser checks, fixtures/sample-project = real Playwright project used by the golden test.

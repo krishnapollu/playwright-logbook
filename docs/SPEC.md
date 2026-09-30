@@ -73,7 +73,9 @@ playwright-logbook/
 ├─ eslint.config.js  .prettierrc.json  .gitignore
 ├─ .github/workflows/ci.yml
 ├─ AGENTS.md  README.md  LICENSE(MIT)  CHANGELOG.md  CONTRIBUTING.md
-├─ docs/  SPEC.md  PROGRESS.md  DECISIONS.md  SCHEMA.md  CLI.md  CI.md  ADAPTERS.md
+├─ docs/  SPEC.md  SPEC-v2.md  PROGRESS.md  DECISIONS.md  SCHEMA.md  CLI.md  CI.md  ADAPTERS.md
+├─ scripts/  make-demo.mjs  make-shots.mjs
+├─ e2e/  playwright.config.ts  report.spec.ts
 ├─ fixtures/sample-project/            # section 8 (a real Playwright project, no browsers)
 ├─ test/
 │  ├─ *.test.ts                        # unit tests
@@ -91,8 +93,11 @@ playwright-logbook/
    ├─ merge.ts        # mergeShards()
    ├─ history.ts      # previousRun(), computeFlaky(), compareRuns()
    ├─ model.ts        # buildReportModel(), slimming, summaries text/markdown
+   ├─ clientlib.ts    # pure helpers embedded in the offline report
+   ├─ version.ts      # report generator version
    ├─ render.ts       # renderReport() → HTML string
-   ├─ template.ts     # CSS + client JS as string constants
+   ├─ template.ts     # concatenates CSS and client JS
+   ├─ template/       # tokens, CSS, icons, and split client scripts
    ├─ publish.ts      # Publisher interface only
    ├─ paths.ts        # posix helpers
    ├─ errors.ts       # LogbookError + codes

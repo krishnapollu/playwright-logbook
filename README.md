@@ -4,7 +4,15 @@ Playwright test reports with run history, flaky-test tracking, and a single-file
 
 Logbook adds a reporter to your existing Playwright suite. After a run, open the report to see failures, retries, trends, and results by project. It also provides a CLI for reviewing past runs and combining CI shards. It runs locally without a service and does not change Playwright's exit code.
 
-> **Release status:** The `0.1.0-beta.0` package is prepared but has not yet been published to npm. You can [try the included sample](#try-the-sample-project) now. The install command below applies once the `next` release is available.
+> **Release status:** Version `0.2.0` is in this repository but has not been published to npm. You can [try the included sample](#try-the-sample-project) now. The install command below applies once a release is available.
+
+![Dark report showing run summary and test history](docs/img/report-dark.png)
+
+The report has a searchable test table, status filters, a detail panel with errors and rerun commands, failure groups, trends, flaky history, and project breakdowns. It works from a local file without a server. Use the theme control for light or dark mode; the layout also fits narrow screens.
+
+![Light report](docs/img/report-light.png)
+
+![Mobile report](docs/img/report-mobile.png)
 
 ## Get started
 
@@ -82,10 +90,17 @@ reporter: [['playwright-logbook', { outputDir: '.logbook', historyLimit: 30 }]],
 | `maxTextLength` | `4000` | Limit stored diagnostic text length |
 | `caseIdPatterns` | Built-in ID pattern | Customize test-management ID extraction |
 | `quiet` | `false` | Suppress Logbook's final terminal line |
+| `captureDetails` | `false` | Opt in to steps, stdout/stderr, and inline failed-test screenshots; `true` enables all, or choose `{ steps, output, images }` |
+| `maxSteps` | `100` | Limit captured steps per attempt |
+| `maxOutputLength` | `2000` | Keep the tail of stdout/stderr, in characters |
+| `maxImageBytes` | `250000` | Skip individual images larger than this |
+| `maxEmbeddedBytes` | `5000000` | Cap embedded images per run |
 
 ## What is stored
 
-Logbook stores test outcomes, attempts, errors, tags, case IDs, and project/CI metadata. Paths in its records are relative to the project. The report links to screenshots, traces, and videos rather than embedding them, so retain those files if you share the report. Attachment bodies are not copied into Logbook records.
+Logbook stores test outcomes, attempts, errors, tags, case IDs, and project/CI metadata. Paths in its records are relative to the project. By default, the report links to screenshots, traces, and videos; retain those files if you share the report. Attachment bodies are not copied into Logbook records.
+
+With `captureDetails: true`, Logbook also stores sanitized step titles and output tails, and embeds PNG or JPEG images from failed or flaky tests within the size limits above. Screenshots can contain sensitive data: text redaction cannot remove secrets visible in pixels. Review captured images before sharing a report or run JSON.
 
 There is no server, automatic retention policy, or test-management publisher in this release. See the [schema](docs/SCHEMA.md) for the record format and [adapter guidance](docs/ADAPTERS.md) for future integrations.
 
@@ -107,3 +122,5 @@ The sample intentionally contains failures and a flaky test, so Playwright exits
 ```
 
 Open `.logbook/report/index.html` from the sample-project directory, or run `node ../../dist/cli/bin.js summary --run docs-example --format markdown` to inspect the stored result.
+
+For a larger deterministic showcase, run `npm run demo` from the repository root and open `.logbook-demo/report/index.html`. Run `npm run test:e2e` for the offline browser smoke test and `npm run shots` to regenerate the screenshots above.
