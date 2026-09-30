@@ -17,6 +17,10 @@
 
   Done when: `npx vitest run test/caseids.test.ts` passed (1 test).
 
+- [x] T4 Collect
+
+  Done when: `npx vitest run test/collect.test.ts` passed (1 test).
+
 ## Blockers
 
 None.
