@@ -13,6 +13,10 @@
 
   Done when: `npx vitest run test/env.test.ts` passed (2 tests).
 
+- [x] T3 Case ids
+
+  Done when: `npx vitest run test/caseids.test.ts` passed (1 test).
+
 ## Blockers
 
 None.
