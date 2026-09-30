@@ -24,6 +24,14 @@
   Done when: `npx vitest run test/collect.test.ts` passed:
   `Test Files 1 passed (1); Tests 6 passed (6)`.
 
+- [x] T5 Reporter and shard sink
+
+  Done when: `npx vitest run test/reporter.test.ts` passed:
+  `Test Files 1 passed (1); Tests 5 passed (5)`.
+  `LOGBOOK_RUN_ID=t5 node ../../node_modules/@playwright/test/cli.js test` in
+  `fixtures/sample-project` exited `1` as expected and wrote
+  `.logbook/shards/t5/shard-1-of-1.json` with 7 tests.
+
 ## Blockers
 
 None.

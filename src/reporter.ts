@@ -1,32 +1,84 @@
 import path from 'node:path';
+import fs from 'node:fs/promises';
+import type { PwConfig, PwError, PwTest } from './collect.js';
+import { buildShardFile } from './collect.js';
+import type { DetectEnvOptions, DetectedEnv } from './env.js';
+import { detectEnv } from './env.js';
 import type { LogbookOptions } from './options.js';
 import { resolveOptions } from './options.js';
+import { sanitize } from './sanitize.js';
+import type { ShardSink } from './store.js';
 import { FileShardSink } from './store.js';
-import { buildShardFile } from './collect.js';
-import { detectEnv } from './env.js';
 
-/** Minimal non-throwing Playwright reporter scaffold. */
-interface ReporterSuite { allTests(): Parameters<typeof buildShardFile>[0]['tests'] }
-interface ReporterConfig { rootDir?: string; configFile?: string; projects?: { name: string; testDir: string }[]; workers?: number; version?: string; shard?: { current: number; total: number } | null }
+interface ReporterSuite { allTests(): PwTest[] }
 interface FullResult { status: 'passed' | 'failed' | 'timedout' | 'interrupted'; startTime?: Date; duration?: number }
+export interface ReporterDeps extends Pick<DetectEnvOptions, 'env' | 'exec' | 'clock' | 'random'> {
+  cwd?: () => string;
+  stderr?: (line: string) => void;
+  fs?: Pick<typeof fs, 'mkdir' | 'writeFile' | 'rename'>;
+  sink?: ShardSink;
+}
 
+/** Playwright reporter that writes a durable shard without changing the test result. */
 export class LogbookReporter {
   private readonly options: ReturnType<typeof resolveOptions>;
-  private config: ReporterConfig | undefined;
+  private readonly deps: ReporterDeps;
+  private config: PwConfig | undefined;
   private suite: ReporterSuite | undefined;
-  private startedAt = new Date();
-  constructor(options: LogbookOptions = {}) { this.options = resolveOptions(options); }
+  private startedAt: Date | undefined;
+  private detected: DetectedEnv | undefined;
+  private root: string | undefined;
+  private globalErrors: PwError[] = [];
+  private warned = false;
+
+  constructor(options: LogbookOptions = {}, deps: ReporterDeps = {}) {
+    this.options = resolveOptions(options);
+    this.deps = deps;
+  }
+
   printsToStdio(): boolean { return false; }
-  onBegin(config: ReporterConfig, suite?: ReporterSuite): void { this.config = config; this.suite = suite; this.startedAt = new Date(); }
-  async onEnd(result?: FullResult): Promise<void> {
+
+  private write(line: string): void {
+    (this.deps.stderr ?? ((text) => process.stderr.write(text)))(`${line}\n`);
+  }
+
+  private warning(error: unknown): void {
+    if (this.warned) return;
+    this.warned = true;
     try {
-      const root = this.config?.rootDir ?? process.cwd();
-      const detected = await detectEnv({ runId: this.options.runId });
-      const shard = buildShardFile({ config: { rootDir: root, configFile: this.config?.configFile, projects: this.config?.projects ?? [], workers: this.config?.workers ?? 1, version: this.config?.version ?? 'unknown', shard: this.config?.shard }, tests: this.suite?.allTests() ?? [], runId: detected.runId, startedAt: result?.startTime ?? this.startedAt, endedAt: new Date(), status: result?.status ?? 'passed', env: { ...detected, playwrightVersion: this.config?.version ?? 'unknown', workers: this.config?.workers ?? 1 }, project: { name: null, configFile: this.config?.configFile ? path.relative(root, this.config.configFile).split(path.sep).join('/') : null, projects: this.config?.projects ?? [], workers: this.config?.workers ?? 1 }, ctx: { projectRoot: root } });
-      await new FileShardSink(path.resolve(root, this.options.outputDir)).write(shard);
-      if (!this.options.quiet) process.stderr.write(`[logbook] run ${detected.runId}: shard written\n`);
-    } catch (error) {
-      process.stderr.write(`[logbook] warning: ${error instanceof Error ? error.message : String(error)}\n`);
-    }
+      const message = sanitize(error instanceof Error ? error.message : String(error), { projectRoot: this.root, env: this.deps.env, redact: this.options.redact, maxTextLength: this.options.maxTextLength });
+      this.write(`[logbook] warning: ${message}`);
+    } catch { /* Reporter hooks must never throw. */ }
+  }
+
+  onBegin(config: PwConfig, suite: ReporterSuite): void {
+    try {
+      this.config = config;
+      this.suite = suite;
+      this.root = config.configFile ? path.dirname(config.configFile) : (this.deps.cwd ?? process.cwd)();
+      this.startedAt = (this.deps.clock ?? (() => new Date()))();
+      this.detected = detectEnv({ ...this.deps, root: this.root, runId: this.options.runId });
+    } catch (error) { this.warning(error); }
+  }
+
+  onError(error: PwError): void {
+    try { this.globalErrors.push(error); }
+    catch (caught) { this.warning(caught); }
+  }
+
+  async onEnd(result: FullResult): Promise<void> {
+    try {
+      if (!this.config || !this.suite || !this.root || !this.startedAt || !this.detected) throw new Error('reporter was not initialized');
+      const endedAt = result.startTime && result.duration !== undefined
+        ? new Date(result.startTime.getTime() + result.duration)
+        : (this.deps.clock ?? (() => new Date()))();
+      const outputDir = path.resolve(this.root, this.options.outputDir);
+      const shard = buildShardFile({ config: this.config, tests: this.suite.allTests(), runId: this.detected.runId, title: this.options.title, startedAt: this.startedAt, endedAt, status: result.status, env: { ci: this.detected.ci, git: this.detected.git, machine: this.detected.machine, playwrightVersion: this.config.version, workers: this.config.workers }, globalErrors: this.globalErrors, ctx: { projectRoot: this.root, env: this.deps.env, redact: this.options.redact, caseIdPatterns: this.options.caseIdPatterns, maxTextLength: this.options.maxTextLength } });
+      await (this.deps.sink ?? new FileShardSink(outputDir, this.deps.fs)).write(shard);
+      if (!this.options.quiet) {
+        const count = (outcome: string): number => shard.tests.filter((test) => test.outcome === outcome).length;
+        this.write(`[logbook] run ${shard.runId}: ${count('expected')} passed, ${count('unexpected')} failed, ${count('flaky')} flaky, ${count('skipped')} skipped`);
+      }
+    } catch (error) { this.warning(error); }
   }
 }
