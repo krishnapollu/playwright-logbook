@@ -3,3 +3,6 @@
 | Date | Question | Choice | Reason |
 | --- | --- | --- | --- |
 | 2026-09-29 | What should T0 contain before implementation tasks? | A minimal buildable ESM scaffold and placeholder reporter | T0 defines layout and verification only; behavior is implemented in later tasks. |
+| 2026-09-29 | How should a missing Playwright test ID be derived? | SHA-1 of `project|relative-file|describe-titles|title` | Stable across machines and independent of absolute paths. |
+| 2026-09-29 | Did two external-project dry runs complete? | No; keep a human follow-up | Cloned [microsoft/playwright-examples](https://github.com/microsoft/playwright-examples) and [checkly/playwright-examples](https://github.com/checkly/playwright-examples); `npm ci` succeeded in both temporary clones. A Microsoft clock test with a 10-second test timeout and Checkly's local API suite produced no reporter result and were interrupted after roughly 30–45 seconds. In the restricted run, Checkly's server could not bind port 8000 (`EPERM`); an escalated server responded, but the suite still stalled. These attempts do not prove compatibility. |
+| 2026-09-29 | Why did the T11 GitHub workflow have no jobs? | Fix matrix expression YAML syntax | GitHub reported “error in your yaml syntax on line 16”; the inline `with: { node-version: ${{ matrix.node }}, cache: npm }` was replaced with a block mapping. |

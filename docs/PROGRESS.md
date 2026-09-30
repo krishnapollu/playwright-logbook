@@ -69,6 +69,17 @@
   `[logbook] run docs-example: 3 passed, 2 failed, 1 flaky, 1 skipped -> .logbook/report/index.html`.
   `npm run check` passed: `Test Files 15 passed (15); Tests 94 passed (94)`.
 
+- [x] T12 Robustness and performance
+
+  Done when: `npm run check` passed with `Test Files 17 passed (17); Tests 99 passed (99)`,
+  including the unchanged golden test. The 10,000-test merge/render case finished
+  well under the 15-second CI threshold locally (the three-case robustness file took 22 ms).
+  Corrupt shard/exit-4 coverage, empty tests, hostile titles, and missing tag/ID fallbacks pass.
+  `npx vitest run test/integration/blob-replay.test.ts` passed offline
+  (`Test Files 1 passed (1); Tests 1 passed (1)`).
+  Two public-project dry runs were attempted but did not finish; see `docs/DECISIONS.md`
+  for the environment limitation and human follow-up.
+
 ## Blockers
 
 None.

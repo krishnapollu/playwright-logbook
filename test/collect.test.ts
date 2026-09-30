@@ -4,6 +4,7 @@ import type { PwTest, PwSuite } from '../src/collect.js';
 import type { ShardFile } from '../src/schema.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const root: PwSuite = { type: 'root', title: '' };
 const projectSuite: PwSuite = { type: 'project', title: 'alpha', parent: root };
@@ -44,5 +45,12 @@ describe('buildShardFile', () => {
     const fixture = fileURLToPath(new URL('../fixtures/sample-project/', import.meta.url));
     const shard = buildShardFile({ config: { rootDir: path.join(fixture, 'tests'), configFile: path.join(fixture, 'playwright.config.ts'), projects: [{ name: 'alpha', testDir: path.join(fixture, 'tests') }], workers: 1, version: '1' }, tests: [], runId: 'run', startedAt: new Date(0), endedAt: new Date(1), status: 'passed', env, ctx: { projectRoot: fixture } });
     expect(shard.project).toEqual({ name: 'sample-project', configFile: 'playwright.config.ts', projects: [{ name: 'alpha', testDir: 'tests' }], workers: 1 });
+  });
+  it('falls back to title tags and a stable SHA-1 id when Playwright omits both', () => {
+    const record = collect([{ ...base, id: undefined, tags: undefined, title: '@smoke @PROJ-12 works' }]).tests[0]!;
+    expect(record.tags).toEqual(['@PROJ-12', '@smoke']);
+    expect(record.caseIds).toEqual(['PROJ-12']);
+    expect(record.testId).toBe(createHash('sha1').update('alpha|tests/a.spec.ts|group|@smoke @PROJ-12 works').digest('hex'));
+    expect(collect([{ ...base, id: undefined, tags: undefined, title: '@smoke @PROJ-12 works' }]).tests[0]!.testId).toBe(record.testId);
   });
 });

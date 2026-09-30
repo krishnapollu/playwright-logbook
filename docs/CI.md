@@ -61,6 +61,8 @@ Use the same test/merge job split. Set one run ID across jobs, publish `.logbook
 
 An alternative is to upload Playwright blob reports from shards, download them into one `blob-reports` directory, and run `npx playwright merge-reports --reporter=playwright-logbook ./blob-reports`. Playwright replays one combined run to the reporter without shard metadata; the reporter then auto-merges and renders normally. Run this from the intended project root (it falls back to the current directory). Do not also run `logbook merge` on these blob files.
 
+The offline integration test performs this flow against a copy of the sample project: `test/integration/blob-replay.test.ts`. The sample is intentionally red; blob production exits 1, while `merge-reports` exits 0 and writes a complete 7-test run.
+
 ## History limitation
 
 v0.1 has only a file-backed store. CI jobs are ephemeral, so history survives only if you persist `.logbook/` via cache, artifacts or a data branch. A server sink is a future feature.
