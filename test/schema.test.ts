@@ -10,6 +10,11 @@ const shard = { schemaVersion: 1, kind: 'shard', runId: 'run-1', title: null, sh
 const run = { schemaVersion: 1, kind: 'run', runId: 'run-1', title: null, startedAt: shard.startedAt, endedAt: shard.endedAt, durationMs: 1000, status: 'passed', complete: true, expectedShards: 1, receivedShards: [1], env, project, paths: { outputDir: '.logbook' }, summary: { total: 1, passed: 1, failed: 0, flaky: 0, skipped: 0 }, tests: [test], globalErrors: [error] } as const;
 
 describe('schema v1', () => {
+  it('round-trips optional capture fields while old files remain valid', () => {
+    const details = { ...test, attempts: [{ ...test.attempts[0], steps: [{ title: 'click', category: 'pw:api', durationMs: 3, depth: 0, failed: false }], stdout: 'output', stderr: null, attachments: [{ name: 'shot', contentType: 'image/png', path: 'test-results/shot.png', inline: false, sizeBytes: null, dataUri: 'data:image/png;base64,AA==' }] }] };
+    expect(readRun({ ...run, tests: [details] }).tests[0]?.attempts[0]).toMatchObject(details.attempts[0]!);
+    expect(readRun(run).tests[0]?.attempts[0]).not.toHaveProperty('steps');
+  });
   it('round-trips complete shard and run records', () => {
     expect(readShard(JSON.parse(JSON.stringify(shard)), 'shard.json')).toEqual(shard);
     expect(readRun(JSON.parse(JSON.stringify(run)), 'run.json')).toEqual(run);

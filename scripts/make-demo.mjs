@@ -37,7 +37,7 @@ const order = (a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : a.line - b.
 function outcomeFor(runIndex, index) {
   if (index === 12) return runIndex === 11 ? 'unexpected' : 'expected';
   if (index === 13) return runIndex === 11 ? 'expected' : 'unexpected';
-  if (index === 9 || index === 37 || index === 65) return runIndex % 2 === 0 ? 'flaky' : 'expected';
+  if (index === 9 || index === 37 || index === 65) return runIndex % 2 === 1 ? 'flaky' : 'expected';
   if (index === 5) return 'skipped';
   if (index === 24) return 'unexpected';
   if (index === 53) return 'unexpected';
@@ -107,7 +107,7 @@ const summaries = await store.listSummaries({ limit: 30 });
 const currentSummary = summaries.find((entry) => entry.runId === latest.runId);
 const previousSummary = previousRun(summaries, currentSummary);
 const previous = previousSummary ? runs.find((run) => run.runId === previousSummary.runId) : null;
-const model = buildReportModel({ run: latest, summaries, previous: previousSummary, comparison: compareRuns(latest, previous), flaky: computeFlaky(runs), generatedAt: null });
+const model = buildReportModel({ run: latest, summaries, previous: previousSummary, comparison: compareRuns(latest, previous), flaky: computeFlaky(runs), recentRuns: runs.slice(0, -1), generatedAt: null });
 await fs.mkdir(path.join(outputDir, 'report'), { recursive: true });
 await fs.writeFile(path.join(outputDir, 'report', 'index.html'), renderReport(model), 'utf8');
 process.stdout.write(`${path.join(outputDir, 'report', 'index.html')}\n`);

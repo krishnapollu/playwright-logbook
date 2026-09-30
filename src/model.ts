@@ -1,11 +1,16 @@
+import { testResultKind } from './history.js';
 import type { Comparison, FlakyEntry } from './history.js';
 import type { RunRecord, RunSummaryRecord, TestRecord } from './schema.js';
+import { VERSION } from './version.js';
 
 const compare = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
+export type ReportTest = TestRecord & { timing: { startedAt: string; workerIndex: number } | null };
 export interface ReportModel {
   schemaVersion: 1;
+  generator: { name: 'playwright-logbook'; version: string };
+  summaryMarkdown: string;
   generatedAt: string | null;
-  run: RunRecord;
+  run: Omit<RunRecord, 'tests'> & { tests: ReportTest[] };
   history: RunSummaryRecord[];
   previous: RunSummaryRecord | null;
   comparison: Comparison | null;
@@ -13,6 +18,18 @@ export interface ReportModel {
   slowest: { testId: string; title: string; file: string; project: string; durationMs: number }[];
   files: { file: string; total: number; failed: number; flaky: number; skipped: number; durationMs: number }[];
   tags: { tag: string; count: number }[];
+  delta: { previousRunId: string; passRatePp: number | null; failed: number; flaky: number; durationPct: number | null } | null;
+  errorGroups: { signature: string; count: number; projects: string[]; testIds: string[]; newCount: number }[];
+  recent: Record<string, string>;
+  projects: { name: string; total: number; passed: number; failed: number; flaky: number; skipped: number; durationMs: number }[];
+}
+
+export function errorSignature(message: string | null): string {
+  if (!message?.trim()) return 'No error message';
+  const line = message.split(/\r?\n/).find((part) => part.trim()) ?? '';
+  return line.replace(/"[^"]*"|'[^']*'|`[^`]*`/g, '"…"')
+    .replace(/\b(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|0x[0-9a-f]+|[0-9a-f]{8,})\b/gi, 'ID')
+    .replace(/\d+/g, 'N').replace(/\bNms\b/g, 'N ms').replace(/\s+/g, ' ').trim().slice(0, 140);
 }
 
 function currentSummary(run: RunRecord): RunSummaryRecord {
@@ -25,7 +42,7 @@ function slim(test: TestRecord): TestRecord {
 }
 
 /** Build compact, sorted report data from a stored run and its history. */
-export function buildReportModel(input: { run: RunRecord; summaries: RunSummaryRecord[]; previous?: RunSummaryRecord | null; flaky?: FlakyEntry[]; comparison?: Comparison | null; generatedAt?: string | null; historyLimit?: number }): ReportModel {
+export function buildReportModel(input: { run: RunRecord; summaries: RunSummaryRecord[]; previous?: RunSummaryRecord | null; flaky?: FlakyEntry[]; comparison?: Comparison | null; generatedAt?: string | null; historyLimit?: number; recentRuns?: RunRecord[] }): ReportModel {
   const { run } = input;
   const all = new Map(input.summaries.map((entry) => [entry.runId, entry]));
   all.set(run.runId, currentSummary(run));
@@ -36,6 +53,9 @@ export function buildReportModel(input: { run: RunRecord; summaries: RunSummaryR
   const history = selected.sort((a, b) => compare(a.startedAt, b.startedAt) || compare(a.runId, b.runId));
   const files = new Map<string, ReportModel['files'][number]>();
   const tags = new Map<string, number>();
+  const projects = new Map<string, ReportModel['projects'][number]>();
+  const groups = new Map<string, { signature: string; count: number; projects: Set<string>; testIds: string[]; newCount: number }>();
+  const newIds = new Set(input.comparison?.newFailures.map((item) => item.testId) ?? []);
   for (const test of run.tests) {
     const item = files.get(test.file) ?? { file: test.file, total: 0, failed: 0, flaky: 0, skipped: 0, durationMs: 0 };
     item.total += 1; item.durationMs += test.durationMs;
@@ -44,8 +64,35 @@ export function buildReportModel(input: { run: RunRecord; summaries: RunSummaryR
     if (test.outcome === 'skipped') item.skipped += 1;
     files.set(test.file, item);
     for (const tag of test.tags) tags.set(tag, (tags.get(tag) ?? 0) + 1);
+    const project = projects.get(test.project) ?? { name: test.project, total: 0, passed: 0, failed: 0, flaky: 0, skipped: 0, durationMs: 0 };
+    project.total += 1; project.durationMs += test.durationMs;
+    if (test.outcome === 'expected') project.passed += 1;
+    if (test.outcome === 'unexpected') project.failed += 1;
+    if (test.outcome === 'flaky') project.flaky += 1;
+    if (test.outcome === 'skipped') project.skipped += 1;
+    projects.set(test.project, project);
+    if (test.outcome === 'unexpected' || test.outcome === 'flaky') {
+      const signature = errorSignature(test.firstError?.message ?? null);
+      const group = groups.get(signature) ?? { signature, count: 0, projects: new Set<string>(), testIds: [], newCount: 0 };
+      group.count += 1; group.projects.add(test.project); group.testIds.push(test.testId);
+      if (newIds.has(test.testId)) group.newCount += 1;
+      groups.set(signature, group);
+    }
   }
-  return { schemaVersion: 1, generatedAt: input.generatedAt ?? null, run: { ...run, tests: run.tests.map(slim) }, history, previous: input.previous ?? null, comparison: input.comparison ?? null, flaky: (input.flaky ?? []).slice(0, 50), slowest: [...run.tests].sort((a, b) => b.durationMs - a.durationMs || compare(a.testId, b.testId)).slice(0, 10).map(({ testId, title, file, project, durationMs }) => ({ testId, title, file, project, durationMs })), files: [...files.values()].sort((a, b) => compare(a.file, b.file)), tags: [...tags].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || compare(a.tag, b.tag)) };
+  const previous = input.previous ?? null;
+  const passRate = (summary: RunRecord['summary']): number | null => summary.total ? summary.passed / summary.total : null;
+  const currentRate = passRate(run.summary), previousRate = previous && passRate(previous.summary);
+  const delta = previous ? { previousRunId: previous.runId, passRatePp: currentRate === null || previousRate === null ? null : Math.round((currentRate - previousRate) * 1000) / 10, failed: run.summary.failed - previous.summary.failed, flaky: run.summary.flaky - previous.summary.flaky, durationPct: previous.durationMs ? Math.round((run.durationMs - previous.durationMs) / previous.durationMs * 100) : null } : null;
+  const older = (input.recentRuns ?? []).filter((item) => item.runId !== run.runId).slice(-10);
+  const olderTests = older.map((item) => new Map(item.tests.map((test) => [test.testId, test])));
+  const recent: Record<string, string> = {};
+  for (const test of [...run.tests].sort((a, b) => compare(a.testId, b.testId))) recent[test.testId] = olderTests.map((tests) => {
+    const prior = tests.get(test.testId);
+    return prior ? ({ pass: 'p', fail: 'f', flaky: 'k', skip: 's' })[testResultKind(prior)] : '-';
+  }).join('');
+  const model: ReportModel = { schemaVersion: 1, generator: { name: 'playwright-logbook', version: VERSION }, summaryMarkdown: '', generatedAt: input.generatedAt ?? null, run: { ...run, tests: run.tests.map((test) => ({ ...slim(test), timing: test.attempts[0] ? { startedAt: test.attempts[0].startedAt, workerIndex: test.attempts[0].workerIndex } : null })) }, history, previous, comparison: input.comparison ?? null, flaky: (input.flaky ?? []).slice(0, 50), slowest: [...run.tests].sort((a, b) => b.durationMs - a.durationMs || compare(a.testId, b.testId)).slice(0, 10).map(({ testId, title, file, project, durationMs }) => ({ testId, title, file, project, durationMs })), files: [...files.values()].sort((a, b) => compare(a.file, b.file)), tags: [...tags].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || compare(a.tag, b.tag)), delta, errorGroups: [...groups.values()].map((group) => ({ ...group, projects: [...group.projects].sort(compare), testIds: group.testIds.sort(compare) })).sort((a, b) => b.count - a.count || compare(a.signature, b.signature)), recent, projects: [...projects.values()].sort((a, b) => compare(a.name, b.name)) };
+  model.summaryMarkdown = renderMarkdownSummary(model);
+  return model;
 }
 
 /** Format a duration for human-readable summaries. */

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { Script } from 'node:vm';
 import { buildReportModel } from '../src/model.js';
 import { renderReport } from '../src/render.js';
+import { buildClientScript, buildStyles } from '../src/template.js';
 import { run, testRecord } from './factories.js';
 
 const model = () => buildReportModel({ run: run('report-run'), summaries: [], generatedAt: null });
@@ -38,6 +40,13 @@ describe('renderReport', () => {
     const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
     expect(scripts).toHaveLength(1);
     expect(() => new Function(scripts[0]![1]!)).not.toThrow();
+    expect(() => new Script(buildClientScript())).not.toThrow();
+    expect(buildClientScript()).not.toMatch(/\b(?:innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval|new Function)\b/);
+    expect(buildStyles().length + buildClientScript().length).toBeLessThan(120_000);
+    expect(html).toContain('<noscript>');
+    expect(html).toContain('<dialog');
+    expect(html).toContain('@media print');
+    expect((html.match(/data-tab="/g) ?? [])).toHaveLength(6);
   });
   it('computes relative attachment links', () => {
     const source = run('attachment');
@@ -45,6 +54,18 @@ describe('renderReport', () => {
     const html = renderReport(buildReportModel({ run: source, summaries: [] }));
     const links = html.match(/<script type="application\/json" id="lb-links">([\s\S]*?)<\/script>/)?.[1];
     expect(JSON.parse(links!)).toEqual({ 'test-results/x/trace.zip': '../../test-results/x/trace.zip' });
+  });
+  it('embeds opt-in details as recoverable data with a lightbox', () => {
+    const source = run('details');
+    source.tests = [{ ...testRecord('failed', 'unexpected'), attemptCount: 1, attempts: [{ retry: 0, status: 'failed', durationMs: 5, startedAt: source.startedAt, workerIndex: 0, errors: [], steps: [{ title: 'inner step', category: 'test.step', durationMs: 2, depth: 1, failed: true }], stdout: 'tail output', stderr: null, attachments: [{ name: 'shot', contentType: 'image/png', path: null, inline: false, sizeBytes: 2, dataUri: 'data:image/png;base64,AA==' }] }] }];
+    const html = renderReport(buildReportModel({ run: source, summaries: [] }));
+    const payload = html.match(/<script type="application\/json" id="lb-data">([\s\S]*?)<\/script>/)?.[1];
+    const recovered = JSON.parse(payload!) as { run: { tests: { attempts: { steps: { title: string }[]; stdout: string; attachments: { dataUri: string }[] }[] }[] } };
+    expect(recovered.run.tests[0]?.attempts[0]?.steps[0]?.title).toBe('inner step');
+    expect(recovered.run.tests[0]?.attempts[0]?.stdout).toBe('tail output');
+    expect(recovered.run.tests[0]?.attempts[0]?.attachments[0]?.dataUri).toBe('data:image/png;base64,AA==');
+    expect(html).toContain('id="lb-lightbox"');
+    expect(html).not.toMatch(/\b(?:innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval|new Function)\b/);
   });
   it('shows incomplete runs and is byte identical without a timestamp', () => {
     const data = model();

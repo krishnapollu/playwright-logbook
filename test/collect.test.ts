@@ -17,6 +17,27 @@ const attempt = (status: 'passed' | 'failed', retry: number): PwTest['results'][
 const collect = (tests: PwTest[]) => buildShardFile({ config: { rootDir: '/project/tests', projects: [], workers: 1, version: '1' }, tests, runId: 'run', startedAt: new Date(0), endedAt: new Date(1), status: 'passed', env, project, ctx: { projectRoot: '/project', env: { API_KEY: 'secret-value' } } });
 
 describe('buildShardFile', () => {
+  it('keeps default attempt JSON free of optional capture fields', () => {
+    const result = { ...attempt('failed', 0), stdout: ['secret-value'], attachments: [{ name: 'shot', contentType: 'image/png', path: '/project/shot.png' }] };
+    const record = collect([{ ...base, results: [result], outcome: () => 'unexpected' }]).tests[0]!;
+    expect(JSON.stringify(record)).not.toMatch(/"steps"|"stdout"|"stderr"|"dataUri"/);
+  });
+  it('sanitizes and truncates captured output, filters steps, and embeds failed images', () => {
+    const image = { name: 'shot', contentType: 'image/png', path: '/project/shot.png' };
+    const result = { ...attempt('failed', 0), stdout: ['\u001b[31msecret-value\u001b[0m /project/tests/a.spec.ts done'], stderr: ['warning'], attachments: [image] };
+    const steps = new WeakMap([[result, [{ title: 'Expect one', category: 'expect', durationMs: 2, depth: 1, failed: true }]]]);
+    const imageData = new WeakMap([[image, 'data:image/png;base64,AA==']]);
+    const shard = buildShardFile({ config: { rootDir: '/project/tests', projects: [], workers: 1, version: '1' }, tests: [{ ...base, results: [result], outcome: () => 'unexpected' }], runId: 'run', startedAt: new Date(0), endedAt: new Date(1), status: 'failed', env, project, ctx: { projectRoot: '/project', env: { API_KEY: 'secret-value' }, captureDetails: true, stepsByResult: steps, imageData, maxOutputLength: 24 } });
+    const captured = shard.tests[0]!.attempts[0]!;
+    expect(captured.steps).toEqual([{ title: 'Expect one', category: 'expect', durationMs: 2, depth: 1, failed: true }]);
+    expect(captured.stdout).toContain('[truncated');
+    expect(captured.stdout).not.toContain('secret-value');
+    expect(captured.stdout).not.toContain('/project');
+    expect(captured.stderr).toBe('warning');
+    expect(captured.attachments[0]?.dataUri).toBe('data:image/png;base64,AA==');
+    const passed = buildShardFile({ config: { rootDir: '/project/tests', projects: [], workers: 1, version: '1' }, tests: [{ ...base, results: [result], outcome: () => 'expected' }], runId: 'run', startedAt: new Date(0), endedAt: new Date(1), status: 'passed', env, project, ctx: { projectRoot: '/project', captureDetails: true, imageData } });
+    expect(passed.tests[0]!.attempts[0]!.attachments[0]).not.toHaveProperty('dataUri');
+  });
   it('walks the suite parent chain instead of using titlePath()', () => {
     const record = collect([{ ...base, titlePath: () => { throw new Error('wrong API'); }, results: [attempt('passed', 0)] }]).tests[0];
     expect(record).toMatchObject({ titlePath: ['group', 'works'], project: 'alpha', file: 'tests/a.spec.ts', line: 3, column: 1 });

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import path from 'node:path';
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import { FileShardSink } from '../src/store.js';
 import { LogbookReporter } from '../src/reporter.js';
-import type { PwConfig } from '../src/collect.js';
+import type { PwConfig, PwTest } from '../src/collect.js';
 import type { ShardFile } from '../src/schema.js';
 
 const baseConfig: PwConfig = { rootDir: '/project/tests', configFile: '/project/playwright.config.ts', projects: [{ name: 'alpha', testDir: '/project/tests' }], workers: 1, version: '1.63.0', shard: null };
@@ -17,6 +19,28 @@ const setup = (config = baseConfig, overrides: ConstructorParameters<typeof Logb
 };
 
 describe('LogbookReporter', () => {
+  it('filters and caps opt-in steps and embedded images', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-capture-'));
+    try {
+      const first = path.join(root, 'first.png'), second = path.join(root, 'second.png');
+      await Promise.all([fs.writeFile(first, Buffer.from([1, 2, 3])), fs.writeFile(second, Buffer.from([4, 5, 6]))]);
+      const result = { retry: 0, status: 'failed' as const, duration: 5, startTime: new Date('2026-01-01T00:00:00.000Z'), workerIndex: 0, errors: [], stdout: ['secret-value and tail'], stderr: [], attachments: [{ name: 'first', contentType: 'image/png', path: first }, { name: 'second', contentType: 'image/png', path: second }] };
+      const test: PwTest = { id: 'id', title: 'fails', location: { file: path.join(root, 'tests', 'a.spec.ts'), line: 1, column: 1 }, parent: { type: 'file', title: 'a.spec.ts', project: () => ({ name: 'alpha' }) }, expectedStatus: 'passed', results: [result], outcome: () => 'unexpected' };
+      const shards: ShardFile[] = [];
+      const reporter = new LogbookReporter({ runId: 'capture', quiet: true, autoMerge: false, captureDetails: true, maxSteps: 1, maxOutputLength: 10, maxImageBytes: 4, maxEmbeddedBytes: 4 }, { env: { API_KEY: 'secret-value' }, exec: () => { throw new Error('no git'); }, clock: () => new Date('2026-01-01T00:00:00.000Z'), sink: { write: async (shard) => { shards.push(shard); return 'shard.json'; } } });
+      reporter.onBegin({ ...baseConfig, configFile: path.join(root, 'playwright.config.ts'), rootDir: path.join(root, 'tests') }, { allTests: () => [test] });
+      reporter.onStepEnd(test, result, { title: 'Attach', category: 'test.attach', duration: 1 });
+      reporter.onStepEnd(test, result, { title: 'first step', category: 'test.step', duration: 2, error: new Error('failed') });
+      reporter.onStepEnd(test, result, { title: 'extra step', category: 'test.step', duration: 2 });
+      await reporter.onEnd({ status: 'failed' });
+      const captured = shards[0]!.tests[0]!.attempts[0]!;
+      expect(captured.steps).toEqual([{ title: 'first step', category: 'test.step', durationMs: 2, depth: 0, failed: true }]);
+      expect(captured.stdout).toContain('[truncated');
+      expect(captured.stdout).not.toContain('secret-value');
+      expect(captured.attachments[0]?.dataUri).toBe('data:image/png;base64,AQID');
+      expect(captured.attachments[1]).not.toHaveProperty('dataUri');
+    } finally { await fs.rm(root, { recursive: true, force: true }); }
+  });
   it('returns false from printsToStdio and writes exactly one unsharded file', async () => {
     const { reporter, lines, shards, runs } = setup();
     expect(reporter.printsToStdio()).toBe(false);

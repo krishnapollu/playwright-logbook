@@ -1,6 +1,6 @@
 {
   "name": "playwright-logbook",
-  "version": "0.1.0-beta.0",
+  "version": "0.2.0",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -38,6 +38,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "demo": "npm run build && node scripts/make-demo.mjs",
+    "test:e2e": "npm run demo && playwright test --config=e2e/playwright.config.ts",
+    "shots": "npm run demo && node scripts/make-shots.mjs",
     "check": "npm run lint && npm run typecheck && npm run build && npm test"
   },
   "dependencies": {

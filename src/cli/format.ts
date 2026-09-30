@@ -30,7 +30,7 @@ export async function modelForRun(context: CliContext, run: RunRecord, historyLi
   const previous = previousRun(summaries, asSummary(run));
   const previousRecord = previous ? await store.loadRun(previous.runId) : null;
   const ordered = await store.loadRuns(summaries.map((item) => item.runId).reverse());
-  return buildReportModel({ run, summaries, previous, comparison: compareRuns(run, previousRecord), flaky: computeFlaky(ordered), generatedAt: noTimestamp ? null : context.clock().toISOString(), historyLimit });
+  return buildReportModel({ run, summaries, previous, comparison: compareRuns(run, previousRecord), flaky: computeFlaky(ordered), recentRuns: ordered.filter((item) => item.runId !== run.runId), generatedAt: noTimestamp ? null : context.clock().toISOString(), historyLimit });
 }
 
 /** Atomically write a self-contained HTML report and return its relative path. */

@@ -9,9 +9,14 @@ export interface LogbookOptions {
   maxTextLength?: number;
   caseIdPatterns?: string[];
   quiet?: boolean;
+  captureDetails?: boolean | { steps?: boolean; output?: boolean; images?: boolean };
+  maxSteps?: number;
+  maxOutputLength?: number;
+  maxImageBytes?: number;
+  maxEmbeddedBytes?: number;
 }
 
 /** Resolve reporter options with deterministic defaults. */
 export function resolveOptions(options: LogbookOptions = {}): Required<Pick<LogbookOptions, 'outputDir' | 'autoMerge' | 'autoReport' | 'quiet' | 'historyLimit' | 'maxTextLength'>> & LogbookOptions {
-  return { outputDir: '.logbook', autoMerge: true, autoReport: true, historyLimit: 30, maxTextLength: 4000, quiet: false, ...options };
+  return { outputDir: '.logbook', autoMerge: true, autoReport: true, historyLimit: 30, maxTextLength: 4000, quiet: false, captureDetails: false, maxSteps: 100, maxOutputLength: 2000, maxImageBytes: 250000, maxEmbeddedBytes: 5000000, ...options };
 }

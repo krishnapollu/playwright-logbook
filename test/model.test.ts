@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
-import { buildJsonSummary, buildReportModel, formatDuration, renderMarkdownSummary, renderTextSummary } from '../src/model.js';
+import { buildJsonSummary, buildReportModel, errorSignature, formatDuration, renderMarkdownSummary, renderTextSummary } from '../src/model.js';
 import type { Comparison } from '../src/history.js';
 import type { RunRecord, TestRecord } from '../src/schema.js';
 import { run, testRecord } from './factories.js';
@@ -14,6 +14,25 @@ const sample = (): RunRecord => {
 };
 
 describe('buildReportModel', () => {
+  it('adds generator, delta, projects, Markdown and timing', () => {
+    const base = sample();
+    const before = { ...buildReportModel({ run: run('previous'), summaries: [] }).history[0]!, runId: 'previous', startedAt: '2025-01-01T00:00:00.000Z', durationMs: 1000 };
+    const model = buildReportModel({ run: base, summaries: [before], previous: before, comparison });
+    expect(model.generator).toEqual({ name: 'playwright-logbook', version: '0.2.0' });
+    expect(model.summaryMarkdown).toBe(renderMarkdownSummary(model));
+    expect(model.delta).toMatchObject({ previousRunId: 'previous', failed: 2, flaky: 1, durationPct: 20 });
+    expect(model.projects).toEqual([{ name: 'alpha', total: 3, passed: 1, failed: 1, flaky: 1, skipped: 0, durationMs: 60 }]);
+    expect(model.run.tests[0]).toMatchObject({ attempts: [], timing: { workerIndex: 0, startedAt: attempt.startedAt } });
+  });
+  it('records recent result letters and normalized error groups', () => {
+    const current = sample();
+    const failed = current.tests[1]!;
+    failed.firstError = { message: 'Error: locator.click: Timeout 30000ms exceeded.', stack: null, snippet: null, location: null };
+    const old = { ...run('old'), tests: [{ ...testRecord('pass', 'unexpected') }, testRecord('failure')] };
+    const model = buildReportModel({ run: current, summaries: [], recentRuns: [old], comparison });
+    expect(model.recent).toMatchObject({ pass: 'f', failure: 'p', flaky: '-' });
+    expect(model.errorGroups[0]).toMatchObject({ signature: 'Error: locator.click: Timeout N ms exceeded.', count: 1, newCount: 1, testIds: ['failure'] });
+  });
   it('slims clean single-attempt passes only', () => {
     const base = sample();
     const withAttachment: TestRecord = { ...testRecord('attached'), attemptCount: 1, attempts: [{ ...attempt, attachments: [{ name: 'note', contentType: 'text/plain', path: null, inline: true, sizeBytes: 2 }] }] };
@@ -36,6 +55,14 @@ describe('buildReportModel', () => {
     expect(buildReportModel({ run: base, summaries: [old], historyLimit: 2 }).history.map((entry) => entry.runId)).toEqual(['old', 'golden-run']);
     const newer = { ...old, runId: 'newer', startedAt: '2027-01-01T00:00:00.000Z' };
     expect(buildReportModel({ run: base, summaries: [newer], historyLimit: 1 }).history.map((entry) => entry.runId)).toEqual(['golden-run']);
+  });
+});
+
+describe('errorSignature', () => {
+  it('handles empty, quoted, numeric, hex and UUID values', () => {
+    expect(errorSignature(null)).toBe('No error message');
+    expect(errorSignature('\n Error: "button 123" failed at 0xabcdef12 after 42ms')).toBe('Error: "…" failed at ID after N ms');
+    expect(errorSignature('ID 123e4567-e89b-12d3-a456-426614174000 not found')).toBe('ID ID not found');
   });
 });
 
