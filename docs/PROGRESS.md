@@ -49,6 +49,12 @@
   Done when: `npx vitest run test/model.test.ts` passed:
   `Test Files 1 passed (1); Tests 6 passed (6)`.
 
+- [x] T9 HTML report
+
+  Done when: `npx vitest run test/render.test.ts` passed:
+  `Test Files 1 passed (1); Tests 5 passed (5)`.
+  A browser review of the generated sample report remains a human check.
+
 ## Blockers
 
 None.
