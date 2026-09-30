@@ -1,0 +1,12 @@
+export type LogbookErrorCode = 'INVALID_DATA' | 'SHARD_MISMATCH' | 'DUPLICATE_SHARD' | 'RUN_NOT_FOUND' | 'NO_DATA';
+
+/** Error with a stable machine-readable code. */
+export class LogbookError extends Error {
+  readonly code: LogbookErrorCode;
+
+  constructor(code: LogbookErrorCode, message: string) {
+    super(message);
+    this.name = 'LogbookError';
+    this.code = code;
+  }
+}
