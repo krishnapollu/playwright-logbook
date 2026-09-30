@@ -9,6 +9,10 @@
 
   Done when: `npx vitest run test/schema.test.ts test/sanitize.test.ts test/paths.test.ts` passed (3 files, 3 tests).
 
+- [x] T2 Environment detection
+
+  Done when: `npx vitest run test/env.test.ts` passed (2 tests).
+
 ## Blockers
 
 None.
