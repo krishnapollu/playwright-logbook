@@ -21,7 +21,8 @@
 
 - [x] T4 Collect
 
-  Done when: `npx vitest run test/collect.test.ts` passed (1 test).
+  Done when: `npx vitest run test/collect.test.ts` passed:
+  `Test Files 1 passed (1); Tests 6 passed (6)`.
 
 ## Blockers
 
