@@ -9,6 +9,10 @@ import { resolveOptions } from './options.js';
 import { sanitize } from './sanitize.js';
 import type { ShardSink } from './store.js';
 import { FileShardSink } from './store.js';
+import type { HistoryStore } from './store.js';
+import { FileHistoryStore } from './store.js';
+import { mergeShards } from './merge.js';
+import { toRel } from './paths.js';
 
 interface ReporterSuite { allTests(): PwTest[] }
 interface FullResult { status: 'passed' | 'failed' | 'timedout' | 'interrupted'; startTime?: Date; duration?: number }
@@ -17,6 +21,7 @@ export interface ReporterDeps extends Pick<DetectEnvOptions, 'env' | 'exec' | 'c
   stderr?: (line: string) => void;
   fs?: Pick<typeof fs, 'mkdir' | 'writeFile' | 'rename'>;
   sink?: ShardSink;
+  historyStore?: HistoryStore;
 }
 
 /** Playwright reporter that writes a durable shard without changing the test result. */
@@ -75,6 +80,10 @@ export class LogbookReporter {
       const outputDir = path.resolve(this.root, this.options.outputDir);
       const shard = buildShardFile({ config: this.config, tests: this.suite.allTests(), runId: this.detected.runId, title: this.options.title, startedAt: this.startedAt, endedAt, status: result.status, env: { ci: this.detected.ci, git: this.detected.git, machine: this.detected.machine, playwrightVersion: this.config.version, workers: this.config.workers }, globalErrors: this.globalErrors, ctx: { projectRoot: this.root, env: this.deps.env, redact: this.options.redact, caseIdPatterns: this.options.caseIdPatterns, maxTextLength: this.options.maxTextLength } });
       await (this.deps.sink ?? new FileShardSink(outputDir, this.deps.fs)).write(shard);
+      if (this.options.autoMerge && (!shard.shard || shard.shard.total === 1)) {
+        const { run } = mergeShards([shard], { outputDir: toRel(this.root, outputDir) });
+        await (this.deps.historyStore ?? new FileHistoryStore(outputDir)).saveRun(run);
+      }
       if (!this.options.quiet) {
         const count = (outcome: string): number => shard.tests.filter((test) => test.outcome === outcome).length;
         this.write(`[logbook] run ${shard.runId}: ${count('expected')} passed, ${count('unexpected')} failed, ${count('flaky')} flaky, ${count('skipped')} skipped`);

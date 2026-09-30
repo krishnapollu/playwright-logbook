@@ -32,6 +32,13 @@
   `fixtures/sample-project` exited `1` as expected and wrote
   `.logbook/shards/t5/shard-1-of-1.json` with 7 tests.
 
+- [x] T6 Merge and history store
+
+  Done when: `npx vitest run test/merge.test.ts test/store.test.ts` passed:
+  `Test Files 2 passed (2); Tests 12 passed (12)`.
+  The sample run `t6` exited `1` and wrote a complete run and one index line
+  with summary `{ total: 7, passed: 3, failed: 2, flaky: 1, skipped: 1 }`.
+
 ## Blockers
 
 None.

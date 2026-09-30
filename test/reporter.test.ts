@@ -10,27 +10,30 @@ const result = { status: 'failed' as const };
 const setup = (config = baseConfig, overrides: ConstructorParameters<typeof LogbookReporter>[1] = {}, quiet = false) => {
   const lines: string[] = [];
   const shards: ShardFile[] = [];
-  const reporter = new LogbookReporter({ runId: 'test-run', quiet }, { env: {}, exec: () => { throw new Error('no git'); }, clock: () => new Date('2026-01-01T00:00:00.000Z'), stderr: (line) => lines.push(line), sink: { write: async (shard) => { shards.push(shard); return 'shards/test-run/shard-1-of-1.json'; } }, ...overrides });
+  const runs: string[] = [];
+  const reporter = new LogbookReporter({ runId: 'test-run', quiet }, { env: {}, exec: () => { throw new Error('no git'); }, clock: () => new Date('2026-01-01T00:00:00.000Z'), stderr: (line) => lines.push(line), sink: { write: async (shard) => { shards.push(shard); return 'shards/test-run/shard-1-of-1.json'; } }, historyStore: { saveRun: async (run) => { runs.push(run.runId); }, listSummaries: async () => [], loadRun: async () => { throw new Error('not implemented'); }, loadRuns: async () => [] }, ...overrides });
   reporter.onBegin(config, { allTests: () => [] });
-  return { reporter, lines, shards };
+  return { reporter, lines, shards, runs };
 };
 
 describe('LogbookReporter', () => {
   it('returns false from printsToStdio and writes exactly one unsharded file', async () => {
-    const { reporter, lines, shards } = setup();
+    const { reporter, lines, shards, runs } = setup();
     expect(reporter.printsToStdio()).toBe(false);
     await expect(reporter.onEnd(result)).resolves.toBeUndefined();
     expect(shards).toHaveLength(1);
+    expect(runs).toEqual(['test-run']);
     expect(shards[0]).toMatchObject({ runId: 'test-run', shard: null, project: { configFile: 'playwright.config.ts', projects: [{ testDir: 'tests' }] } });
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain('[logbook] run test-run: 0 passed, 0 failed, 0 flaky, 0 skipped');
     expect(lines[0]).not.toContain('/project');
   });
   it('writes a shard 2 of 3 without merging', async () => {
-    const { reporter, shards } = setup({ ...baseConfig, shard: { current: 2, total: 3 } });
+    const { reporter, shards, runs } = setup({ ...baseConfig, shard: { current: 2, total: 3 } });
     await reporter.onEnd(result);
     expect(shards[0]?.shard).toEqual({ current: 2, total: 3 });
     expect(shards).toHaveLength(1);
+    expect(runs).toEqual([]);
   });
   it('never throws when the sink fails and emits one warning', async () => {
     const { reporter, lines } = setup(baseConfig, { sink: { write: async () => { throw new Error('/project/disk full'); } } });
