@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Project: playwright-logbook — a Playwright reporter + CLI: run records, history, sharded merge, HTML report.
-Spec: docs/SPEC.md (LARGE — never read it whole). Progress: docs/PROGRESS.md.
+Specs: docs/SPEC.md (historical baseline; LARGE — never read it whole) and docs/SPEC-v3.md (active v3 plan; read one task card at a time). Progress: docs/PROGRESS.md.
 
 ## Commands
 - Install: `npm ci`
@@ -18,7 +18,7 @@ Spec: docs/SPEC.md (LARGE — never read it whole). Progress: docs/PROGRESS.md.
 - Output must be deterministic. Inject clock/random/env; do not call Date.now() or Math.random() directly.
 - No `any`. No new dependencies without a note in docs/DECISIONS.md. Never run `npm publish`.
 - test/integration/golden.test.ts is read-only. Do not edit or weaken it.
-- One task at a time (docs/SPEC.md section 9). Read only that task card and the sections it names.
+- One task at a time (docs/SPEC-v3.md section 9 for v3). Read only that task card and the sections it names.
 - Tick a task in docs/PROGRESS.md only when its listed tests exist and pass; paste the "Done when" output.
 - One Conventional Commit per task.
 
