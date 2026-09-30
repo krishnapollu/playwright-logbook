@@ -1,4 +1,4 @@
-export type LogbookErrorCode = 'INVALID_DATA' | 'SHARD_MISMATCH' | 'DUPLICATE_SHARD' | 'RUN_NOT_FOUND' | 'NO_DATA';
+export type LogbookErrorCode = 'INVALID_DATA' | 'SHARD_MISMATCH' | 'DUPLICATE_SHARD' | 'RUN_NOT_FOUND' | 'NO_DATA' | 'INCOMPLETE';
 
 /** Error with a stable machine-readable code. */
 export class LogbookError extends Error {

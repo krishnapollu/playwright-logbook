@@ -13,6 +13,9 @@ import type { HistoryStore } from './store.js';
 import { FileHistoryStore } from './store.js';
 import { mergeShards } from './merge.js';
 import { toRel } from './paths.js';
+import { buildReportModel } from './model.js';
+import { compareRuns, computeFlaky, previousRun } from './history.js';
+import { renderReport } from './render.js';
 
 interface ReporterSuite { allTests(): PwTest[] }
 interface FullResult { status: 'passed' | 'failed' | 'timedout' | 'interrupted'; startTime?: Date; duration?: number }
@@ -71,6 +74,20 @@ export class LogbookReporter {
     catch (caught) { this.warning(caught); }
   }
 
+  private async saveReport(run: import('./schema.js').RunRecord, store: HistoryStore, outputDir: string): Promise<void> {
+    const summaries = await store.listSummaries({ limit: this.options.historyLimit });
+    const current = summaries.find((item) => item.runId === run.runId) ?? { schemaVersion: 1 as const, runId: run.runId, title: run.title, startedAt: run.startedAt, durationMs: run.durationMs, status: run.status, complete: run.complete, summary: run.summary, branch: run.env.git.branch, commit: run.env.git.commit, ciProvider: run.env.ci?.provider ?? null, buildUrl: run.env.ci?.buildUrl ?? null };
+    const previous = previousRun(summaries, current);
+    const previousRecord = previous ? await store.loadRun(previous.runId) : null;
+    const runs = await store.loadRuns(summaries.map((item) => item.runId).reverse());
+    const model = buildReportModel({ run, summaries, previous, comparison: compareRuns(run, previousRecord), flaky: computeFlaky(runs), generatedAt: (this.deps.clock ?? (() => new Date()))().toISOString(), historyLimit: this.options.historyLimit });
+    const target = path.join(outputDir, 'report', 'index.html');
+    const files = this.deps.fs ?? fs;
+    await files.mkdir(path.dirname(target), { recursive: true });
+    await files.writeFile(`${target}.tmp`, renderReport(model), 'utf8');
+    await files.rename(`${target}.tmp`, target);
+  }
+
   async onEnd(result: FullResult): Promise<void> {
     try {
       if (!this.config || !this.suite || !this.root || !this.startedAt || !this.detected) throw new Error('reporter was not initialized');
@@ -82,11 +99,14 @@ export class LogbookReporter {
       await (this.deps.sink ?? new FileShardSink(outputDir, this.deps.fs)).write(shard);
       if (this.options.autoMerge && (!shard.shard || shard.shard.total === 1)) {
         const { run } = mergeShards([shard], { outputDir: toRel(this.root, outputDir) });
-        await (this.deps.historyStore ?? new FileHistoryStore(outputDir)).saveRun(run);
+        const store = this.deps.historyStore ?? new FileHistoryStore(outputDir);
+        await store.saveRun(run);
+        if (this.options.autoReport) await this.saveReport(run, store, outputDir);
       }
       if (!this.options.quiet) {
         const count = (outcome: string): number => shard.tests.filter((test) => test.outcome === outcome).length;
-        this.write(`[logbook] run ${shard.runId}: ${count('expected')} passed, ${count('unexpected')} failed, ${count('flaky')} flaky, ${count('skipped')} skipped`);
+        const reportPath = this.options.autoMerge && this.options.autoReport && (!shard.shard || shard.shard.total === 1) ? ` -> ${toRel(this.root, path.join(outputDir, 'report', 'index.html'))}` : '';
+        this.write(`[logbook] run ${shard.runId}: ${count('expected')} passed, ${count('unexpected')} failed, ${count('flaky')} flaky, ${count('skipped')} skipped${reportPath}`);
       }
     } catch (error) { this.warning(error); }
   }

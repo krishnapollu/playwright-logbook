@@ -1,1 +1,10 @@
 export { LogbookReporter as default, LogbookReporter } from './reporter.js';
+export { shardFileSchema, runRecordSchema, runSummaryRecordSchema, testRecordSchema, SCHEMA_VERSION } from './schema.js';
+export type { ShardFile, RunRecord, RunSummaryRecord, TestRecord, ErrorRecord } from './schema.js';
+export { mergeShards } from './merge.js';
+export { FileHistoryStore, FileShardSink } from './store.js';
+export type { HistoryStore, ShardSink } from './store.js';
+export { computeFlaky, compareRuns, previousRun } from './history.js';
+export { renderReport } from './render.js';
+export { buildReportModel, renderTextSummary, renderMarkdownSummary, buildJsonSummary } from './model.js';
+export type { Publisher, PublishContext, PublishResult } from './publish.js';

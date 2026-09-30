@@ -55,6 +55,12 @@
   `Test Files 1 passed (1); Tests 5 passed (5)`.
   A browser review of the generated sample report remains a human check.
 
+- [x] T10 CLI and golden integration
+
+  Done when: `head -1 dist/cli/bin.js` printed `#!/usr/bin/env node`.
+  `npm run check` passed with `Test Files 15 passed (15); Tests 94 passed (94)`,
+  including all 18 tests in the unchanged golden integration file.
+
 ## Blockers
 
 None.

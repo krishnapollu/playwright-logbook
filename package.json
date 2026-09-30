@@ -7,7 +7,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": { "playwright-logbook": "./dist/cli/bin.js", "logbook": "./dist/cli/bin.js" },
-  "scripts": { "build": "tsc -b", "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit", "lint": "eslint .", "test": "vitest run --exclude test/integration/golden.test.ts", "check": "npm run lint && npm run typecheck && npm run build && npm test" },
+  "scripts": { "build": "tsc -b", "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit", "lint": "eslint .", "test": "vitest run", "check": "npm run lint && npm run typecheck && npm run build && npm test" },
   "dependencies": { "commander": "^14.0.0", "zod": "^4.1.0" },
   "peerDependencies": { "@playwright/test": ">=1.42" },
   "devDependencies": { "@playwright/test": "^1.55.0", "@types/node": "^24.0.0", "eslint": "^9.0.0", "eslint-config-prettier": "^10.0.0", "prettier": "^3.0.0", "typescript": "^5.0.0", "typescript-eslint": "^8.0.0", "vitest": "^3.0.0" }
