@@ -11,7 +11,8 @@
 
 - [x] T2 Environment detection
 
-  Done when: `npx vitest run test/env.test.ts` passed (2 tests).
+  Done when: `npx vitest run test/env.test.ts` passed:
+  `Test Files 1 passed (1); Tests 11 passed (11)`.
 
 - [x] T3 Case ids
 
