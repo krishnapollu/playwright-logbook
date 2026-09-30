@@ -39,6 +39,11 @@
   The sample run `t6` exited `1` and wrote a complete run and one index line
   with summary `{ total: 7, passed: 3, failed: 2, flaky: 1, skipped: 1 }`.
 
+- [x] T7 History queries
+
+  Done when: `npx vitest run test/history.test.ts` passed:
+  `Test Files 1 passed (1); Tests 8 passed (8)`.
+
 ## Blockers
 
 None.
