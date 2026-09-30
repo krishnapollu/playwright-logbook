@@ -7,7 +7,7 @@
 
 - [x] T1 Schema and sanitizing
 
-  Done when: `npx vitest run test/schema.test.ts test/sanitize.test.ts test/paths.test.ts` passed (3 files, 3 tests).
+  Done when: `npx vitest run test/schema.test.ts test/sanitize.test.ts test/paths.test.ts` passed (3 files, 10 tests).
 
 - [x] T2 Environment detection
 

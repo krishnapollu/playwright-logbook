@@ -25,7 +25,9 @@ export function sanitize(text: string, options: SanitizeOptions = {}): string {
   const values = Object.entries(options.env ?? {}).filter(([name, value]) => SECRET_NAME.test(name) && value && value.length >= 8).map(([, value]) => value as string).sort((a, b) => b.length - a.length);
   for (const value of values) result = redactValue(result, value);
   for (const pattern of options.redact ?? []) {
-    const source = typeof pattern === 'string' ? new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g') : pattern;
+    const source = typeof pattern === 'string'
+      ? new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
+      : new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`);
     result = result.replace(source, '[redacted]');
   }
   const max = options.maxTextLength ?? Infinity;
