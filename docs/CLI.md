@@ -9,6 +9,9 @@ Both `logbook` and `playwright-logbook` invoke the same CLI. Run `npx playwright
 | `history` | `--limit <n>`, `--branch <name>`, `--json` | List recent indexed runs |
 | `flaky` | `--last <n>`, `--min-runs <n>`, `--json` | Find recurrent or in-run flaky tests |
 | `summary` | `--run <id|latest>`, `--format text|markdown|json` | Print CI-friendly results |
+| `debug` | `--run <id|latest>`, `--test <testId>`, `--format markdown|json` | Preview a bounded, redacted evidence packet for one test |
+
+`debug` does not contact a model or inspect attachment contents. It includes only stored evidence and marks missing capture data as unavailable. Redaction cannot detect every secret; review the output before sharing it with an AI provider or another person.
 
 `merge` discovers `shard-*.json` under each `--from` directory recursively. If no run ID is specified, it chooses the run with the latest shard end time, breaking ties by run ID. It rejects incompatible shards and duplicate shard numbers unless `--force` is set. An incomplete merge still writes output; `--fail-on-incomplete` then returns 5.
 

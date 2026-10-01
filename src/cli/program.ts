@@ -8,6 +8,7 @@ import { reportCommand } from './commands/report.js';
 import { historyCommand } from './commands/history.js';
 import { flakyCommand } from './commands/flaky.js';
 import { summaryCommand } from './commands/summary.js';
+import { debugCommand } from './commands/debug.js';
 
 export interface CliDeps {
   stdout?: (text: string) => void;
@@ -51,6 +52,10 @@ export function createProgram(deps: CliDeps = {}): Command {
   program.command('summary').description('Summarize a run')
     .option('--run <id>').addOption(new Option('--format <format>').choices(['text', 'markdown', 'json']).default('text'))
     .action(async (options) => done(await summaryCommand(context(), options)));
+  program.command('debug').description('Preview a bounded, AI-ready test evidence packet')
+    .option('--run <id>').requiredOption('--test <test-id>')
+    .addOption(new Option('--format <format>').choices(['json', 'markdown']).default('markdown'))
+    .action(async (options) => done(await debugCommand(context(), options)));
   return program;
 }
 
@@ -65,7 +70,7 @@ export async function runCli(args: string[], deps: CliDeps = {}): Promise<number
     if (error instanceof CommanderError || error instanceof CliUsageError) return 2;
     if (error instanceof LogbookError) {
       stderr(`logbook: ${error.message}\n`);
-      if (error.code === 'NO_DATA' || error.code === 'RUN_NOT_FOUND') return 3;
+      if (error.code === 'NO_DATA' || error.code === 'RUN_NOT_FOUND' || error.code === 'TEST_NOT_FOUND') return 3;
       if (error.code === 'INCOMPLETE') return 5;
       return 4;
     }

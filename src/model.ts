@@ -39,7 +39,7 @@ function currentSummary(run: RunRecord): RunSummaryRecord {
 }
 
 function slim(test: TestRecord): TestRecord {
-  return test.outcome === 'expected' && test.attemptCount === 1 && test.attempts[0]?.errors.length === 0 && test.attempts[0].attachments.length === 0
+  return test.outcome === 'expected' && test.attemptCount === 1 && test.attempts[0]?.errors.length === 0 && test.attempts[0].attachments.length === 0 && !test.attempts[0].steps?.length && !test.attempts[0].stdout && !test.attempts[0].stderr
     ? { ...test, attempts: [] } : test;
 }
 

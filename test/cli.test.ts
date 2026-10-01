@@ -79,6 +79,18 @@ describe('CLI', () => {
     expect((await execute(root, ['summary', '--run', 'run-2', '--format', 'markdown'])).out).toContain('### Playwright run run-2');
     expect(JSON.parse((await execute(root, ['summary', '--run', 'run-2', '--format', 'json'])).out)).toMatchObject({ runId: 'run-2' });
   });
+  it('previews the same debug packet in JSON and Markdown with stable missing-test errors', async () => {
+    const root = await fixture();
+    await new FileHistoryStore(path.join(root, '.logbook')).saveRun(run('debug-run'));
+    const json = await execute(root, ['debug', '--run', 'debug-run', '--test', 'test', '--format', 'json']);
+    expect(json.code).toBe(0);
+    expect(JSON.parse(json.out)).toMatchObject({ kind: 'debug-packet', runId: 'debug-run', testId: 'test' });
+    const markdown = await execute(root, ['debug', '--run', 'debug-run', '--test', 'test', '--format', 'markdown']);
+    expect(markdown.code).toBe(0);
+    expect(markdown.out).toContain('AI-ready evidence, not an AI diagnosis');
+    expect((await execute(root, ['debug', '--run', 'debug-run', '--test', 'missing'])).code).toBe(3);
+    expect((await execute(root, ['debug', '--run', 'debug-run'])).code).toBe(2);
+  });
   it('maps usage, no-data, and incompatible data errors to stable exit codes', async () => {
     const root = await fixture();
     expect((await execute(root, ['nope'])).code).toBe(2);

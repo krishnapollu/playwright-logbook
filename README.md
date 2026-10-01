@@ -8,7 +8,7 @@ Logbook adds a reporter to your existing Playwright suite. After a run, open the
 
 ![Dark report showing run summary and test history](docs/img/report-dark.png)
 
-The report has a searchable test table, status filters, a detail panel with errors and rerun commands, failure groups, trends, flaky history, and project breakdowns. It works from a local file without a server. Light mode is the default; use the theme control to switch to dark mode. The layout also fits narrow screens.
+The report has a searchable test table, status filters, a detail panel with errors and rerun commands, failure groups, trends, flaky history, and project breakdowns. The detail panel can preview and copy a bounded, redacted debug context for an AI assistant; it is evidence, not an AI diagnosis, and should be reviewed before sharing. The report works from a local file without a server. Light mode is the default; use the theme control to switch to dark mode. The layout also fits narrow screens.
 
 ![Light report](docs/img/report-light.png)
 
@@ -47,9 +47,10 @@ npx playwright-logbook history
 npx playwright-logbook flaky
 npx playwright-logbook summary --format markdown
 npx playwright-logbook report --run latest
+npx playwright-logbook debug --run latest --test <testId> --format markdown
 ```
 
-`history` lists recent runs, `flaky` highlights tests that change between passing and failing, `summary` produces a concise result for CI, and `report` regenerates the HTML for a stored run. Use `--root <dir>` if you are running the CLI outside your Playwright project. See the [CLI reference](docs/CLI.md) for all commands and exit codes.
+`history` lists recent runs, `flaky` highlights tests that change between passing and failing, `summary` produces a concise result for CI, `report` regenerates the HTML for a stored run, and `debug` exports one test's AI-ready context. Use `--root <dir>` if you are running the CLI outside your Playwright project. See the [CLI reference](docs/CLI.md) for all commands and exit codes.
 
 History is stored in files under `.logbook/`, not in a hosted service. On your machine it remains available until you remove those files. In CI, persist `.logbook/runs/` and `.logbook/index.jsonl` between workflow runs if you want cross-run trends and flaky analysis.
 

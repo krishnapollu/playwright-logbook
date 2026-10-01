@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { buildReportModel } from '../src/model.js';
+import { buildDebugPacket, debugPacketMarkdown } from '../src/debugpacket.js';
 import { renderReport } from '../src/render.js';
 import { run, testRecord } from '../test/factories.js';
 
@@ -24,6 +25,16 @@ test('CommonJS reporter entry renders a fully initialized offline report', async
     await page.goto(pathToFileURL(file).href);
     await expect(page.locator('#lb-error')).toBeHidden();
     await expect(page.locator('#lb-tests-body tr[data-test-id]')).toHaveCount(1);
+    await page.locator('#lb-tests-body tr[data-test-id]').click();
+    await page.getByText('Preview debug context').click();
+    await expect(page.locator('#lb-panel-content')).toContainText('AI-ready evidence, not an AI diagnosis');
+    const expectedContext = debugPacketMarkdown(buildDebugPacket(source, 'cjs-case'));
+    await expect(page.locator('#lb-panel-content details pre').first()).toHaveText(expectedContext);
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value: string) => { (window as Window & { copiedDebug?: string }).copiedDebug = value; } } });
+    });
+    await page.getByRole('button', { name: 'Copy debug context' }).click();
+    expect(await page.evaluate(() => (window as Window & { copiedDebug?: string }).copiedDebug)).toContain('Debug context');
   } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });
 

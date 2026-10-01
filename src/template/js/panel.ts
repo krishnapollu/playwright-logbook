@@ -15,6 +15,13 @@ function renderPanel(){
   content.appendChild(h('h3',{text:'Rerun'}));
   const command=rerunCommand(test);content.appendChild(h('pre',{text:command}));
   content.appendChild(h('button',{class:'button',type:'button',onclick:()=>copyText(command)},icon('copy'),'Copy rerun command'));
+  content.appendChild(h('h3',{text:'AI-ready debug context'}));
+  content.appendChild(h('p',{class:'muted',text:'Evidence only, not a diagnosis. Preview and review for secrets before sharing.'}));
+  const debugPacket=buildDebugPacket(model.run,test.testId,model.recent?.[test.testId]||'',model.attachmentAvailability||{});
+  const debugText=debugPacketMarkdown(debugPacket);
+  const preview=h('details',{},h('summary',{text:'Preview debug context'}),h('pre',{text:debugText}));
+  content.appendChild(preview);
+  content.appendChild(h('button',{class:'button',type:'button',onclick:()=>copyText(debugText),text:'Copy debug context'}));
   const attempt=test.attempts[Math.min(state.attempt,test.attempts.length-1)];
   if(test.attempts.length>1){
     content.appendChild(h('h3',{text:'Attempts'}));const switcher=h('div',{class:'attempts'});

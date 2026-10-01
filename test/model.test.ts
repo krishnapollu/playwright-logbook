@@ -36,9 +36,11 @@ describe('buildReportModel', () => {
   it('slims clean single-attempt passes only', () => {
     const base = sample();
     const withAttachment: TestRecord = { ...testRecord('attached'), attemptCount: 1, attempts: [{ ...attempt, attachments: [{ name: 'note', contentType: 'text/plain', path: null, inline: true, sizeBytes: 2 }] }] };
-    const model = buildReportModel({ run: { ...base, tests: [...base.tests, withAttachment] }, summaries: [] });
+    const withSteps: TestRecord = { ...testRecord('stepped'), attemptCount: 1, attempts: [{ ...attempt, steps: [{ title: 'observed', category: 'test.step', durationMs: 1, depth: 0, failed: false }] }] };
+    const model = buildReportModel({ run: { ...base, tests: [...base.tests, withAttachment, withSteps] }, summaries: [] });
     expect(model.run.tests[0]).toMatchObject({ attemptCount: 1, attempts: [] });
     expect(model.run.tests[3]?.attempts).toHaveLength(1);
+    expect(model.run.tests[4]?.attempts[0]?.steps).toHaveLength(1);
   });
   it('selects the slowest ten and aggregates files and tags', () => {
     const base = sample();
