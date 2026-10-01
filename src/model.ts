@@ -2,6 +2,7 @@ import { testResultKind } from './history.js';
 import type { Comparison, FlakyEntry } from './history.js';
 import type { RunRecord, RunSummaryRecord, TestRecord } from './schema.js';
 import { VERSION } from './version.js';
+import type { ArtifactAvailability } from './artifacts.js';
 
 const compare = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
 export type ReportTest = TestRecord & { timing: { startedAt: string; workerIndex: number } | null };
@@ -10,6 +11,7 @@ export interface ReportModel {
   generator: { name: 'playwright-logbook'; version: string };
   summaryMarkdown: string;
   generatedAt: string | null;
+  attachmentAvailability?: ArtifactAvailability;
   run: Omit<RunRecord, 'tests'> & { tests: ReportTest[] };
   history: RunSummaryRecord[];
   previous: RunSummaryRecord | null;
@@ -42,7 +44,7 @@ function slim(test: TestRecord): TestRecord {
 }
 
 /** Build compact, sorted report data from a stored run and its history. */
-export function buildReportModel(input: { run: RunRecord; summaries: RunSummaryRecord[]; previous?: RunSummaryRecord | null; flaky?: FlakyEntry[]; comparison?: Comparison | null; generatedAt?: string | null; historyLimit?: number; recentRuns?: RunRecord[] }): ReportModel {
+export function buildReportModel(input: { run: RunRecord; summaries: RunSummaryRecord[]; previous?: RunSummaryRecord | null; flaky?: FlakyEntry[]; comparison?: Comparison | null; generatedAt?: string | null; historyLimit?: number; recentRuns?: RunRecord[]; attachmentAvailability?: ArtifactAvailability }): ReportModel {
   const { run } = input;
   const all = new Map(input.summaries.map((entry) => [entry.runId, entry]));
   all.set(run.runId, currentSummary(run));
@@ -90,7 +92,7 @@ export function buildReportModel(input: { run: RunRecord; summaries: RunSummaryR
     const prior = tests.get(test.testId);
     return prior ? ({ pass: 'p', fail: 'f', flaky: 'k', skip: 's' })[testResultKind(prior)] : '-';
   }).join('');
-  const model: ReportModel = { schemaVersion: 1, generator: { name: 'playwright-logbook', version: VERSION }, summaryMarkdown: '', generatedAt: input.generatedAt ?? null, run: { ...run, tests: run.tests.map((test) => ({ ...slim(test), timing: test.attempts[0] ? { startedAt: test.attempts[0].startedAt, workerIndex: test.attempts[0].workerIndex } : null })) }, history, previous, comparison: input.comparison ?? null, flaky: (input.flaky ?? []).slice(0, 50), slowest: [...run.tests].sort((a, b) => b.durationMs - a.durationMs || compare(a.testId, b.testId)).slice(0, 10).map(({ testId, title, file, project, durationMs }) => ({ testId, title, file, project, durationMs })), files: [...files.values()].sort((a, b) => compare(a.file, b.file)), tags: [...tags].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || compare(a.tag, b.tag)), delta, errorGroups: [...groups.values()].map((group) => ({ ...group, projects: [...group.projects].sort(compare), testIds: group.testIds.sort(compare) })).sort((a, b) => b.count - a.count || compare(a.signature, b.signature)), recent, projects: [...projects.values()].sort((a, b) => compare(a.name, b.name)) };
+  const model: ReportModel = { schemaVersion: 1, generator: { name: 'playwright-logbook', version: VERSION }, summaryMarkdown: '', generatedAt: input.generatedAt ?? null, ...(input.attachmentAvailability ? { attachmentAvailability: input.attachmentAvailability } : {}), run: { ...run, tests: run.tests.map((test) => ({ ...slim(test), timing: test.attempts[0] ? { startedAt: test.attempts[0].startedAt, workerIndex: test.attempts[0].workerIndex } : null })) }, history, previous, comparison: input.comparison ?? null, flaky: (input.flaky ?? []).slice(0, 50), slowest: [...run.tests].sort((a, b) => b.durationMs - a.durationMs || compare(a.testId, b.testId)).slice(0, 10).map(({ testId, title, file, project, durationMs }) => ({ testId, title, file, project, durationMs })), files: [...files.values()].sort((a, b) => compare(a.file, b.file)), tags: [...tags].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || compare(a.tag, b.tag)), delta, errorGroups: [...groups.values()].map((group) => ({ ...group, projects: [...group.projects].sort(compare), testIds: group.testIds.sort(compare) })).sort((a, b) => b.count - a.count || compare(a.signature, b.signature)), recent, projects: [...projects.values()].sort((a, b) => compare(a.name, b.name)) };
   model.summaryMarkdown = renderMarkdownSummary(model);
   return model;
 }

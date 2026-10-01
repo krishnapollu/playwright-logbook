@@ -26,8 +26,19 @@ describe('FileHistoryStore', () => {
     const { dir, store } = await fixture();
     await store.saveRun(run('one'));
     await fs.appendFile(path.join(dir, 'index.jsonl'), 'not json\n');
-    await store.saveRun({ ...run('one'), title: 'updated' });
+    await store.saveRun({ ...run('one'), title: 'updated' }, { replace: true });
     expect(await store.listSummaries()).toMatchObject([{ runId: 'one', title: 'updated' }]);
+  });
+  it('accepts identical replay but rejects a distinct run without changing history', async () => {
+    const { dir, store } = await fixture();
+    const original = run('one');
+    await store.saveRun(original);
+    const before = await fs.readFile(path.join(dir, 'index.jsonl'), 'utf8');
+    await store.saveRun(original);
+    expect(await fs.readFile(path.join(dir, 'index.jsonl'), 'utf8')).toBe(before);
+    await expect(store.saveRun({ ...original, title: 'different' })).rejects.toMatchObject({ code: 'RUN_CONFLICT' });
+    expect(await store.loadRun('one')).toEqual(original);
+    expect(await fs.readFile(path.join(dir, 'index.jsonl'), 'utf8')).toBe(before);
   });
   it('recovers summaries from run files without writing an index', async () => {
     const { dir, store } = await fixture();

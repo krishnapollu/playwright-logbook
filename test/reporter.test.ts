@@ -72,16 +72,18 @@ describe('LogbookReporter', () => {
   });
 });
 
-it('FileShardSink chooses the expected shard path and writes atomically', async () => {
-  const calls: string[] = [];
-  const files = {
-    mkdir: async (target: string) => { calls.push(`mkdir:${target}`); return undefined; },
-    writeFile: async (target: string, data: string) => { calls.push(`write:${target}`); expect(data.endsWith('\n')).toBe(true); },
-    rename: async (from: string, to: string) => { calls.push(`rename:${from}:${to}`); },
-  } as unknown as ConstructorParameters<typeof FileShardSink>[1];
+it('FileShardSink chooses the expected shard path and never overwrites different content', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-shard-collision-'));
+  try {
   const { reporter, shards } = setup({ ...baseConfig, shard: { current: 2, total: 3 } });
   await reporter.onEnd(result);
-  const relative = await new FileShardSink('/project/.logbook', files).write(shards[0]!);
+  const sink = new FileShardSink(path.join(root, '.logbook'));
+  const relative = await sink.write(shards[0]!);
   expect(relative).toBe('shards/test-run/shard-2-of-3.json');
-  expect(calls).toEqual([`mkdir:${path.join('/project/.logbook/shards/test-run')}`, `write:${path.join('/project/.logbook/shards/test-run/shard-2-of-3.json.tmp')}`, `rename:${path.join('/project/.logbook/shards/test-run/shard-2-of-3.json.tmp')}:${path.join('/project/.logbook/shards/test-run/shard-2-of-3.json')}`]);
+  const target = path.join(root, '.logbook', relative);
+  const before = await fs.readFile(target, 'utf8');
+  await sink.write(shards[0]!);
+  await expect(sink.write({ ...shards[0]!, title: 'different' })).rejects.toMatchObject({ code: 'SHARD_CONFLICT' });
+  expect(await fs.readFile(target, 'utf8')).toBe(before);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
 });

@@ -11,7 +11,7 @@ function attachmentLinks(model: ReportModel, reportDir: string): Record<string, 
   const links: Record<string, string> = {};
   for (const test of model.run.tests) for (const attempt of test.attempts) for (const attachment of attempt.attachments) {
     const file = attachment.path;
-    if (file && !path.posix.isAbsolute(file) && !file.split('/').includes('..') && !file.includes('\\') && !file.includes(':')) links[file] = path.posix.relative(reportDir, file);
+    if (file && model.attachmentAvailability?.[file] !== 'missing' && !path.posix.isAbsolute(file) && !file.split('/').includes('..') && !file.includes('\\') && !file.includes(':')) links[file] = path.posix.relative(reportDir, file);
   }
   return links;
 }

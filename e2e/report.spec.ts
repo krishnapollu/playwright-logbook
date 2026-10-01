@@ -27,6 +27,39 @@ test('CommonJS reporter entry renders a fully initialized offline report', async
   } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });
 
+test('attempt panel distinguishes a trace from another ZIP and labels missing screenshots', async ({ page }) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-artifact-browser-'));
+  try {
+    const source = run('artifact-browser');
+    const failure = testRecord('failed case', 'unexpected');
+    failure.attemptCount = 2;
+    failure.attempts = [
+      { retry: 0, status: 'failed', durationMs: 1, startedAt: source.startedAt, workerIndex: 0, errors: [], attachments: [
+        { name: 'screenshot', contentType: 'image/png', path: 'test-results/missing.png', inline: false, sizeBytes: null },
+        { name: 'archive', contentType: 'application/zip', path: 'test-results/archive.zip', inline: false, sizeBytes: null },
+      ] },
+      { retry: 1, status: 'failed', durationMs: 1, startedAt: source.startedAt, workerIndex: 0, errors: [], attachments: [
+        { name: 'trace', contentType: 'application/zip', path: 'test-results/trace.zip', inline: false, sizeBytes: null },
+      ] },
+    ];
+    source.tests = [failure];
+    source.summary = { total: 1, passed: 0, failed: 1, flaky: 0, skipped: 0 };
+    const model = buildReportModel({ run: source, summaries: [], attachmentAvailability: { 'test-results/missing.png': 'missing', 'test-results/archive.zip': 'present', 'test-results/trace.zip': 'present' } });
+    const output = path.join(directory, 'report', 'index.html');
+    await fs.mkdir(path.dirname(output), { recursive: true });
+    await fs.writeFile(output, renderReport(model, { reportDir: 'report' }));
+    await page.goto(pathToFileURL(output).href);
+    await expect(page.locator('#lb-error')).toBeHidden();
+    await page.locator('#lb-tests-body tr[data-test-id]').click();
+    await expect(page.locator('#lb-panel-content')).toContainText('File not retained');
+    await expect(page.locator('#lb-panel-content a')).not.toContainText('screenshot');
+    await expect(page.getByRole('button', { name: 'Copy trace command' })).toHaveCount(0);
+    await page.getByRole('button', { name: /Attempt 2/ }).click();
+    await expect(page.getByRole('button', { name: 'Copy trace command' })).toHaveCount(1);
+    await expect(page.locator('#lb-panel-content a[href*="trace.zip"]')).toHaveCount(1);
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
 test('offline report navigation and debugging', async ({ page }) => {
   const errors: string[] = [];
   const network: string[] = [];

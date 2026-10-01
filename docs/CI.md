@@ -53,6 +53,8 @@ jobs:
 
 The cache is best-effort: a cache miss means no cross-run trend history. Retain or publish `.logbook/runs` and `.logbook/index.jsonl` separately if history is important. Artifact paths can differ after download; `merge --from` discovers shards recursively.
 
+Trace ZIPs, screenshots and videos are Playwright artifacts, not part of Logbook's shard JSON or standalone HTML. Retain the relevant `test-results/` tree (or the Playwright blob artifacts when using blob merge) alongside the report, with paths matching the recorded project-relative references. If those files expire, regenerated reports label them **File not retained** and do not offer dead links. The default report never copies trace contents. Treat retained traces/videos as potentially sensitive; they can contain page snapshots, network data and input values. Use unique run IDs for separately invoked jobs: writing a different shard/run under an existing ID now warns or fails instead of silently replacing it. Repeating identical bytes is safe; an explicit `logbook merge` remains a replacement operation so an incomplete shard set can be re-merged.
+
 ## Azure DevOps
 
 Use the same test/merge job split. Set one run ID across jobs, publish `.logbook/shards` with `PublishPipelineArtifact` from every shard (including failed jobs), then download all artifacts in the merge job. Restore `.logbook/runs` and `.logbook/index.jsonl` with `Cache@2` before running `npx playwright-logbook merge --from <download-directory>`. Publish `.logbook/report` afterward. Azure's cache has the same best-effort history limitation.

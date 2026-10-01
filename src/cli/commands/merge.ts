@@ -59,7 +59,7 @@ export async function mergeCommand(context: CliContext, options: MergeOptions): 
   if (!shards.length) throw new LogbookError('NO_DATA', 'no shard files found');
   const { run, warnings } = mergeShards(shards, { force: options.force, outputDir: toRel(context.root, context.outputDir) });
   const store = new FileHistoryStore(context.outputDir);
-  if (options.history !== false) await store.saveRun(run);
+  if (options.history !== false) await store.saveRun(run, { replace: true });
   else {
     const target = path.join(context.outputDir, 'runs', `${run.runId}.json`);
     await fs.mkdir(path.dirname(target), { recursive: true });

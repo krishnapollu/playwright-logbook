@@ -17,13 +17,14 @@ import { buildReportModel } from './model.js';
 import { compareRuns, computeFlaky, previousRun } from './history.js';
 import { renderReport } from './render.js';
 import type { StepRecord } from './schema.js';
+import { resolveArtifactAvailability } from './artifacts.js';
 
 interface ReporterSuite { allTests(): PwTest[] }
 interface FullResult { status: 'passed' | 'failed' | 'timedout' | 'interrupted'; startTime?: Date; duration?: number }
 export interface ReporterDeps extends Pick<DetectEnvOptions, 'env' | 'exec' | 'clock' | 'random'> {
   cwd?: () => string;
   stderr?: (line: string) => void;
-  fs?: Pick<typeof fs, 'mkdir' | 'writeFile' | 'rename'> & Partial<Pick<typeof fs, 'readFile' | 'stat'>>;
+  fs?: Pick<typeof fs, 'mkdir' | 'writeFile' | 'rename'> & Partial<Pick<typeof fs, 'readFile' | 'stat' | 'realpath'>>;
   sink?: ShardSink;
   historyStore?: HistoryStore;
 }
@@ -120,7 +121,8 @@ export class LogbookReporter {
     const previous = previousRun(summaries, current);
     const previousRecord = previous ? await store.loadRun(previous.runId) : null;
     const runs = await store.loadRuns(summaries.map((item) => item.runId).reverse());
-    const model = buildReportModel({ run, summaries, previous, comparison: compareRuns(run, previousRecord), flaky: computeFlaky(runs), recentRuns: runs.filter((item) => item.runId !== run.runId), generatedAt: (this.deps.clock ?? (() => new Date()))().toISOString(), historyLimit: this.options.historyLimit });
+    const attachmentAvailability = await resolveArtifactAvailability(run, this.root!, { realpath: this.deps.fs?.realpath ?? fs.realpath, stat: this.deps.fs?.stat ?? fs.stat });
+    const model = buildReportModel({ run, summaries, previous, comparison: compareRuns(run, previousRecord), flaky: computeFlaky(runs), recentRuns: runs.filter((item) => item.runId !== run.runId), generatedAt: (this.deps.clock ?? (() => new Date()))().toISOString(), historyLimit: this.options.historyLimit, attachmentAvailability });
     const target = path.join(outputDir, 'report', 'index.html');
     const files = this.deps.fs ?? fs;
     await files.mkdir(path.dirname(target), { recursive: true });

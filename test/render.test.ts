@@ -59,6 +59,14 @@ describe('renderReport', () => {
     const links = html.match(/<script type="application\/json" id="lb-links">([\s\S]*?)<\/script>/)?.[1];
     expect(JSON.parse(links!)).toEqual({ 'test-results/x/trace.zip': '../../test-results/x/trace.zip' });
   });
+  it('does not link a known-missing artifact', () => {
+    const source = run('missing-attachment');
+    source.tests = [{ ...testRecord('x', 'unexpected'), attemptCount: 1, attempts: [{ retry: 0, status: 'failed', durationMs: 1, startedAt: source.startedAt, workerIndex: 0, errors: [], attachments: [{ name: 'screenshot', contentType: 'image/png', path: 'test-results/x/missing.png', inline: false, sizeBytes: null }] }] }];
+    const report = buildReportModel({ run: source, summaries: [], attachmentAvailability: { 'test-results/x/missing.png': 'missing' } });
+    const html = renderReport(report);
+    const links = html.match(/<script type="application\/json" id="lb-links">([\s\S]*?)<\/script>/)?.[1];
+    expect(JSON.parse(links!)).toEqual({});
+  });
   it('embeds opt-in details as recoverable data with a lightbox', () => {
     const source = run('details');
     source.tests = [{ ...testRecord('failed', 'unexpected'), attemptCount: 1, attempts: [{ retry: 0, status: 'failed', durationMs: 5, startedAt: source.startedAt, workerIndex: 0, errors: [], steps: [{ title: 'inner step', category: 'test.step', durationMs: 2, depth: 1, failed: true }], stdout: 'tail output', stderr: null, attachments: [{ name: 'shot', contentType: 'image/png', path: null, inline: false, sizeBytes: 2, dataUri: 'data:image/png;base64,AA==' }] }] }];

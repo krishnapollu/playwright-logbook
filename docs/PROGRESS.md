@@ -166,7 +166,15 @@
   Done when: `npm run check` passed: `Test Files 25 passed (25); Tests 120 passed (120)`;
   the new scenario test passed and no production behavior changed.
 
-- [ ] V1 Attachment/trace UX and collision safety
+- [x] V1 Attachment/trace UX and collision safety
+
+  Done when: `npm run check` passed: `Test Files 26 passed (26); Tests 123 passed (123)`;
+  `npm run test:e2e` passed: `5 passed (1.5s)`.
+  The isolated real Chromium fixture recorded `trace` as `application/zip` only on retry 1;
+  its ZIP had a valid ZIP header, and a removed screenshot was absent from regenerated links.
+  A second invocation with the same run ID warned about different shard content and left
+  the original shard bytes unchanged. The browser panel distinguishes a non-trace ZIP,
+  an actual trace, and a known-missing screenshot. Human review in `pw-test` is deferred.
 - [ ] V2 Deterministic debug packet
 - [ ] V3 Evidence-backed debugging signals
 - [ ] V4 Analyzer contract and provider decision

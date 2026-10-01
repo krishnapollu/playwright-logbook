@@ -7,23 +7,50 @@ import { LogbookError } from './errors.js';
 /** Sink interface for serialized shard files. */
 export interface ShardSink { write(shard: ShardFile): Promise<string> }
 
+type WriteFiles = Pick<typeof fs, 'mkdir' | 'mkdtemp' | 'writeFile' | 'readFile' | 'link' | 'rename' | 'rm'>;
+const exists = (error: unknown): boolean => typeof error === 'object' && error !== null && 'code' in error && error.code === 'EEXIST';
+const safeId = (id: string): boolean => /^[A-Za-z0-9._-]+$/.test(id) && id !== '.' && id !== '..';
+
+async function writeRecord(target: string, body: string, kind: 'run' | 'shard', files: WriteFiles, replace = false): Promise<'created' | 'identical' | 'replaced'> {
+  await files.mkdir(path.dirname(target), { recursive: true });
+  const tempDir = await files.mkdtemp(path.join(path.dirname(target), '.logbook-tmp-'));
+  try {
+    const temp = path.join(tempDir, 'record.json');
+    await files.writeFile(temp, body, 'utf8');
+    if (replace) {
+      await files.rename(temp, target);
+      return 'replaced';
+    }
+    try {
+      await files.link(temp, target);
+      return 'created';
+    } catch (error) {
+      if (!exists(error)) throw error;
+      const old = await files.readFile(target, 'utf8');
+      if (old === body) return 'identical';
+      throw new LogbookError(kind === 'run' ? 'RUN_CONFLICT' : 'SHARD_CONFLICT', `${kind} ${path.basename(target)} already exists with different content`);
+    }
+  } finally {
+    await files.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
 /** Write shard files atomically below an output directory. */
 export class FileShardSink implements ShardSink {
-  constructor(private readonly outputDir: string, private readonly files: Pick<typeof fs, 'mkdir' | 'writeFile' | 'rename'> = fs) {}
+  constructor(private readonly outputDir: string, private readonly files: Partial<WriteFiles> = fs) {}
   async write(shard: ShardFile): Promise<string> {
+    if (!safeId(shard.runId)) throw new LogbookError('INVALID_DATA', 'invalid run id');
     const current = shard.shard?.current ?? 1;
     const total = shard.shard?.total ?? 1;
     const relative = `shards/${shard.runId}/shard-${current}-of-${total}.json`;
     const target = path.join(this.outputDir, relative);
-    await this.files.mkdir(path.dirname(target), { recursive: true });
-    await this.files.writeFile(`${target}.tmp`, `${JSON.stringify(shard, null, 2)}\n`, 'utf8');
-    await this.files.rename(`${target}.tmp`, target);
+    await writeRecord(target, `${JSON.stringify(shard, null, 2)}\n`, 'shard', { ...fs, ...this.files });
     return relative;
   }
 }
 
 export interface HistoryStore {
-  saveRun(run: RunRecord): Promise<void>;
+  saveRun(run: RunRecord, options?: { replace?: boolean }): Promise<void>;
   listSummaries(opts?: { limit?: number; branch?: string }): Promise<RunSummaryRecord[]>;
   loadRun(idOrLatest: string): Promise<RunRecord>;
   loadRuns(runIds: string[]): Promise<RunRecord[]>;
@@ -40,12 +67,11 @@ const compare = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
 export class FileHistoryStore implements HistoryStore {
   constructor(private readonly outputDir: string) {}
 
-  async saveRun(run: RunRecord): Promise<void> {
+  async saveRun(run: RunRecord, options: { replace?: boolean } = {}): Promise<void> {
+    if (!safeId(run.runId)) throw new LogbookError('INVALID_DATA', 'invalid run id');
     const target = path.join(this.outputDir, 'runs', `${run.runId}.json`);
-    await fs.mkdir(path.dirname(target), { recursive: true });
-    await fs.writeFile(`${target}.tmp`, `${JSON.stringify(run, null, 2)}\n`, 'utf8');
-    await fs.rename(`${target}.tmp`, target);
-    await fs.appendFile(path.join(this.outputDir, 'index.jsonl'), `${JSON.stringify(summaryOf(run))}\n`, 'utf8');
+    const outcome = await writeRecord(target, `${JSON.stringify(run, null, 2)}\n`, 'run', fs, options.replace);
+    if (outcome !== 'identical') await fs.appendFile(path.join(this.outputDir, 'index.jsonl'), `${JSON.stringify(summaryOf(run))}\n`, 'utf8');
   }
 
   private async summariesFromFiles(): Promise<RunSummaryRecord[]> {

@@ -29,8 +29,12 @@ function renderPanel(){
   }}
   if(test.annotations?.length){content.appendChild(h('h3',{text:'Annotations'}));for(const item of test.annotations)content.appendChild(h('p',{text:item.type+(item.description?' · '+item.description:'')}))}
   if(attempt?.attachments?.length){content.appendChild(h('h3',{text:'Attachments'}));for(const attachment of attempt.attachments){
-    const href=attachment.path&&links[attachment.path];content.appendChild(h('p',{},link(attachment.name,href)));
-    if(attachment.path&&(attachment.name==='trace'||attachment.path.endsWith('.zip'))){
+    const availability=attachment.path?(model.attachmentAvailability?.[attachment.path]||'unknown'):'inline';
+    const href=availability==='missing'?null:attachment.path&&links[attachment.path];
+    const traceAttachment=attachment.name==='trace'&&attachment.contentType==='application/zip';
+    const kind=traceAttachment?'Trace':attachment.contentType?.startsWith('image/')?'Screenshot':attachment.contentType?.startsWith('video/')?'Video':'Attachment';
+    content.appendChild(h('p',{},h('strong',{text:kind+' · '}),link(attachment.name,href),h('small',{text:availability==='missing'?'File not retained':availability==='unknown'?'Link unverified':availability==='inline'?'Inline attachment':''})));
+    if(traceAttachment&&attachment.path&&availability!=='missing'){
       const trace=traceCommand(attachment.path||'');content.appendChild(h('pre',{text:trace}));
       content.appendChild(h('button',{class:'button',type:'button',onclick:()=>copyText(trace),text:'Copy trace command'}));
     }
@@ -38,7 +42,7 @@ function renderPanel(){
       const thumb=h('img',{src:attachment.dataUri,alt:attachment.name,style:'max-width:100%;max-height:220px'});
       thumb.addEventListener('click',()=>showImage(attachment.dataUri,attachment.name));content.appendChild(thumb);
     }
-  }}
+  }content.appendChild(h('p',{class:'muted',text:'Traces and attachments may contain page data or secrets. Review before sharing.'}))}
   if(attempt?.steps?.length){content.appendChild(h('h3',{text:'Steps'}));const list=h('ol',{class:'steps'});
     const max=Math.max(1,...attempt.steps.map(step=>step.durationMs));let failedStep=null;
     for(const step of attempt.steps){const item=h('li',{class:step.failed?'failed':'',style:'margin-left:'+(step.depth*12)+'px'},

@@ -7,6 +7,7 @@ import { afterEach, expect, it } from 'vitest';
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const fixture = path.join(repository, 'fixtures', 'real-world-project');
 const cli = path.join(repository, 'node_modules', '@playwright', 'test', 'cli.js');
+const logbookCli = path.join(repository, 'dist', 'cli', 'bin.js');
 const temporary: string[] = [];
 
 interface Attachment { name: string; contentType: string; path: string | null }
@@ -53,12 +54,29 @@ it('captures a real Playwright UI/API, retry, trace and artifact matrix without 
   expect(failed[0]?.attachments.some((item) => item.name === 'trace')).toBe(false);
   const trace = failed[1]?.attachments.find((item) => item.name === 'trace');
   expect(trace).toMatchObject({ contentType: 'application/zip', path: expect.stringMatching(/^test-results\/.+\/trace\.zip$/) });
-  expect(await fs.stat(path.join(directory, trace!.path!))).toBeDefined();
+  const tracePath = path.join(directory, trace!.path!);
+  expect((await fs.readFile(tracePath)).subarray(0, 2).toString()).toBe('PK');
 
   const screenshot = failed[0]?.attachments.find((item) => item.name === 'screenshot');
   expect(screenshot?.path).toBeTruthy();
   await fs.rm(path.join(directory, screenshot!.path!));
   await expect(fs.stat(path.join(directory, screenshot!.path!))).rejects.toMatchObject({ code: 'ENOENT' });
+  const regenerated = spawnSync(process.execPath, [logbookCli, 'report', '--root', directory, '--run', 'report-matrix', '--out', '.logbook/report/after-expiry.html'], { cwd: directory, encoding: 'utf8' });
+  expect(regenerated.status, regenerated.stderr).toBe(0);
+  const html = await fs.readFile(path.join(directory, '.logbook/report/after-expiry.html'), 'utf8');
+  const data = JSON.parse(html.match(/<script type="application\/json" id="lb-data">([\s\S]*?)<\/script>/)![1]!) as { attachmentAvailability: Record<string, string> };
+  const links = JSON.parse(html.match(/<script type="application\/json" id="lb-links">([\s\S]*?)<\/script>/)![1]!) as Record<string, string>;
+  expect(data.attachmentAvailability[screenshot!.path!]).toBe('missing');
+  expect(links[screenshot!.path!]).toBeUndefined();
+  expect(data.attachmentAvailability[trace!.path!]).toBe('present');
+  expect(links[trace!.path!]).toBeTruthy();
+
+  const shardPath = path.join(directory, '.logbook/shards/report-matrix/shard-1-of-1.json');
+  const before = await fs.readFile(shardPath, 'utf8');
+  const replay = spawnSync(process.execPath, [cli, 'test', '--config=playwright.config.ts'], { cwd: directory, encoding: 'utf8', env: { ...process.env, LOGBOOK_RUN_ID: 'report-matrix' }, timeout: 60_000 });
+  expect(replay.status, replay.stderr + replay.stdout).toBe(1);
+  expect(replay.stderr).toContain('already exists with different content');
+  expect(await fs.readFile(shardPath, 'utf8')).toBe(before);
   expect(runText).not.toContain(directory);
   expect(await fs.stat(path.join(directory, '.logbook', 'report', 'index.html'))).toBeDefined();
 }, 90_000);
