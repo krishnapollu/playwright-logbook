@@ -4,7 +4,7 @@
 
 - Verified attempt-level trace and attachment availability; missing artifacts no longer appear as working links. Protected ordinary run/shard writes against different-content run-ID collisions.
 - Added local, bounded debug-context preview/copy/export and evidence-linked debugging clues. These are not AI diagnoses and make no model or telemetry request.
-- Added real Playwright UI/API, retry and artifact fixtures, plus offline browser coverage. The optional provider-backed analysis remains a separate decision gate.
+- Added real Playwright UI/API, retry and artifact fixtures, plus offline browser coverage. Provider-backed analysis is deferred by user choice; diagnostics remain local-only.
 
 ## 0.2.0
 

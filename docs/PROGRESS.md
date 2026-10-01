@@ -222,6 +222,10 @@
   Navigation classification is covered by a synthetic matching-step test, but the fixed real fixture has no navigation failure. No network status or root cause is inferred from error text alone.
 - [ ] V4 Analyzer contract and provider decision
 - [ ] V5 First real analyzer
+
+V4–V5 are deferred by user choice: no provider integration now; diagnostics remain
+local-only. They are not required for the completed Playwright reporter/debugging
+milestone. Users can review and manually share a `logbook debug` packet later.
 - [x] V6 Focused config, CI guidance, release readiness
 
   Done when: `npm run check` passed: `Test Files 28 passed (28); Tests 131 passed (131)`;
