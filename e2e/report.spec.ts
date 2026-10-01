@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -9,6 +10,22 @@ import { run, testRecord } from '../test/factories.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const report = pathToFileURL(path.join(root, '.logbook-demo', 'report', 'index.html')).href;
+const loadPackage = createRequire(import.meta.url);
+
+test('CommonJS reporter entry renders a fully initialized offline report', async ({ page }) => {
+  const entry = loadPackage('playwright-logbook') as { renderReport: typeof renderReport; buildReportModel: typeof buildReportModel };
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-cjs-browser-'));
+  try {
+    const source = run('cjs-browser');
+    source.tests = [testRecord('cjs-case')];
+    source.summary = { total: 1, passed: 1, failed: 0, flaky: 0, skipped: 0 };
+    const file = path.join(directory, 'index.html');
+    await fs.writeFile(file, entry.renderReport(entry.buildReportModel({ run: source, summaries: [] })));
+    await page.goto(pathToFileURL(file).href);
+    await expect(page.locator('#lb-error')).toBeHidden();
+    await expect(page.locator('#lb-tests-body tr[data-test-id]')).toHaveCount(1);
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
 
 test('offline report navigation and debugging', async ({ page }) => {
   const errors: string[] = [];
