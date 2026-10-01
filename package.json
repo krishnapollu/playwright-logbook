@@ -1,6 +1,15 @@
 {
   "name": "playwright-logbook",
   "version": "0.2.1",
+  "description": "A local, self-contained Playwright report with run history and flaky-test tracking",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/krishnapollu/playwright-logbook.git"
+  },
+  "homepage": "https://github.com/krishnapollu/playwright-logbook#readme",
+  "bugs": {
+    "url": "https://github.com/krishnapollu/playwright-logbook/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=20"

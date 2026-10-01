@@ -1,5 +1,11 @@
 # Playwright Logbook
 
+[![npm version](https://img.shields.io/npm/v/playwright-logbook?logo=npm)](https://www.npmjs.com/package/playwright-logbook)
+[![CI](https://github.com/krishnapollu/playwright-logbook/actions/workflows/ci.yml/badge.svg)](https://github.com/krishnapollu/playwright-logbook/actions/workflows/ci.yml)
+[![npm downloads](https://img.shields.io/npm/dm/playwright-logbook?logo=npm)](https://www.npmjs.com/package/playwright-logbook)
+
+**[Install from npm](https://www.npmjs.com/package/playwright-logbook)** · **[View the source on GitHub](https://github.com/krishnapollu/playwright-logbook)**
+
 ## A better local report for Playwright
 
 Playwright Logbook turns every test run into a searchable, self-contained report with failure details, retry history, flaky-test tracking, project views, and CI-friendly summaries.
