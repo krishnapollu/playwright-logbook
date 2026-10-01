@@ -28,6 +28,8 @@ test('CommonJS reporter entry renders a fully initialized offline report', async
     await page.locator('#lb-tests-body tr[data-test-id]').click();
     await page.getByText('Preview debug context').click();
     await expect(page.locator('#lb-panel-content')).toContainText('AI-ready evidence, not an AI diagnosis');
+    await expect(page.locator('#lb-panel-content')).toContainText('Debugging clues');
+    await expect(page.locator('#lb-panel-content')).toContainText('Inferences from recorded evidence');
     const expectedContext = debugPacketMarkdown(buildDebugPacket(source, 'cjs-case'));
     await expect(page.locator('#lb-panel-content details pre').first()).toHaveText(expectedContext);
     await page.evaluate(() => {

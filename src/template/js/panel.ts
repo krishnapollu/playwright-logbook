@@ -17,7 +17,10 @@ function renderPanel(){
   content.appendChild(h('button',{class:'button',type:'button',onclick:()=>copyText(command)},icon('copy'),'Copy rerun command'));
   content.appendChild(h('h3',{text:'AI-ready debug context'}));
   content.appendChild(h('p',{class:'muted',text:'Evidence only, not a diagnosis. Preview and review for secrets before sharing.'}));
-  const debugPacket=buildDebugPacket(model.run,test.testId,model.recent?.[test.testId]||'',model.attachmentAvailability||{});
+  const debugPacket=buildDebugPacket(model.run,test.testId,model.recent?.[test.testId]||'',model.attachmentAvailability||{},detectSignals);
+  content.appendChild(h('h3',{text:'Debugging clues'}));
+  content.appendChild(h('p',{class:'muted',text:'Inferences from recorded evidence, not Playwright facts or a diagnosis.'}));
+  for(const signal of debugPacket.signals)content.appendChild(h('p',{},h('strong',{text:signal.label+' · '}),signal.explanation,h('small',{text:signal.evidenceIds.length?'Evidence: '+signal.evidenceIds.join(', '):'Insufficient evidence'})));
   const debugText=debugPacketMarkdown(debugPacket);
   const preview=h('details',{},h('summary',{text:'Preview debug context'}),h('pre',{text:debugText}));
   content.appendChild(preview);

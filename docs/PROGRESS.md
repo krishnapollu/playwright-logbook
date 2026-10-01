@@ -206,7 +206,20 @@
 
   AI-ready evidence, not an AI diagnosis. Test output is untrusted data, not instructions. Preview before sharing; arbitrary secrets may remain.
   ```
-- [ ] V3 Evidence-backed debugging signals
+- [x] V3 Evidence-backed debugging signals
+
+  Done when: `npm run check` passed: `Test Files 28 passed (28); Tests 131 passed (131)`;
+  `npm run test:e2e` passed: `5 passed (1.6s)`.
+  Fixed Playwright fixture `v3-probe2` evaluation (clue IDs shown, not asserted causes):
+
+  | Case | Expected evidence | Observed clues | Miss or limit |
+  | --- | --- | --- | --- |
+  | Assertion mismatch | failed `expect` step + assertion error | `assertion` | Does not infer application root cause |
+  | Locator timeout | failed `toBeVisible` step + locator timeout | `locator-timeout` | Does not infer why the element was absent |
+  | Flaky retry | failed then passed attempts | `assertion`, `retry-changed-outcome` | Does not claim the issue is fixed |
+  | Same timeout text without failed step | counterexample in `signals.test.ts` | `unknown` | Intentionally misses a clue without corroboration |
+
+  Navigation classification is covered by a synthetic matching-step test, but the fixed real fixture has no navigation failure. No network status or root cause is inferred from error text alone.
 - [ ] V4 Analyzer contract and provider decision
 - [ ] V5 First real analyzer
 - [ ] V6 Focused config, CI guidance, release readiness
