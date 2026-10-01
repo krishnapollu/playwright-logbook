@@ -15,3 +15,7 @@ With the opt-in `captureDetails` reporter option, attempts may also have `steps`
 `.logbook/index.jsonl` contains one `RunSummaryRecord` per line: schema version, run ID/title/start/duration/status/completeness/summary plus branch, commit, CI provider and build URL. It is append-only; the last valid line for a run ID wins. A damaged line is ignored, and readers can rebuild from run files.
 
 Tests sort by file, line, project and test ID using code-unit order. Tags and case IDs are sorted unique. A future schema version is rejected rather than silently misread.
+
+## Derived debug context
+
+`logbook debug` and the offline report derive a `debug-packet` from one validated run. It is not saved into shard/run JSON and does not change schema v1. The packet has stable evidence IDs, bounded diagnostics and attachment metadata, unavailable-data labels, and evidence-linked debugging clues. It excludes attachment bytes and full environment values. The entire compact JSON packet is capped at 24 KiB; Markdown is a readable representation of the same fields. Built-in redaction covers common tokens and local paths but cannot guarantee arbitrary secret removal. Review before sharing.

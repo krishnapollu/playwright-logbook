@@ -121,9 +121,24 @@ test('report stays inside the viewport at mobile and tablet widths', async ({ pa
   await page.goto(report);
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
+    for (const theme of ['light', 'dark']) {
+      if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#lb-theme').click();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, `horizontal overflow at ${width}px in ${theme}`).toBeLessThanOrEqual(1);
+    }
   }
+});
+
+test('print view uses light colors and remains offline', async ({ page }) => {
+  const network: string[] = [];
+  page.on('request', (request) => { if (!request.url().startsWith('file:')) network.push(request.url()); });
+  await page.goto(report);
+  await page.locator('#lb-theme').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.emulateMedia({ media: 'print' });
+  const colors = await page.evaluate(() => ({ theme: getComputedStyle(document.documentElement).colorScheme, actions: getComputedStyle(document.querySelector('.topbar-actions')!).display }));
+  expect(colors).toEqual({ theme: 'light', actions: 'none' });
+  expect(network).toEqual([]);
 });
 
 test('measures filtering a 10,000-test report', async ({ page }) => {

@@ -101,6 +101,8 @@ reporter: [['playwright-logbook', { outputDir: '.logbook', historyLimit: 30 }]],
 
 Logbook stores test outcomes, attempts, errors, tags, case IDs, and project/CI metadata. Paths in its records are relative to the project. By default, the report links to screenshots, traces, and videos; retain those files if you share the report. Attachment bodies are not copied into Logbook records.
 
+Configure trace recording in Playwright (for example, `use: { trace: 'on-first-retry' }`); Logbook does not turn it on for you. The detail panel shows trace links and a `npx playwright show-trace` command only for recorded trace attachments. Missing artifacts are labeled instead of linked. See the [CI recipes](docs/CI.md) for retaining artifacts alongside the HTML report.
+
 With `captureDetails: true`, Logbook also stores sanitized step titles and output tails, and embeds PNG or JPEG images from failed or flaky tests within the size limits above. Screenshots can contain sensitive data: text redaction cannot remove secrets visible in pixels. Review captured images before sharing a report or run JSON.
 
 There is no server, automatic retention policy, or test-management publisher in this release. See the [schema](docs/SCHEMA.md) for the record format and [adapter guidance](docs/ADAPTERS.md) for future integrations.

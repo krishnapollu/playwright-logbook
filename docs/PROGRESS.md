@@ -222,7 +222,22 @@
   Navigation classification is covered by a synthetic matching-step test, but the fixed real fixture has no navigation failure. No network status or root cause is inferred from error text alone.
 - [ ] V4 Analyzer contract and provider decision
 - [ ] V5 First real analyzer
-- [ ] V6 Focused config, CI guidance, release readiness
+- [x] V6 Focused config, CI guidance, release readiness
+
+  Done when: `npm run check` passed: `Test Files 28 passed (28); Tests 131 passed (131)`;
+  `npm run test:e2e` passed: `6 passed (2.1s)` with 360/768/1440 px light/dark overflow checks,
+  light print colors after switching to dark, and no external report requests.
+  The unchanged golden test passed (18 tests). The real Playwright UI/API/project/trace fixture
+  passed its integration assertions and deliberately exited 1 with `3 passed, 2 failed,
+  1 flaky, 1 skipped`; blob replay passed and wrote a complete 7-test report.
+  Regenerated fixture report: `fixtures/real-world-project/.logbook/report/index.html`
+  (161,495 bytes); demo report: `.logbook-demo/report/index.html` (128,535 bytes).
+  `npm pack --dry-run --json` reported `playwright-logbook-0.2.0.tgz`, 122,535 bytes,
+  including `dist/cli/commands/debug.js`, `dist/debugpacket.js`, `dist/signals.js` and both
+  ESM/CJS entries. A tarball installed in a fresh temporary consumer (`added 3 packages`);
+  CJS and ESM both exported `renderReport` and `buildReportModel` as functions, and CLI help
+  listed `debug`. No registry publish or live model request occurred. New reporter options
+  remain deferred; existing trace/capture/redaction configuration covers this milestone.
 
 ## Blockers
 

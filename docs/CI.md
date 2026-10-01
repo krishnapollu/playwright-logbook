@@ -55,6 +55,8 @@ The cache is best-effort: a cache miss means no cross-run trend history. Retain 
 
 Trace ZIPs, screenshots and videos are Playwright artifacts, not part of Logbook's shard JSON or standalone HTML. Retain the relevant `test-results/` tree (or the Playwright blob artifacts when using blob merge) alongside the report, with paths matching the recorded project-relative references. If those files expire, regenerated reports label them **File not retained** and do not offer dead links. The default report never copies trace contents. Treat retained traces/videos as potentially sensitive; they can contain page snapshots, network data and input values. Use unique run IDs for separately invoked jobs: writing a different shard/run under an existing ID now warns or fails instead of silently replacing it. Repeating identical bytes is safe; an explicit `logbook merge` remains a replacement operation so an incomplete shard set can be re-merged.
 
+For a CI debugging handoff, run `npx playwright-logbook debug --run <id> --test <testId> --format markdown` only after the run store has been restored. The output is a bounded evidence preview, not a diagnosis; review it for secrets before posting it to a job summary, issue or AI service. Logbook itself does not upload it. A missing history store means the packet correctly marks recent outcomes unavailable.
+
 ## Azure DevOps
 
 Use the same test/merge job split. Set one run ID across jobs, publish `.logbook/shards` with `PublishPipelineArtifact` from every shard (including failed jobs), then download all artifacts in the merge job. Restore `.logbook/runs` and `.logbook/index.jsonl` with `Cache@2` before running `npx playwright-logbook merge --from <download-directory>`. Publish `.logbook/report` afterward. Azure's cache has the same best-effort history limitation.
@@ -67,4 +69,4 @@ The offline integration test performs this flow against a copy of the sample pro
 
 ## History limitation
 
-v0.1 has only a file-backed store. CI jobs are ephemeral, so history survives only if you persist `.logbook/` via cache, artifacts or a data branch. A server sink is a future feature.
+Logbook has only a file-backed store. CI jobs are ephemeral, so history survives only if you persist `.logbook/` via cache, artifacts or a data branch. A server sink is not part of the current reporter milestone.
