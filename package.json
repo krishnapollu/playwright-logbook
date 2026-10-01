@@ -1,6 +1,6 @@
 {
   "name": "playwright-logbook",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -19,7 +19,9 @@
     "logbook": "dist/cli/bin.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "docs/img/report-dark.png",
+    "docs/img/report-light.png"
   ],
   "keywords": [
     "playwright",

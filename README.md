@@ -1,30 +1,37 @@
-# playwright-logbook
+# Playwright Logbook
 
-Playwright test reports with run history, flaky-test tracking, and a single-file HTML report.
+## A better local report for Playwright
 
-Logbook adds a reporter to your existing Playwright suite. After a run, open the report to see failures, retries, trends, and results by project. It also provides a CLI for reviewing past runs and combining CI shards. It runs locally without a service and does not change Playwright's exit code.
+Playwright Logbook turns every test run into a searchable, self-contained report with failure details, retry history, flaky-test tracking, project views, and CI-friendly summaries.
 
-> **Release status:** Version `0.2.0` is in this repository but has not been published to npm. You can [try the included sample](#try-the-sample-project) now. The install command below applies once a release is available.
+It works with the Playwright setup you already have. There is no hosted service, database, or account to configure.
 
-![Dark report showing run summary and test history](docs/img/report-dark.png)
+![Playwright Logbook dark report](docs/img/report-dark.png)
 
-The report has a searchable test table, status filters, a detail panel with errors and rerun commands, failure groups, trends, flaky history, and project breakdowns. The detail panel shows evidence-linked debugging clues and can preview and copy a bounded, redacted debug context for an AI assistant. Clues are inferences, not diagnoses; review context for secrets before sharing. The report works from a local file without a server. Light mode is the default; use the theme control to switch to dark mode. The layout also fits narrow screens.
+## Why teams use it
 
-![Light report](docs/img/report-light.png)
+- Find the failed test, its attempts, error, code frame, steps, and artifacts in one place.
+- See flaky tests and recent run history instead of investigating one run at a time.
+- Review results across projects and CI shards in a single HTML report.
+- Get copyable rerun commands and bounded, redacted debug context for AI-assisted investigation.
+- Keep reports local and offline. Logbook does not change Playwright's exit code or send data anywhere.
 
-![Mobile report](docs/img/report-mobile.png)
+![Playwright Logbook light report](docs/img/report-light.png)
 
-## Get started
-
-Install Logbook alongside Playwright:
+## Install
 
 ```sh
-npm i -D playwright-logbook@next @playwright/test
+npm install --save-dev playwright-logbook
 ```
 
-Add Logbook to the `reporter` setting in `playwright.config.ts`. Keep your existing reporter if you want its terminal output:
+Logbook supports Node.js 20+ and Playwright 1.42+.
+
+## Add it to Playwright
+
+Add Logbook to your existing reporter list:
 
 ```ts
+// playwright.config.ts
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
@@ -32,13 +39,36 @@ export default defineConfig({
 });
 ```
 
-Run your tests as usual:
+Run Playwright normally:
 
 ```sh
 npx playwright test
 ```
 
-Open `.logbook/report/index.html` in a browser. The HTML report is self-contained and works offline. A run record is also saved under `.logbook/runs/`.
+Then open `.logbook/report/index.html`. The report is a single local HTML file and works without a server.
+
+## Use it in CI
+
+Each shard writes its own record. Give all shards the same run ID and upload their shard files as CI artifacts:
+
+```sh
+LOGBOOK_RUN_ID=ci-123 npx playwright test --shard=1/4
+```
+
+In a follow-up job, download the shard artifacts and merge them:
+
+```sh
+npx playwright-logbook merge \
+  --run-id ci-123 \
+  --from all-shards \
+  --fail-on-incomplete
+
+npx playwright-logbook summary --run ci-123 --format markdown
+```
+
+The merge creates `.logbook/report/index.html` and updates local history. Persist `.logbook/runs/` and `.logbook/index.jsonl` between CI runs to keep trends and flaky-test history.
+
+See [CI recipes](docs/CI.md) for GitHub Actions, Azure DevOps, artifact retention, and Playwright blob-report workflows.
 
 ## Review runs from the terminal
 
@@ -50,80 +80,55 @@ npx playwright-logbook report --run latest
 npx playwright-logbook debug --run latest --test <testId> --format markdown
 ```
 
-`history` lists recent runs, `flaky` highlights tests that change between passing and failing, `summary` produces a concise result for CI, `report` regenerates the HTML for a stored run, and `debug` exports one test's AI-ready context. Use `--root <dir>` if you are running the CLI outside your Playwright project. See the [CLI reference](docs/CLI.md) for all commands and exit codes.
-
-History is stored in files under `.logbook/`, not in a hosted service. On your machine it remains available until you remove those files. In CI, persist `.logbook/runs/` and `.logbook/index.jsonl` between workflow runs if you want cross-run trends and flaky analysis.
-
-## Use in sharded CI
-
-Each shard writes a separate record and leaves merging to a later job. Give shards the same `LOGBOOK_RUN_ID`, run Playwright with its normal shard option, and upload `.logbook/shards/` from every shard:
-
-```sh
-LOGBOOK_RUN_ID=ci-123 npx playwright test --shard=1/4
-```
-
-After downloading all shard artifacts into `all-shards/`, merge them and publish the resulting report:
-
-```sh
-npx playwright-logbook merge --run-id ci-123 --from all-shards --fail-on-incomplete
-npx playwright-logbook summary --run ci-123 --format markdown
-```
-
-The merge writes `.logbook/report/index.html` and updates history. `--fail-on-incomplete` makes the merge job fail if a shard is missing, while still writing the available results. See [CI recipes](docs/CI.md) for GitHub Actions, Azure DevOps, artifact handling, and Playwright blob-report replay.
+Use `--root <dir>` when running the CLI outside your Playwright project. See the [CLI reference](docs/CLI.md) for all commands and exit codes.
 
 ## Reporter options
 
-Pass options as the second item in the reporter configuration:
+```ts
+reporter: [['playwright-logbook', {
+  outputDir: '.logbook',
+  historyLimit: 30,
+  captureDetails: true,
+}]],
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `outputDir` | `.logbook` | Output directory, relative to the project root |
+| `runId` | Detected | Explicit run ID; `LOGBOOK_RUN_ID` can also set it |
+| `title` | None | Label shown in the report |
+| `redact` | `[]` | Strings or regular expressions to remove from diagnostics |
+| `autoMerge` | `true` | Merge automatically when the run is not sharded |
+| `autoReport` | `true` | Generate HTML after an automatic merge |
+| `historyLimit` | `30` | Number of runs used for trends and flaky analysis |
+| `maxTextLength` | `4000` | Maximum stored diagnostic text length |
+| `quiet` | `false` | Suppress the final Logbook terminal line |
+| `captureDetails` | `false` | Capture steps, output, and failed-test screenshots |
+
+## Attachments and privacy
+
+Logbook stores outcomes, attempts, errors, tags, case IDs, project metadata, and relative artifact references. It does not copy trace, video, or screenshot files into run records.
+
+Configure traces in Playwright, for example:
 
 ```ts
-reporter: [['playwright-logbook', { outputDir: '.logbook', historyLimit: 30 }]],
+use: { trace: 'on-first-retry' }
 ```
 
-| Option | Default | Use |
-| --- | --- | --- |
-| `outputDir` | `.logbook` | Set the output directory relative to the project root |
-| `runId` | Detected | Assign a run ID; `LOGBOOK_RUN_ID` can also supply one |
-| `title` | None | Label the run in the report |
-| `redact` | `[]` | Remove specified strings or regex matches from diagnostics |
-| `autoMerge` | `true` | Save a merged run automatically when not sharded |
-| `autoReport` | `true` | Generate HTML after an automatic merge |
-| `historyLimit` | `30` | Limit runs used for report trends and flaky analysis |
-| `maxTextLength` | `4000` | Limit stored diagnostic text length |
-| `caseIdPatterns` | Built-in ID pattern | Customize test-management ID extraction |
-| `quiet` | `false` | Suppress Logbook's final terminal line |
-| `captureDetails` | `false` | Opt in to steps, stdout/stderr, and inline failed-test screenshots; `true` enables all, or choose `{ steps, output, images }` |
-| `maxSteps` | `100` | Limit captured steps per attempt |
-| `maxOutputLength` | `2000` | Keep the tail of stdout/stderr, in characters |
-| `maxImageBytes` | `250000` | Skip individual images larger than this |
-| `maxEmbeddedBytes` | `5000000` | Cap embedded images per run |
+If you enable `captureDetails`, Logbook can store sanitized steps, output tails, and bounded PNG/JPEG images from failed or flaky tests. Screenshots can contain sensitive information; text redaction cannot remove secrets visible in pixels. Review reports and debug packets before sharing them.
 
-## What is stored
+## What happens to your data?
 
-Logbook stores test outcomes, attempts, errors, tags, case IDs, and project/CI metadata. Paths in its records are relative to the project. By default, the report links to screenshots, traces, and videos; retain those files if you share the report. Attachment bodies are not copied into Logbook records.
+Everything stays in your project under `.logbook/`. This release makes no network requests, has no hosted retention policy, and performs no automatic AI or test-management upload. Remove `.logbook/` when you no longer need the local history.
 
-Configure trace recording in Playwright (for example, `use: { trace: 'on-first-retry' }`); Logbook does not turn it on for you. The detail panel shows trace links and a `npx playwright show-trace` command only for recorded trace attachments. Missing artifacts are labeled instead of linked. See the [CI recipes](docs/CI.md) for retaining artifacts alongside the HTML report.
+## Documentation
 
-With `captureDetails: true`, Logbook also stores sanitized step titles and output tails, and embeds PNG or JPEG images from failed or flaky tests within the size limits above. Screenshots can contain sensitive data: text redaction cannot remove secrets visible in pixels. Review captured images before sharing a report or run JSON.
+- [CLI reference](docs/CLI.md)
+- [CI recipes](docs/CI.md)
+- [Record schema](docs/SCHEMA.md)
+- [Adapter guidance](docs/ADAPTERS.md)
+- [Changelog](CHANGELOG.md)
 
-There is no server, automatic retention policy, or test-management publisher in this release. See the [schema](docs/SCHEMA.md) for the record format and [adapter guidance](docs/ADAPTERS.md) for future integrations.
+## License
 
-## Try the sample project
-
-From this repository's root, run the included Playwright project without installing a browser:
-
-```sh
-npm ci
-npm run build
-cd fixtures/sample-project
-LOGBOOK_RUN_ID=docs-example node ../../node_modules/@playwright/test/cli.js test
-```
-
-The sample intentionally contains failures and a flaky test, so Playwright exits with code `1`. An actual run printed:
-
-```text
-[logbook] run docs-example: 3 passed, 2 failed, 1 flaky, 1 skipped -> .logbook/report/index.html
-```
-
-Open `.logbook/report/index.html` from the sample-project directory, or run `node ../../dist/cli/bin.js summary --run docs-example --format markdown` to inspect the stored result.
-
-For a larger deterministic showcase, run `npm run demo` from the repository root and open `.logbook-demo/report/index.html`. Run `npm run test:e2e` for the offline browser smoke test and `npm run shots` to regenerate the screenshots above.
+MIT
