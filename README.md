@@ -7,9 +7,9 @@
 <p align="center">A better local report for Playwright</p>
 
 <p align="center">
-[![npm version](https://img.shields.io/npm/v/playwright-logbook?logo=npm)](https://www.npmjs.com/package/playwright-logbook)
-[![CI](https://github.com/krishnapollu/playwright-logbook/actions/workflows/ci.yml/badge.svg)](https://github.com/krishnapollu/playwright-logbook/actions/workflows/ci.yml)
-[![npm downloads](https://img.shields.io/npm/dm/playwright-logbook?logo=npm)](https://www.npmjs.com/package/playwright-logbook)
+  <a href="https://www.npmjs.com/package/playwright-logbook"><img src="https://img.shields.io/npm/v/playwright-logbook?logo=npm" alt="npm version"></a>
+  <a href="https://github.com/krishnapollu/playwright-logbook/actions/workflows/ci.yml"><img src="https://github.com/krishnapollu/playwright-logbook/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/playwright-logbook"><img src="https://img.shields.io/npm/dm/playwright-logbook?logo=npm" alt="npm downloads"></a>
 </p>
 
 **[Install from npm](https://www.npmjs.com/package/playwright-logbook)** · **[View the source on GitHub](https://github.com/krishnapollu/playwright-logbook)**
