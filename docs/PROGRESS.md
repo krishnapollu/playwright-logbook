@@ -253,8 +253,34 @@ milestone. Users can review and manually share a `logbook debug` packet later.
   outcomes, incomplete merges, store lifecycle, debug-packet and real Playwright
   scenario coverage. The sandboxed baseline failed only the Chromium scenario.
 
-- [ ] LBX development-host failure → history → recorded source slice
-- [ ] LBX full 0.1 preview acceptance, clean-profile VSIX smoke and real-session validation
+- [x] LBX development-host failure → history → recorded source slice
+
+  `packages/vscode` contains the independently versioned extension; schema-1
+  reads use the import-safe `playwright-logbook/history-reader` boundary.
+  Contract coverage: `test/history-reader.test.ts` (12 tests),
+  `test/vscode-services.test.ts` (4 tests), and the reader package-entry check.
+  A captured real Playwright fixture covers UI/API projects, permanent failures,
+  retry recovery, expected failure and a skip; synthetic cases cover incomplete
+  records, unknown metadata, repeats, branch scope, corruption and containment.
+  `packages/vscode/test/host.ts` checks the editor journey in two workspace roots,
+  automatic watcher refresh, stable run-error identity after insertion, older
+  source navigation, selection preservation, invalid actions and root removal.
+
+  Done when: `npm run check` passed outside the browser-restricted sandbox:
+  `Test Files 30 passed (30); Tests 148 passed (148)`, including the unchanged
+  golden test (18 tests). `npm run test:vscode` and
+  `npm run test:vscode -- --vsix` passed in VS Code 1.95.3 on macOS arm64:
+  `VS Code host: failure → scoped history → source, refresh, invalid actions and multi-root isolation passed.`
+  Both exited 0; the latter installed the packaged bundle into a temporary
+  clean profile. Final VSIX inventory/bundle comparison verified 9 allow-listed
+  files and no history, credentials, tests or machine-specific paths.
+  `npm pack --dry-run --json` confirmed the reader is included and extension
+  files are excluded from the reporter package. Nothing was published.
+
+  Context copy is deferred for a repeat-aware, scope-aware debug-packet adapter.
+  The publisher identity is an explicitly documented local-preview placeholder.
+
+- [ ] LBX full 0.1 preview acceptance, cross-platform/performance/accessibility checks and real-session validation
 
 ## Blockers
 

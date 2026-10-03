@@ -1,0 +1,10 @@
+{
+  "version": "0.2.0",
+  "configurations": [{
+    "name": "Logbook extension development host",
+    "type": "extensionHost",
+    "request": "launch",
+    "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/vscode", "${workspaceFolder}/fixtures/real-world-project"],
+    "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.cjs"]
+  }]
+}

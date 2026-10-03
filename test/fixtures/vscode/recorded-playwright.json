@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "kind": "run",
+  "runId": "recorded-playwright",
+  "title": null,
+  "startedAt": "2026-09-30T23:56:07.206Z",
+  "status": "failed",
+  "complete": true,
+  "summary": {
+    "total": 7,
+    "passed": 3,
+    "failed": 2,
+    "flaky": 1,
+    "skipped": 1
+  },
+  "globalErrors": [],
+  "env": {
+    "git": {
+      "branch": null,
+      "commit": null,
+      "repository": null
+    }
+  },
+  "tests": [
+    {
+      "testId": "1ea1b1599cbc08f16936-9a6b1a872cb288d19db8",
+      "title": "validates an API payload without a browser @contract",
+      "project": "api-contract",
+      "file": "tests/api.spec.ts",
+      "line": 3,
+      "column": 1,
+      "outcome": "expected",
+      "status": "passed",
+      "expectedStatus": "passed",
+      "repeatEachIndex": 0,
+      "firstError": null,
+      "durationMs": 1,
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed",
+          "errors": [],
+          "durationMs": 1
+        }
+      ]
+    },
+    {
+      "testId": "d425444c687fa36b5882-21237ab876dccb0cbe77",
+      "title": "renders receipt @critical",
+      "project": "chromium-ui",
+      "file": "tests/ui.spec.ts",
+      "line": 4,
+      "column": 3,
+      "outcome": "expected",
+      "status": "passed",
+      "expectedStatus": "passed",
+      "repeatEachIndex": 0,
+      "firstError": null,
+      "durationMs": 1,
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed",
+          "errors": [],
+          "durationMs": 1
+        }
+      ]
+    },
+    {
+      "testId": "d425444c687fa36b5882-ce73511fe9b7c4b4afd8",
+      "title": "assertion mismatch",
+      "project": "chromium-ui",
+      "file": "tests/ui.spec.ts",
+      "line": 14,
+      "column": 3,
+      "outcome": "unexpected",
+      "status": "failed",
+      "expectedStatus": "passed",
+      "repeatEachIndex": 0,
+      "firstError": {
+        "message": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('heading')\nExpected: \"Total: 20\"\nReceived: \"Total: 10\"\nTimeout:  500ms\n\nCall log:\n  - Expect \"toHaveText\" getByRole('heading') with timeout 500ms\n  - waiting for getByRole('heading')\n    7 \u00d7 locator resolved to <h1>Total: 10</h1>\n      - unexpected value \"Total: 10\"\n",
+        "stack": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('heading')\nExpected: \"Total: 20\"\nReceived: \"Total: 10\"\nTimeout:  500ms\n\nCall log:\n  - Expect \"toHaveText\" getByRole('heading') with timeout 500ms\n  - waiting for getByRole('heading')\n    7 \u00d7 locator resolved to <h1>Total: 10</h1>\n      - unexpected value \"Total: 10\"\n\n    at tests/ui.spec.ts:17:47\n    at tests/ui.spec.ts:16:5",
+        "snippet": "  15 |     await page.goto('data:text/html,<h1>Total: 10</h1>');\n  16 |     await test.step('check displayed total', async () => {\n> 17 |       await expect(page.getByRole('heading')).toHaveText('Total: 20');\n     |                                               ^\n  18 |     });\n  19 |   });\n  20 |",
+        "location": {
+          "file": "tests/ui.spec.ts",
+          "column": 47,
+          "line": 17
+        }
+      },
+      "durationMs": 1,
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed",
+          "errors": [
+            {
+              "message": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('heading')\nExpected: \"Total: 20\"\nReceived: \"Total: 10\"\nTimeout:  500ms\n\nCall log:\n  - Expect \"toHaveText\" getByRole('heading') with timeout 500ms\n  - waiting for getByRole('heading')\n    7 \u00d7 locator resolved to <h1>Total: 10</h1>\n      - unexpected value \"Total: 10\"\n",
+              "stack": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('heading')\nExpected: \"Total: 20\"\nReceived: \"Total: 10\"\nTimeout:  500ms\n\nCall log:\n  - Expect \"toHaveText\" getByRole('heading') with timeout 500ms\n  - waiting for getByRole('heading')\n    7 \u00d7 locator resolved to <h1>Total: 10</h1>\n      - unexpected value \"Total: 10\"\n\n    at tests/ui.spec.ts:17:47\n    at tests/ui.spec.ts:16:5",
+              "snippet": "  15 |     await page.goto('data:text/html,<h1>Total: 10</h1>');\n  16 |     await test.step('check displayed total', async () => {\n> 17 |       await expect(page.getByRole('heading')).toHaveText('Total: 20');\n     |                                               ^\n  18 |     });\n  19 |   });\n  20 |",
+              "location": {
+                "file": "tests/ui.spec.ts",
+                "column": 47,
+                "line": 17
+              }
+            }
+          ],
+          "durationMs": 1
+        },
+        {
+          "retry": 1,
+          "status": "failed",
+          "errors": [
+            {
+              "message": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('heading')\nExpected: \"Total: 20\"\nReceived: \"Total: 10\"\nTimeout:  500ms\n\nCall log:\n  - Expect \"toHaveText\" getByRole('heading') with timeout 500ms\n  - waiting for getByRole('heading')\n    7 \u00d7 locator resolved to <h1>Total: 10</h1>\n      - unexpected value \"Total: 10\"\n",
+              "stack": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('heading')\nExpected: \"Total: 20\"\nReceived: \"Total: 10\"\nTimeout:  500ms\n\nCall log:\n  - Expect \"toHaveText\" getByRole('heading') with timeout 500ms\n  - waiting for getByRole('heading')\n    7 \u00d7 locator resolved to <h1>Total: 10</h1>\n      - unexpected value \"Total: 10\"\n\n    at tests/ui.spec.ts:17:47\n    at tests/ui.spec.ts:16:5",
+              "snippet": "  15 |     await page.goto('data:text/html,<h1>Total: 10</h1>');\n  16 |     await test.step('check displayed total', async () => {\n> 17 |       await expect(page.getByRole('heading')).toHaveText('Total: 20');\n     |                                               ^\n  18 |     });\n  19 |   });\n  20 |",
+              "location": {
+                "file": "tests/ui.spec.ts",
+                "column": 47,
+                "line": 17
+              }
+            }
+          ],
+          "durationMs": 1
+        }
+      ]
+    },
+    {
+      "testId": "d425444c687fa36b5882-f4f32cca234d4e20d882",
+      "title": "locator timeout",
+      "project": "chromium-ui",
+      "file": "tests/ui.spec.ts",
+      "line": 21,
+      "column": 3,
+      "outcome": "unexpected",
+      "status": "failed",
+      "expectedStatus": "passed",
+      "repeatEachIndex": 0,
+      "firstError": {
+        "message": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('button', { name: 'Never appears' })\nExpected: visible\nTimeout: 350ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('button', { name: 'Never appears' }) with timeout 350ms\n  - waiting for getByRole('button', { name: 'Never appears' })\n",
+        "stack": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('button', { name: 'Never appears' })\nExpected: visible\nTimeout: 350ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('button', { name: 'Never appears' }) with timeout 350ms\n  - waiting for getByRole('button', { name: 'Never appears' })\n\n    at tests/ui.spec.ts:23:71",
+        "snippet": "  21 |   test('locator timeout', async ({ page }) => {\n  22 |     await page.goto('data:text/html,<h1>Waiting</h1>');\n> 23 |     await expect(page.getByRole('button', { name: 'Never appears' })).toBeVisible({ timeout: 350 });\n     |                                                                       ^\n  24 |   });\n  25 |\n  26 |   test('flaky retry succeeds', async ({ page }, testInfo) => {",
+        "location": {
+          "file": "tests/ui.spec.ts",
+          "column": 71,
+          "line": 23
+        }
+      },
+      "durationMs": 1,
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed",
+          "errors": [
+            {
+              "message": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('button', { name: 'Never appears' })\nExpected: visible\nTimeout: 350ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('button', { name: 'Never appears' }) with timeout 350ms\n  - waiting for getByRole('button', { name: 'Never appears' })\n",
+              "stack": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('button', { name: 'Never appears' })\nExpected: visible\nTimeout: 350ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('button', { name: 'Never appears' }) with timeout 350ms\n  - waiting for getByRole('button', { name: 'Never appears' })\n\n    at tests/ui.spec.ts:23:71",
+              "snippet": "  21 |   test('locator timeout', async ({ page }) => {\n  22 |     await page.goto('data:text/html,<h1>Waiting</h1>');\n> 23 |     await expect(page.getByRole('button', { name: 'Never appears' })).toBeVisible({ timeout: 350 });\n     |                                                                       ^\n  24 |   });\n  25 |\n  26 |   test('flaky retry succeeds', async ({ page }, testInfo) => {",
+              "location": {
+                "file": "tests/ui.spec.ts",
+                "column": 71,
+                "line": 23
+              }
+            }
+          ],
+          "durationMs": 1
+        },
+        {
+          "retry": 1,
+          "status": "failed",
+          "errors": [
+            {
+              "message": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('button', { name: 'Never appears' })\nExpected: visible\nTimeout: 350ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('button', { name: 'Never appears' }) with timeout 350ms\n  - waiting for getByRole('button', { name: 'Never appears' })\n",
+              "stack": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('button', { name: 'Never appears' })\nExpected: visible\nTimeout: 350ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByRole('button', { name: 'Never appears' }) with timeout 350ms\n  - waiting for getByRole('button', { name: 'Never appears' })\n\n    at tests/ui.spec.ts:23:71",
+              "snippet": "  21 |   test('locator timeout', async ({ page }) => {\n  22 |     await page.goto('data:text/html,<h1>Waiting</h1>');\n> 23 |     await expect(page.getByRole('button', { name: 'Never appears' })).toBeVisible({ timeout: 350 });\n     |                                                                       ^\n  24 |   });\n  25 |\n  26 |   test('flaky retry succeeds', async ({ page }, testInfo) => {",
+              "location": {
+                "file": "tests/ui.spec.ts",
+                "column": 71,
+                "line": 23
+              }
+            }
+          ],
+          "durationMs": 1
+        }
+      ]
+    },
+    {
+      "testId": "d425444c687fa36b5882-926c2ceb1e715e898ff7",
+      "title": "flaky retry succeeds",
+      "project": "chromium-ui",
+      "file": "tests/ui.spec.ts",
+      "line": 26,
+      "column": 3,
+      "outcome": "flaky",
+      "status": "passed",
+      "expectedStatus": "passed",
+      "repeatEachIndex": 0,
+      "firstError": {
+        "message": "Error: first attempt deliberately fails\n\nexpect(received).toBeGreaterThan(expected)\n\nExpected: > 0\nReceived:   0",
+        "stack": "Error: first attempt deliberately fails\n\nexpect(received).toBeGreaterThan(expected)\n\nExpected: > 0\nReceived:   0\n    at tests/ui.spec.ts:29:64",
+        "snippet": "  27 |     await page.goto('data:text/html,<h1>Ready</h1>');\n  28 |     console.log('flaky attempt', testInfo.retry);\n> 29 |     expect(testInfo.retry, 'first attempt deliberately fails').toBeGreaterThan(0);\n     |                                                                ^\n  30 |     await expect(page.getByRole('heading', { name: 'Ready' })).toBeVisible();\n  31 |   });\n  32 |",
+        "location": {
+          "file": "tests/ui.spec.ts",
+          "column": 64,
+          "line": 29
+        }
+      },
+      "durationMs": 1,
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed",
+          "errors": [
+            {
+              "message": "Error: first attempt deliberately fails\n\nexpect(received).toBeGreaterThan(expected)\n\nExpected: > 0\nReceived:   0",
+              "stack": "Error: first attempt deliberately fails\n\nexpect(received).toBeGreaterThan(expected)\n\nExpected: > 0\nReceived:   0\n    at tests/ui.spec.ts:29:64",
+              "snippet": "  27 |     await page.goto('data:text/html,<h1>Ready</h1>');\n  28 |     console.log('flaky attempt', testInfo.retry);\n> 29 |     expect(testInfo.retry, 'first attempt deliberately fails').toBeGreaterThan(0);\n     |                                                                ^\n  30 |     await expect(page.getByRole('heading', { name: 'Ready' })).toBeVisible();\n  31 |   });\n  32 |",
+              "location": {
+                "file": "tests/ui.spec.ts",
+                "column": 64,
+                "line": 29
+              }
+            }
+          ],
+          "durationMs": 1
+        },
+        {
+          "retry": 1,
+          "status": "passed",
+          "errors": [],
+          "durationMs": 1
+        }
+      ]
+    },
+    {
+      "testId": "d425444c687fa36b5882-1b697fdf8188edd5a429",
+      "title": "skipped for this environment",
+      "project": "chromium-ui",
+      "file": "tests/ui.spec.ts",
+      "line": 33,
+      "column": 3,
+      "outcome": "skipped",
+      "status": "skipped",
+      "expectedStatus": "skipped",
+      "repeatEachIndex": 0,
+      "firstError": null,
+      "durationMs": 1,
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "skipped",
+          "errors": [],
+          "durationMs": 1
+        }
+      ]
+    },
+    {
+      "testId": "d425444c687fa36b5882-9bc9ca72386e92e781a7",
+      "title": "known defect",
+      "project": "chromium-ui",
+      "file": "tests/ui.spec.ts",
+      "line": 37,
+      "column": 3,
+      "outcome": "expected",
+      "status": "failed",
+      "expectedStatus": "failed",
+      "repeatEachIndex": 0,
+      "firstError": {
+        "message": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('heading')\nExpected: \"Desired behavior\"\nReceived: \"Current behavior\"\nTimeout:  500ms\n\nCall log:\n  - Expect \"toHaveText\" getByRole('heading') with timeout 500ms\n  - waiting for getByRole('heading')\n    7 \u00d7 locator resolved to <h1>Current behavior</h1>\n      - unexpected value \"Current behavior\"\n",
+        "stack": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('heading')\nExpected: \"Desired behavior\"\nReceived: \"Current behavior\"\nTimeout:  500ms\n\nCall log:\n  - Expect \"toHaveText\" getByRole('heading') with timeout 500ms\n  - waiting for getByRole('heading')\n    7 \u00d7 locator resolved to <h1>Current behavior</h1>\n      - unexpected value \"Current behavior\"\n\n    at tests/ui.spec.ts:40:45",
+        "snippet": "  38 |     test.fail(true, 'existing product defect');\n  39 |     await page.goto('data:text/html,<h1>Current behavior</h1>');\n> 40 |     await expect(page.getByRole('heading')).toHaveText('Desired behavior');\n     |                                             ^\n  41 |   });\n  42 | });\n  43 |",
+        "location": {
+          "file": "tests/ui.spec.ts",
+          "column": 45,
+          "line": 40
+        }
+      },
+      "durationMs": 1,
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed",
+          "errors": [
+            {
+              "message": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('heading')\nExpected: \"Desired behavior\"\nReceived: \"Current behavior\"\nTimeout:  500ms\n\nCall log:\n  - Expect \"toHaveText\" getByRole('heading') with timeout 500ms\n  - waiting for getByRole('heading')\n    7 \u00d7 locator resolved to <h1>Current behavior</h1>\n      - unexpected value \"Current behavior\"\n",
+              "stack": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('heading')\nExpected: \"Desired behavior\"\nReceived: \"Current behavior\"\nTimeout:  500ms\n\nCall log:\n  - Expect \"toHaveText\" getByRole('heading') with timeout 500ms\n  - waiting for getByRole('heading')\n    7 \u00d7 locator resolved to <h1>Current behavior</h1>\n      - unexpected value \"Current behavior\"\n\n    at tests/ui.spec.ts:40:45",
+              "snippet": "  38 |     test.fail(true, 'existing product defect');\n  39 |     await page.goto('data:text/html,<h1>Current behavior</h1>');\n> 40 |     await expect(page.getByRole('heading')).toHaveText('Desired behavior');\n     |                                             ^\n  41 |   });\n  42 | });\n  43 |",
+              "location": {
+                "file": "tests/ui.spec.ts",
+                "column": 45,
+                "line": 40
+              }
+            }
+          ],
+          "durationMs": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+**/*
+!package.json
+!README.md
+!LICENSE
+!dist/extension.cjs
+!media/logbook.svg
+!media/detail.js
+!media/detail.css

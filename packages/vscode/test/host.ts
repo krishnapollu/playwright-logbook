@@ -1,0 +1,86 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import * as vscode from 'vscode';
+import type { activate } from '../src/extension.js';
+
+export async function run(): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try { await Promise.race([journey(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Editor journey timed out after 60 seconds.')), 60_000); })]); }
+  finally { if (timer) clearTimeout(timer); }
+}
+
+async function journey(): Promise<void> {
+  const extension = vscode.extensions.getExtension<Awaited<ReturnType<typeof activate>>>('logbook-local-preview.playwright-logbook-vscode');
+  assert.ok(extension, 'Development extension must be discoverable');
+  const logbook = await extension.activate();
+  console.log('Host journey: activated');
+  const roots = await logbook.getChildren();
+  assert.equal(roots.length, 2, 'Multi-root grouping should appear');
+  const first = roots.find((item) => item.label === 'first')!, broken = roots.find((item) => item.label === 'second')!;
+  assert.ok(first); assert.ok(broken);
+  const runs = await logbook.getChildren(first);
+  const current = runs.find((item) => item.runId === 'current')!;
+  assert.ok(current, 'Real compatible store should load');
+  const brokenChildren = await logbook.getChildren(broken);
+  assert.ok(brokenChildren.some((item) => item.label.includes('schema 2')), 'Incompatible second root must have its own diagnostic');
+  const results = await logbook.getChildren(current);
+  console.log('Host journey: compatible runs and isolated incompatible root loaded');
+  const errorGroup = results.find((item) => item.kind === 'runErrors')!;
+  assert.ok(errorGroup);
+  const errors = await logbook.getChildren(errorGroup);
+  const selectedError = errors.find((item) => item.label === 'Selected recorded run error')!;
+  assert.ok(selectedError);
+  const inspectError = logbook.getTreeItem(selectedError).command!;
+  await vscode.commands.executeCommand(inspectError.command, ...(inspectError.arguments ?? []));
+  const updated = new Promise<void>((resolve) => {
+    const subscription = logbook.onDidChangeTreeData(() => { subscription.dispose(); resolve(); });
+  });
+  const recordPath = path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, '.logbook/runs/current.json');
+  const record = JSON.parse(await fs.readFile(recordPath, 'utf8')) as { globalErrors: { message: string; stack: null; snippet: null; location: null }[] };
+  record.globalErrors.unshift({ message: 'Inserted recorded run error', stack: null, snippet: null, location: null });
+  await fs.writeFile(recordPath, JSON.stringify(record));
+  await updated;
+  await vscode.commands.executeCommand('logbook.refresh');
+  const refreshedErrors = await logbook.getChildren(errorGroup);
+  assert.equal(refreshedErrors.find((item) => item.label === selectedError.label)?.id, selectedError.id, 'Run error identity should survive index movement on refresh');
+  console.log('Host journey: watcher refresh and stable recorded run errors verified');
+  const failure = results.find((item) => item.kind === 'result' && item.description?.includes('Failed unexpectedly'))!;
+  assert.ok(failure);
+  const command = logbook.getTreeItem(failure).command!;
+  await vscode.commands.executeCommand(command.command, ...(command.arguments ?? []));
+  console.log('Host journey: result and history opened');
+  await vscode.commands.executeCommand('logbook.openSource');
+  console.log('Host journey: current source opened');
+  let editor = vscode.window.activeTextEditor;
+  assert.ok(editor); assert.equal(editor.selection.start.line, 2, 'Current execution opens its recorded third line');
+  assert.ok(editor.document.uri.path.endsWith('/tests/ui.spec.ts'));
+  assert.ok(vscode.window.tabGroups.all.flatMap((group) => group.tabs).some((tab) => tab.input instanceof vscode.TabInputWebview), 'Opening source must preserve the adjacent history panel');
+  // History contains current/main and previous/main, excluding the feature run by default.
+  await vscode.commands.executeCommand('logbook.inspectHistory', 1);
+  console.log('Host journey: older history selected');
+  await vscode.commands.executeCommand('logbook.openSource');
+  editor = vscode.window.activeTextEditor;
+  console.log('Host journey: historical source opened');
+  assert.ok(editor); assert.equal(editor.selection.start.line, 1, 'Earlier history execution opens its own recorded second line');
+  await vscode.commands.executeCommand('logbook.refresh');
+  await vscode.commands.executeCommand('logbook.openSource');
+  assert.equal(vscode.window.activeTextEditor?.selection.start.line, 1, 'Refresh must preserve the selected older execution');
+  await vscode.commands.executeCommand('logbook.inspectHistory', -1);
+  await vscode.commands.executeCommand('logbook.openSource');
+  assert.equal(vscode.window.activeTextEditor?.selection.start.line, 1, 'Invalid history messages must not change selection');
+  console.log('Host journey: source navigation and refresh verified');
+  const watchersBeforeRemoval = roots.length;
+  assert.equal(watchersBeforeRemoval, 2);
+  assert.equal(vscode.workspace.updateWorkspaceFolders(1, 1), true);
+  await new Promise<void>((resolve) => {
+    const subscription = vscode.workspace.onDidChangeWorkspaceFolders(() => { subscription.dispose(); resolve(); });
+  });
+  console.log('Host journey: root removal event received');
+  // setup is asynchronous; wait on tree updates rather than a guessed delay.
+  if ((await logbook.getChildren()).some((item) => item.kind === 'folder')) await new Promise<void>((resolve) => {
+    const subscription = logbook.onDidChangeTreeData(() => { subscription.dispose(); resolve(); });
+  });
+  assert.ok((await logbook.getChildren()).some((item) => item.runId === 'current'), 'One remaining folder should show runs directly');
+  console.log('VS Code host: failure → scoped history → source, refresh, invalid actions and multi-root isolation passed.');
+}

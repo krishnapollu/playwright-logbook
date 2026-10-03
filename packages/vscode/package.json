@@ -1,0 +1,48 @@
+{
+  "name": "playwright-logbook-vscode",
+  "displayName": "Playwright Logbook",
+  "description": "See a Playwright failure's recorded history and open its recorded source location.",
+  "version": "0.1.0",
+  "publisher": "logbook-local-preview",
+  "private": true,
+  "preview": true,
+  "license": "MIT",
+  "type": "module",
+  "engines": { "vscode": "^1.95.0" },
+  "categories": ["Testing"],
+  "main": "./dist/extension.cjs",
+  "extensionKind": ["workspace"],
+  "capabilities": {
+    "untrustedWorkspaces": { "supported": "limited", "description": "Read workspace-contained history and open workspace-contained source. External mappings require trust." },
+    "virtualWorkspaces": { "supported": false, "description": "This preview reads local desktop files only." }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "vscode:prepublish": "npm run build"
+  },
+  "contributes": {
+    "viewsContainers": { "activitybar": [{ "id": "logbook", "title": "Logbook", "icon": "media/logbook.svg" }] },
+    "views": { "logbook": [{ "id": "logbook.recentRuns", "name": "Recent Runs" }] },
+    "viewsWelcome": [{ "view": "logbook.recentRuns", "contents": "Logbook reads history collected by its reporter. For CI results, download the Logbook records and select their folder. This preview does not fetch CI records automatically.\n[Select History Folder](command:logbook.selectStore)", "when": "!workspaceFolderCount" }],
+    "commands": [
+      { "command": "logbook.refresh", "title": "Logbook: Refresh History", "icon": "$(refresh)" },
+      { "command": "logbook.selectStore", "title": "Logbook: Select History Folder", "icon": "$(folder-opened)" },
+      { "command": "logbook.configureSource", "title": "Logbook: Configure Source Mapping" },
+      { "command": "logbook.openSource", "title": "Logbook: Open Recorded Source Location" }
+    ],
+    "menus": { "view/title": [
+      { "command": "logbook.refresh", "when": "view == logbook.recentRuns", "group": "navigation" },
+      { "command": "logbook.selectStore", "when": "view == logbook.recentRuns", "group": "navigation" }
+    ] },
+    "configuration": {
+      "title": "Logbook",
+      "properties": {
+        "logbook.historyPath": { "type": "string", "default": ".logbook", "scope": "resource", "description": "History folder relative to this workspace folder. External stores require workspace trust." },
+        "logbook.sourceRoot": { "type": "string", "default": ".", "scope": "resource", "description": "Mapped checkout root. Recorded paths and historical lines may differ from the current checkout." },
+        "logbook.autoRefresh": { "type": "boolean", "default": true, "scope": "resource", "description": "Refresh after committed history changes without switching the selected execution." },
+        "logbook.historyLimit": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100, "scope": "resource", "description": "Initial history page size." }
+      }
+    }
+  }
+}

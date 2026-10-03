@@ -17,6 +17,10 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./history-reader": {
+      "types": "./dist/historyreader.d.ts",
+      "import": "./dist/historyreader.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
@@ -44,10 +48,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -b && esbuild src/index.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/index.cjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "build": "tsc -b && esbuild src/index.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/index.cjs && npm run build --prefix packages/vscode",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit && npm run typecheck --prefix packages/vscode",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:vscode": "npm run build --prefix packages/vscode && node packages/vscode/test/run.mjs",
     "demo": "npm run build && node scripts/make-demo.mjs",
     "test:e2e": "npm run demo && playwright test --config=e2e/playwright.config.ts",
     "shots": "npm run demo && node scripts/make-shots.mjs",
@@ -63,6 +68,8 @@
   "devDependencies": {
     "@playwright/test": "^1.55.0",
     "@types/node": "^24.0.0",
+    "@types/vscode": "1.95.0",
+    "@vscode/test-electron": "3.1.0",
     "esbuild": "^0.28.2",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",

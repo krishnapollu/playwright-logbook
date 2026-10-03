@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "rootDir": "../..", "noEmit": true },
+  "include": ["src", "test/host.ts", "../../src/historyreader.ts", "../../src/historyfiles.ts"]
+}

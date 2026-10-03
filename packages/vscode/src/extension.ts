@@ -1,0 +1,311 @@
+import * as vscode from 'vscode';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { HistoryReader, completionLabel, diagnosticMessage, executionIdentity, isRunIssue, outcomeLabel } from '../../../src/historyreader.js';
+import type { HistoryScope, Page, ReaderRun, RecordedExecution } from '../../../src/historyreader.js';
+import { LocalHistoryFiles } from '../../../src/historyfiles.js';
+import { permittedRoot, recordedSource, sourcePosition } from './workspace.js';
+import { escapeHtml, panelAction, renderDetail } from './detail.js';
+
+interface StoreContext {
+  folder: vscode.WorkspaceFolder; reader: HistoryReader; storeRoot: string; sourceRoot: string;
+  runLimit: number; pageSize: number; watchers: vscode.Disposable[]; error: string | null;
+}
+interface TreeNode {
+  id: string; kind: 'folder' | 'run' | 'result' | 'runErrors' | 'runError' | 'other' | 'message' | 'more';
+  folderKey: string; label: string; description?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string;
+}
+interface Selection {
+  folderKey: string; runId: string; resultKey: string | null; errorIndex: number | null; errorKey: string | null;
+  anchorRunId: string; anchorBranch: string | null; scope: HistoryScope; historyLimit: number;
+}
+
+const recordedErrorKey = (error: NonNullable<ReaderRun['globalErrors']>[number]): string => createHash('sha256').update(JSON.stringify(error)).digest('hex');
+
+async function collectPages<T>(load: (offset: number, limit: number) => Promise<Page<T>>, limit: number): Promise<Page<T>> {
+  const items: T[] = [], diagnostics = new Map<string, Page<T>['diagnostics'][number]>();
+  let offset = 0;
+  for (;;) {
+    const page = await load(offset, Math.min(100, limit - items.length));
+    items.push(...page.items);
+    for (const entry of page.diagnostics) diagnostics.set(JSON.stringify(entry), entry);
+    if (page.nextOffset === null || items.length >= limit) return { items, nextOffset: page.nextOffset, diagnostics: [...diagnostics.values()] };
+    offset = page.nextOffset;
+  }
+}
+
+class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
+  private readonly changed = new vscode.EventEmitter<TreeNode | undefined>();
+  readonly onDidChangeTreeData = this.changed.event;
+  private stores = new Map<string, StoreContext>();
+  private readonly nodes = new Map<string, TreeNode>();
+  private readonly disposables: vscode.Disposable[] = [];
+  private panel: vscode.WebviewPanel | undefined;
+  private selection: Selection | undefined;
+  private history: Page<RecordedExecution> = { items: [], nextOffset: null, diagnostics: [] };
+  private generation = 0;
+  private setupGeneration = 0;
+  private operation = new AbortController();
+  private timers = new Map<string, ReturnType<typeof setTimeout>>();
+  private disposed = false;
+
+  constructor(private readonly extension: vscode.ExtensionContext) {
+    this.disposables.push(
+      vscode.commands.registerCommand('logbook.refresh', () => this.refresh()),
+      vscode.commands.registerCommand('logbook.selectStore', () => this.selectFolder('historyPath')),
+      vscode.commands.registerCommand('logbook.configureSource', () => this.selectFolder('sourceRoot')),
+      vscode.commands.registerCommand('logbook.openSource', () => this.openSource()),
+      vscode.commands.registerCommand('logbook.inspect', (id: unknown) => this.inspect(id)),
+      vscode.commands.registerCommand('logbook.inspectHistory', (index: unknown) => {
+        if (typeof index !== 'number' || !Number.isInteger(index)) return;
+        const execution = this.history.items[index];
+        if (execution) return this.handlePanel({ type: 'history', key: execution.key });
+      }),
+      vscode.commands.registerCommand('logbook.loadMoreRuns', (id: unknown) => this.moreRuns(id)),
+      vscode.workspace.onDidChangeWorkspaceFolders(() => { void this.setup(); }),
+      vscode.workspace.onDidChangeConfiguration((event) => { if (event.affectsConfiguration('logbook')) void this.setup(); }),
+      vscode.workspace.onDidGrantWorkspaceTrust(() => { void this.setup(); }),
+    );
+  }
+  dispose(): void {
+    this.disposed = true; this.setupGeneration += 1; this.operation.abort();
+    for (const timer of this.timers.values()) clearTimeout(timer);
+    for (const store of this.stores.values()) store.watchers.forEach((watcher) => watcher.dispose());
+    this.disposables.forEach((item) => item.dispose()); this.panel?.dispose(); this.changed.dispose();
+  }
+  private folderKey(folder: vscode.WorkspaceFolder): string { return folder.uri.toString(); }
+  private register(node: TreeNode): TreeNode { this.nodes.set(node.id, node); return node; }
+  private message(folderKey: string, label: string, suffix = label): TreeNode {
+    return this.register({ id: JSON.stringify([folderKey, 'message', suffix]), kind: 'message', folderKey, label });
+  }
+  private async roots(folder: vscode.WorkspaceFolder): Promise<{ storeRoot: string; sourceRoot: string }> {
+    if (folder.uri.scheme !== 'file' || vscode.env.remoteName) throw new Error('This preview supports local desktop workspaces; remote and virtual workspaces are not yet validated.');
+    const config = vscode.workspace.getConfiguration('logbook', folder.uri);
+    const storeRoot = await permittedRoot(folder.uri.fsPath, config.get<string>('historyPath', '.logbook'), vscode.workspace.isTrusted);
+    const sourceRoot = await permittedRoot(folder.uri.fsPath, config.get<string>('sourceRoot', '.'), vscode.workspace.isTrusted);
+    return { storeRoot, sourceRoot };
+  }
+  async setup(): Promise<void> {
+    const setupGeneration = ++this.setupGeneration;
+    const stores = new Map<string, StoreContext>();
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+      const key = this.folderKey(folder);
+      const config = vscode.workspace.getConfiguration('logbook', folder.uri);
+      let storeRoot = path.join(folder.uri.fsPath, '.logbook'), sourceRoot = folder.uri.fsPath, error: string | null = null;
+      try { ({ storeRoot, sourceRoot } = await this.roots(folder)); }
+      catch (caught) { error = caught instanceof Error ? caught.message : 'Workspace configuration could not be read.'; }
+      const local = new LocalHistoryFiles(storeRoot);
+      // Recheck configured roots on every read, including in Restricted Mode.
+      const reader = new HistoryReader({
+        read: async (...args) => { await this.roots(folder); return local.read(...args); },
+        listRunFiles: async (...args) => { await this.roots(folder); return local.listRunFiles(...args); },
+      });
+      const store: StoreContext = { folder, reader, storeRoot, sourceRoot, error, runLimit: 20,
+        pageSize: Math.max(1, Math.min(100, config.get<number>('historyLimit', 20))), watchers: [] };
+      stores.set(key, store);
+      if (!error && config.get<boolean>('autoRefresh', true)) {
+        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(storeRoot), '{index.jsonl,runs/*.json}'));
+        const update = () => {
+          const previous = this.timers.get(key); if (previous) clearTimeout(previous);
+          this.timers.set(key, setTimeout(() => { this.timers.delete(key); void this.refresh(key, true); }, 200));
+        };
+        store.watchers.push(watcher, watcher.onDidCreate(update), watcher.onDidChange(update), watcher.onDidDelete(update));
+      }
+    }
+    if (setupGeneration !== this.setupGeneration || this.disposed) { stores.forEach((store) => store.watchers.forEach((watcher) => watcher.dispose())); return; }
+    this.stores.forEach((store) => store.watchers.forEach((watcher) => watcher.dispose()));
+    for (const timer of this.timers.values()) clearTimeout(timer);
+    this.timers.clear(); this.stores = stores; this.nodes.clear();
+    await this.refresh();
+  }
+  async refresh(folderKey?: string, automatic = false): Promise<void> {
+    this.generation += 1; this.operation.abort(); this.operation = new AbortController();
+    // The cancellation token spans tree reads, so no store may retain a cancelled catalog.
+    for (const store of this.stores.values()) store.reader.invalidate();
+    this.changed.fire(undefined);
+    if (this.selection) await this.updatePanel(automatic && (!folderKey || this.selection.folderKey === folderKey));
+  }
+  getTreeItem(node: TreeNode): vscode.TreeItem {
+    const collapsible = ['folder', 'run', 'runErrors', 'other'].includes(node.kind);
+    const item = new vscode.TreeItem(node.label, collapsible ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+    item.id = node.id; item.description = node.description; item.tooltip = node.label;
+    item.iconPath = new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
+    if (node.kind === 'result' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
+    if (node.kind === 'more') item.command = { command: 'logbook.loadMoreRuns', title: 'Load more runs', arguments: [node.id] };
+    return item;
+  }
+  async getChildren(node?: TreeNode): Promise<TreeNode[]> {
+    const signal = this.operation.signal;
+    if (!node) {
+      if (!this.stores.size) return [];
+      if (this.stores.size === 1) return this.runNodes([...this.stores.keys()][0]!);
+      return [...this.stores].map(([key, store]) => this.register({ id: JSON.stringify([key, 'folder']), kind: 'folder', folderKey: key, label: store.folder.name }));
+    }
+    if (node.kind === 'folder') return this.runNodes(node.folderKey);
+    if (!['run', 'runErrors', 'other'].includes(node.kind) || !node.runId) return [];
+    const store = this.stores.get(node.folderKey); if (!store) return [];
+    try {
+      const run = await store.reader.getRun(node.runId, signal);
+      if (node.kind === 'runErrors') return (run.globalErrors ?? []).map((error, index) => this.register({ id: JSON.stringify([node.folderKey, run.runId, 'error', recordedErrorKey(error)]), kind: 'runError', folderKey: node.folderKey, runId: run.runId, errorIndex: index, errorKey: recordedErrorKey(error), label: error.message.slice(0, 180) || 'Recorded run error', description: 'Phase unknown' }));
+      const results = run.tests.filter((test) => node.kind === 'other' ? !isRunIssue(test) : isRunIssue(test));
+      const children = results.map((test) => this.register({ id: JSON.stringify([node.folderKey, executionIdentity(run.runId, test)]), kind: 'result', folderKey: node.folderKey,
+        runId: run.runId, resultKey: executionIdentity(run.runId, test), label: test.title,
+        description: `${test.project || 'Project unknown'} · ${outcomeLabel(test)} · Repeat ${test.repeatEachIndex ?? 'unknown'}` }));
+      if (node.kind === 'run') {
+        if (run.globalErrors?.length) children.push(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'errors']), kind: 'runErrors', folderKey: node.folderKey, runId: run.runId, label: `Recorded run errors (${run.globalErrors.length})` }));
+        if (run.globalErrors === null) children.push(this.message(node.folderKey, 'Run error metadata unavailable.', `${run.runId}-errors`));
+        if (!results.length) children.push(this.message(node.folderKey, 'No unexpected test failures recorded.', `${run.runId}-no-issues`));
+        if (run.tests.some((test) => !isRunIssue(test))) children.push(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'other']), kind: 'other', folderKey: node.folderKey, runId: run.runId, label: 'Other recorded results (expected outcomes and skips)' }));
+        children.push(this.message(node.folderKey, `${completionLabel(run.complete)}; shard completeness unknown.`, `${run.runId}-completion`));
+      }
+      return children;
+    } catch (error) { return signal.aborted ? [] : [this.message(node.folderKey, diagnosticMessage(error), `${node.runId}-read-error`)]; }
+  }
+  private async runNodes(key: string): Promise<TreeNode[]> {
+    const signal = this.operation.signal;
+    const store = this.stores.get(key); if (!store) return [];
+    if (store.error) return [this.message(key, store.error)];
+    try {
+      const page = await collectPages((offset, limit) => store.reader.listRuns(offset, limit, signal), store.runLimit);
+      const nodes = page.items.map((run) => this.register({ id: JSON.stringify([key, run.runId]), kind: 'run', folderKey: key, runId: run.runId,
+        label: `${run.startedAt} · ${run.title ?? run.runId}`,
+        description: `${run.status ?? 'Status unknown'} · ${run.summary ? `${run.summary.failed} unexpected, ${run.summary.flaky} retry-flaky` : 'Counts unknown'} · ${completionLabel(run.complete)}` }));
+      if (page.nextOffset !== null) nodes.push(this.register({ id: JSON.stringify([key, 'more', store.runLimit]), kind: 'more', folderKey: key, label: 'Load more runs' }));
+      nodes.push(...page.diagnostics.map((entry) => this.message(key, `${entry.record}: ${entry.message}`)));
+      if (!page.items.length && !page.diagnostics.length) nodes.push(this.message(key, 'No recorded runs yet. Logbook reads history collected by its reporter. Select History Folder to view copied records.'));
+      return nodes;
+    } catch (error) {
+      if (signal.aborted) return [];
+      const missing = typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+      return [this.message(key, missing ? 'No Logbook history found. Configure the reporter or select a history folder; an HTML report alone is insufficient.' : diagnosticMessage(error))];
+    }
+  }
+  private async moreRuns(id: unknown): Promise<void> {
+    const node = typeof id === 'string' ? this.nodes.get(id) : undefined;
+    if (!node || node.kind !== 'more') return;
+    const store = this.stores.get(node.folderKey); if (!store) return;
+    store.runLimit = Math.min(5000, store.runLimit + 20); this.changed.fire(undefined);
+  }
+  private async inspect(id: unknown): Promise<void> {
+    const node = typeof id === 'string' ? this.nodes.get(id) : undefined;
+    if (!node?.runId || !['result', 'runError'].includes(node.kind)) return;
+    const store = this.stores.get(node.folderKey); if (!store) return;
+    try {
+      const run = await store.reader.getRun(node.runId);
+      const branch = run.env?.git?.branch ?? null;
+      this.selection = { folderKey: node.folderKey, runId: run.runId, resultKey: node.resultKey ?? null, errorIndex: node.errorIndex ?? null, errorKey: node.errorKey ?? null,
+        anchorRunId: run.runId, anchorBranch: branch, scope: branch ? { kind: 'branch', branch } : { kind: 'all' }, historyLimit: store.pageSize };
+      this.generation += 1;
+      await this.updatePanel();
+      // Pin the details tab: opening a source preview must not replace it in an empty editor group.
+      this.panel?.reveal(vscode.ViewColumn.Two, false);
+      await vscode.commands.executeCommand('workbench.action.keepEditor');
+    } catch (error) { await vscode.window.showWarningMessage(diagnosticMessage(error)); }
+  }
+  private ensurePanel(): vscode.WebviewPanel {
+    if (!this.panel) {
+      const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
+      const panel = vscode.window.createWebviewPanel('logbook.detail', 'Logbook recorded result', { viewColumn: vscode.ViewColumn.Two, preserveFocus: true }, { enableScripts: true, localResourceRoots: [media] });
+      panel.onDidDispose(() => { if (this.panel === panel) { this.panel = undefined; this.selection = undefined; this.history = { items: [], nextOffset: null, diagnostics: [] }; this.generation += 1; } });
+      panel.webview.onDidReceiveMessage((message: unknown) => { void this.handlePanel(message); });
+      this.panel = panel;
+    }
+    return this.panel;
+  }
+  private async updatePanel(newHistory = false): Promise<void> {
+    const selected = this.selection; if (!selected) return;
+    const generation = this.generation;
+    const panel = this.ensurePanel();
+    const store = this.stores.get(selected.folderKey);
+    if (!store) { panel.webview.html = '<p>Selected workspace folder is no longer available. Return to Recent Runs.</p>'; return; }
+    try {
+      if (store.error) throw new Error(store.error);
+      const run = await store.reader.getRun(selected.runId, this.operation.signal);
+      const result = selected.resultKey ? run.tests.find((test) => executionIdentity(run.runId, test) === selected.resultKey) : null;
+      const errorIndex = selected.errorKey ? run.globalErrors?.findIndex((error) => recordedErrorKey(error) === selected.errorKey) ?? -1 : selected.errorIndex;
+      if (selected.resultKey && !result || errorIndex === -1 || errorIndex !== null && !run.globalErrors?.[errorIndex]) throw new Error('Selected record is no longer available. Return to Recent Runs.');
+      const history = result ? await collectPages((offset, limit) => store.reader.getTestHistory(result, selected.scope, offset, limit, this.operation.signal), selected.historyLimit) : { items: [], nextOffset: null, diagnostics: [] };
+      if (generation !== this.generation || this.selection !== selected || this.disposed) return;
+      this.history = history;
+      const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
+      const relative = (root: string) => path.relative(store.folder.uri.fsPath, root).split(path.sep).join('/') || '.';
+      panel.webview.html = renderDetail({ run, result: result ?? null, runError: errorIndex, runErrorKey: selected.errorKey, history, scope: selected.scope, anchorRunId: selected.anchorRunId,
+        storeLabel: relative(store.storeRoot), sourceLabel: relative(store.sourceRoot), newHistory }, {
+        css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(),
+        script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource,
+      });
+    } catch (error) {
+      if (generation !== this.generation || this.operation.signal.aborted) return;
+      this.history = { items: [], nextOffset: null, diagnostics: [] };
+      const message = error instanceof Error && error.message.startsWith('Selected record') ? error.message : diagnosticMessage(error);
+      panel.webview.html = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'"><p>${escapeHtml(message)}</p><p>Selected record is no longer available or could not be read. Return to Recent Runs or refresh.</p>`;
+    }
+  }
+  private async handlePanel(message: unknown): Promise<void> {
+    const action = panelAction(message, this.history.items.map((entry) => entry.key)); const selected = this.selection;
+    if (!action || !selected) return;
+    if (action.type === 'openSource') { await this.openSource(); return; }
+    if (action.type === 'configureSource') { await this.selectFolder('sourceRoot'); return; }
+    if (action.type === 'history') {
+      const execution = this.history.items.find((entry) => entry.key === action.key); if (!execution) return;
+      this.selection = { ...selected, runId: execution.runId, resultKey: execution.key, errorIndex: null };
+    }
+    if (action.type === 'more') selected.historyLimit += 20;
+    if (action.type === 'scope') {
+      const choices = [{ label: 'All recorded branches', scope: { kind: 'all' } as HistoryScope }];
+      if (selected.anchorBranch) choices.unshift({ label: `Selected run's branch: ${selected.anchorBranch}`, scope: { kind: 'branch', branch: selected.anchorBranch } });
+      const choice = await vscode.window.showQuickPick(choices, { title: 'Recorded history scope' });
+      if (!choice || this.selection !== selected) return;
+      selected.scope = choice.scope;
+    }
+    this.generation += 1; await this.updatePanel();
+  }
+  private async openSource(): Promise<void> {
+    const selected = this.selection;
+    if (!selected?.resultKey) { await vscode.window.showInformationMessage('Select a recorded test result in Logbook first.'); return; }
+    const store = this.stores.get(selected.folderKey); if (!store) return;
+    try {
+      const roots = await this.roots(store.folder);
+      const run = await store.reader.getRun(selected.runId);
+      const test = run.tests.find((item) => executionIdentity(run.runId, item) === selected.resultKey);
+      if (!test?.file) throw new Error('Recorded source path unavailable. Configure Source Mapping or return to Recent Runs.');
+      const target = await recordedSource(store.folder.uri.fsPath, roots.sourceRoot, test.file, vscode.workspace.isTrusted);
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(target));
+      const position = sourcePosition(test.line, test.column, document.getText().split(/\r?\n/));
+      const location = new vscode.Position(position.line, position.column);
+      await vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.One, preview: false, selection: new vscode.Range(location, location) });
+      if (position.unavailable) await vscode.window.showInformationMessage('Recorded line unavailable in the mapped file. Opened the file; exact historical source alignment is unknown.');
+    } catch (error) {
+      const message = error instanceof Error && (error.message.includes('Recorded') || error.message.includes('trusted') || error.message.includes('escape')) ? error.message : 'Recorded source file was not found in the mapped checkout.';
+      const choice = await vscode.window.showWarningMessage(`${message} Historical lines may have moved.`, 'Configure Source Mapping');
+      if (choice) await this.selectFolder('sourceRoot');
+    }
+  }
+  private async selectFolder(setting: 'historyPath' | 'sourceRoot'): Promise<void> {
+    const stores = [...this.stores.values()];
+    let store = this.selection ? this.stores.get(this.selection.folderKey) : undefined;
+    if (!store && stores.length === 1) store = stores[0];
+    if (!store) {
+      const choice = await vscode.window.showQuickPick(stores.map((item) => ({ label: item.folder.name, store: item })), { title: 'Choose a Logbook workspace folder' });
+      store = choice?.store;
+    }
+    if (!store) { await vscode.window.showInformationMessage('Open a local workspace folder to use Logbook.'); return; }
+    const choice = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, defaultUri: store.folder.uri, openLabel: setting === 'historyPath' ? 'Select History Folder' : 'Map Source Root' });
+    const uri = choice?.[0]; if (!uri || uri.scheme !== 'file') return;
+    try {
+      await permittedRoot(store.folder.uri.fsPath, uri.fsPath, vscode.workspace.isTrusted);
+      const relative = path.relative(store.folder.uri.fsPath, uri.fsPath).split(path.sep).join('/') || '.';
+      // Persist a project-relative mapping, never copy a machine-specific absolute path into workspace files.
+      if (path.isAbsolute(relative)) throw new Error('A source/history folder on a different drive cannot be stored as a relative workspace mapping in this preview.');
+      await vscode.workspace.getConfiguration('logbook', store.folder.uri).update(setting, relative, vscode.ConfigurationTarget.WorkspaceFolder);
+    } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'Folder mapping unavailable.'); }
+  }
+}
+
+export async function activate(context: vscode.ExtensionContext): Promise<Logbook> {
+  const logbook = new Logbook(context);
+  const view = vscode.window.createTreeView('logbook.recentRuns', { treeDataProvider: logbook, showCollapseAll: true });
+  context.subscriptions.push(logbook, view);
+  await logbook.setup();
+  return logbook;
+}

@@ -5,3 +5,5 @@ dist
 .logbook-details
 test-results
 *.tsbuildinfo
+*.vsix
+packages/vscode/LICENSE
