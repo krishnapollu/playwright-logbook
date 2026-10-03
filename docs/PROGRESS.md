@@ -243,6 +243,19 @@ milestone. Users can review and manually share a `logbook debug` packet later.
   listed `debug`. No registry publish or live model request occurred. New reporter options
   remain deferred; existing trace/capture/redaction configuration covers this milestone.
 
+## VS Code companion (specification 0.2.0)
+
+- [x] LBX Phase 0 repository discovery
+
+  Capability matrix and reader boundary: `docs/VSCODE-DISCOVERY.md`.
+  Done when: `npm run check` passed outside the browser-restricted sandbox:
+  `Test Files 28 passed (28); Tests 131 passed (131)`, including identity,
+  outcomes, incomplete merges, store lifecycle, debug-packet and real Playwright
+  scenario coverage. The sandboxed baseline failed only the Chromium scenario.
+
+- [ ] LBX development-host failure → history → recorded source slice
+- [ ] LBX full 0.1 preview acceptance, clean-profile VSIX smoke and real-session validation
+
 ## Blockers
 
 Human-only release steps remain: replace the LICENSE placeholder, check npm name
