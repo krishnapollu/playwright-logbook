@@ -663,3 +663,16 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   and `Tests 176 passed (176)`. Repackaged final VSIX installed and completed the
   current-stable host journey with real packed-reporter records, exit 0.
   Final package inspection and SHA-256 manifest passed; reporter tarball unchanged.
+
+### Extension README and installation discovery
+
+- [x] Shortened the extension README around installation, reporter setup, run and
+  failure screenshots, history comparison, CI imports and common troubleshooting.
+  Added Marketplace install badges to both READMEs and a short main-README section
+  linking the Marketplace listing and extension guide.
+- Verified the public Marketplace listing still labels extension 0.2.9 **Preview**;
+  retained the preview status and existing platform limitations.
+- Done when output: `npm run check` exited 0; `Test Files 36 passed (36)` and
+  `Tests 176 passed (176)`. The initial sandboxed check failed the browser scenario;
+  the full check passed with browser-launch permissions. README screenshot paths
+  exist and are included in the VSIX allow-list. `git diff --check` passed.

@@ -10,6 +10,7 @@
   <a href="https://www.npmjs.com/package/playwright-logbook"><img src="https://img.shields.io/npm/v/playwright-logbook?logo=npm" alt="npm version"></a>
   <a href="https://github.com/krishnapollu/playwright-logbook/actions/workflows/ci.yml"><img src="https://github.com/krishnapollu/playwright-logbook/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/playwright-logbook"><img src="https://img.shields.io/npm/dm/playwright-logbook?logo=npm" alt="npm downloads"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode"><img src="https://img.shields.io/badge/VS_Code-Install_Logbook-007ACC" alt="Install Playwright Logbook for VS Code"></a>
 </p>
 
 **[Install from npm](https://www.npmjs.com/package/playwright-logbook)** · **[VS Code extension](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode)** · **[View the source on GitHub](https://github.com/krishnapollu/playwright-logbook)**
@@ -59,9 +60,9 @@ npx playwright test
 
 Then open `.logbook/report/index.html`. The report is a single local HTML file and works without a server.
 
-Prefer investigating in your editor? The independently installed [Logbook VS Code
-extension](packages/vscode/README.md) shows run overviews, test evidence and history
-with source navigation. Its README covers preview installation, setup and usage.
+## VS Code extension
+
+Investigate results in your editor with [Playwright Logbook for VS Code](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode). Browse saved runs, inspect failures and retries, compare test history, and jump to source. Install it alongside the reporter; see the [extension README](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/README.md) for setup, screenshots and CI imports.
 
 ## Use it in CI
 
