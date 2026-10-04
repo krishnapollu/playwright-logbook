@@ -133,3 +133,26 @@ it('initializes run overview messaging without saved webview state', async () =>
   clicks[0]!({ target: { closest: () => ({ dataset: { action: 'find' } }) } });
   expect(messages).toEqual([{ type: 'find' }]);
 });
+
+it('keeps full run identities, zero-count statuses and semantic qualifiers in the compact finish', async () => {
+  const root = await fixture(), writer = new FileHistoryStore(root), reader = new HistoryReader(new LocalHistoryFiles(root));
+  const id = 'full-recorded-run-20261004012259214-a492bb37';
+  const passed = { ...testRecord('passed', 'expected'), status: 'passed' as const };
+  const expectedFailure = { ...testRecord('expected', 'expected'), status: 'failed' as const, expectedStatus: 'failed' as const };
+  await writer.saveRun({ ...run(id), tests: [passed, expectedFailure] });
+  const record = await reader.getRun(id), result = record.tests[1]!;
+  const resources = { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' };
+  const history = await reader.getTestHistory(result, { kind: 'all' });
+  const html = renderDetail({ run: record, result, runError: null, history, scope: { kind: 'all' }, anchorRunId: id, storeLabel: '.', sourceLabel: '.', newHistory: false }, resources);
+  expect(html).toContain(id); expect(html).not.toContain('…'); expect(html).toContain('Expected failure');
+  const cards = html.slice(html.indexOf('<ol class="history-list">'), html.indexOf('</ol>'));
+  expect(cards).not.toContain('class="badge'); expect(cards).toContain('role="img"');
+  const overview = renderRunOverview(record, resources);
+  expect(overview).toContain('<strong>2</strong><span>Total</span>');
+  expect(overview).toContain('<strong>1</strong><span>Passed</span>');
+  expect(overview).toContain('<strong>1</strong><span>Failed</span>');
+  for (const label of ['Skipped', 'Timed out', 'Interrupted', 'Unknown']) expect(overview).toContain(`<strong>0</strong><span>${label}</span>`);
+  const workspace = renderAttemptWorkspace([{ retry: 0, status: 'passed', durationMs: 1, errors: [], steps: [{ title: 'done', category: 'test.step', durationMs: 1, depth: 0, failed: false }] }]);
+  expect(workspace).toContain('completed-step'); expect(workspace).toContain('Completed without a recorded error');
+  expect(workspace).not.toContain('>Final<'); expect(workspace).not.toContain('Recorded attempt 1 of');
+});

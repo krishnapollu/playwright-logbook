@@ -409,3 +409,26 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   timeline hierarchy, final-attempt Steps default, recorded stdout/stderr on Output,
   Left-key evidence navigation, and selected Output preservation after Refresh.
   Broader native all-theme/screen-reader and Windows/Linux acceptance remain open.
+
+### VS Code compact finishing pass (preview 0.2.4)
+
+- [x] User-approved finishing task in next-phase spec §14: two-line history with
+  full run IDs, right-aligned timestamps and compact comparison actions; simple
+  status labels; overview totals and zero-count statuses; restrained theme accents,
+  outlined source actions, compact summary context and green completed-step marks.
+  Removed Final pills, attempt ordinals and routine instructional noise.
+- Done when output: `npm run check` exited 0; `Test Files 32 passed (32)` and
+  `Tests 159 passed (159)`. Regression checks cover full IDs, accessible history
+  status markers, expected-outcome qualifiers, zero counts, totals and step marks.
+- `npm run test:vscode -- --vsix` exited 0 against packaged 0.2.4:
+  `VS Code host: failure → scoped history → source, refresh, invalid actions and
+  multi-root isolation passed.` Historical source/diff preserved HEAD/working tree.
+- Actual tab scripts passed output clicks, evidence ArrowLeft, attempt Home/End
+  and saved-state restoration at 360/1100 px in dark/light/high-contrast dark/light
+  theme-token renders without page overflow. Narrow light and wide dark renders
+  were inspected; broader native theme/screen-reader and Windows/Linux checks
+  remain open.
+- Installed 0.2.4 locally and reloaded VS Code. Actual-editor review verified thin
+  history, complete summary/history run IDs, green completed steps and outlined
+  source actions. Run overview showed Total 20, Passed 16, Failed 2, Skipped 2,
+  Timed out 0, Interrupted 0 and Unknown 0. Left the failure investigation open.

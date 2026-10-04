@@ -266,3 +266,26 @@ errors, pinned identities, unknown states and clearly labeled technical disclosu
 Done when: full checks, packaged host journey, tab click/keyboard/refresh checks,
 and narrow/wide visual inspection pass. Broader all-theme native-editor acceptance
 and Windows/Linux validation remain outstanding separately.
+
+## 14. Approved finishing pass
+
+History entries use two compact rows: date/time aligned right, outcome-colored
+markers with accessible labels, full run ID and a small Compare action. Retain
+short exception qualifiers for expected failures, unexpected passes and retry
+recovery. Primary status labels are Passed, Failed and Skipped; timed-out,
+interrupted and unknown records keep their explicit distinct states. Overview
+counts use actual recorded statuses, show all categories at zero, and include
+Total; expected-outcome semantics remain in result details/accessible descriptions.
+Never turn absent metadata into a pass.
+
+Show full run IDs in summary context and comparison. Replace prominent summary
+pills with aligned labeled metadata, remove the Final tab pill and attempt ordinal
+sentence, and remove routine instructions from the main flow. Keep historical
+source alignment and missing-data limitations in technical context and action
+labels/tooltips. Green step checkmarks mean completed without a recorded step
+error, not code coverage. Use a consistent theme accent and neutral surfaces;
+pass/fail color is limited to markers and small borders. Source actions are compact
+outlined navigation controls, not solid native primary buttons.
+
+Done when: full checks, packaged host journey, compact wide/narrow visual checks,
+and attempt/evidence navigation checks pass.

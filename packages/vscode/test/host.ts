@@ -48,7 +48,7 @@ async function journey(): Promise<void> {
   const refreshedErrors = await logbook.getChildren(errorGroup);
   assert.equal(refreshedErrors.find((item) => item.label === selectedError.label)?.id, selectedError.id, 'Run error identity should survive index movement on refresh');
   console.log('Host journey: watcher refresh and stable recorded run errors verified');
-  const failure = results.find((item) => item.kind === 'result' && item.description?.includes('Failed unexpectedly'))!;
+  const failure = results.find((item) => item.kind === 'result' && item.description?.startsWith('Failed ·'))!;
   assert.ok(failure);
   const statusIcon = logbook.getTreeItem(failure).iconPath;
   assert.ok(statusIcon instanceof vscode.ThemeIcon);

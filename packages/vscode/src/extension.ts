@@ -9,7 +9,7 @@ import { escapeHtml, panelAction, renderDetail, renderRunOverview } from './deta
 import { comparisonRef, comparisonSide, matchingPair, renderComparison } from './comparison.js';
 import type { ExecutionRef, ComparisonSide } from './comparison.js';
 import { readHistoricalSource, GitSourceError } from './gitsource.js';
-import { statusIcon, toneIcon, displayTime, shortRunId } from './presentation.js';
+import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQualifier } from './presentation.js';
 import type { HistoricalSource } from './gitsource.js';
 
 interface StoreContext {
@@ -173,7 +173,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       const results = run.tests.filter((test) => node.kind === 'other' ? !isRunIssue(test) : isRunIssue(test));
       const children = results.map((test) => this.register({ id: JSON.stringify([node.folderKey, executionIdentity(run.runId, test)]), kind: 'result', folderKey: node.folderKey,
         runId: run.runId, resultKey: executionIdentity(run.runId, test), label: test.title, statusIcon: statusIcon(test),
-        description: `${outcomeLabel(test) === 'Expected passed' ? 'Passed' : outcomeLabel(test)} · ${test.project || 'Project unknown'}${test.repeatEachIndex === 0 ? '' : ` · Repeat ${test.repeatEachIndex ?? 'unknown'}`}` }));
+        description: `${statusText(test.status)}${outcomeQualifier(test) ? ` · ${outcomeQualifier(test)}` : ''} · ${test.project || 'Project unknown'}${test.repeatEachIndex === 0 ? '' : ` · Repeat ${test.repeatEachIndex ?? 'unknown'}`}` }));
       if (node.kind === 'run') {
         children.unshift(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'overview']), kind: 'overview', folderKey: node.folderKey, runId: run.runId, label: 'Run overview', description: `${run.tests.length} recorded results` }));
         if (run.globalErrors?.length) children.push(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'errors']), kind: 'runErrors', folderKey: node.folderKey, runId: run.runId, label: `Recorded run errors (${run.globalErrors.length})` }));
