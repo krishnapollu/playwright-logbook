@@ -18,7 +18,7 @@ two-folder workspace. It does not use your normal editor profile.
 To package locally, run the following in `packages/vscode`:
 
 ```sh
-npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.6.vsix
+npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.7.vsix
 ```
 
 Then `npm run test:vscode -- --vsix` from the repository root installs the VSIX
@@ -111,3 +111,17 @@ Summary graphics show recorded attempt durations and up to 12 loaded history
 results, oldest to newest. Run overview reuses the HTML report donut geometry and
 duration formatting, with project distributions and up to 100 clickable cases
 (issues first). Find test searches all saved results. Unknowns remain explicit.
+
+All tests appear directly under their run; Run overview uses an accent graph icon.
+Evidence → Logs shows recorded stdout/stderr; enable reporter
+`captureDetails: { output: true }` (or `captureDetails: true`). The default output
+limit is a 2000-character tail per stream; configure `maxOutputLength` as needed.
+Console output and loggers writing to captured test stdout/stderr use this path.
+Browser console, file-only loggers and logs outside a test need explicit producer
+integration and are not automatically collected by the extension.
+
+Evidence → Attachments previews bounded PNG/JPEG images already embedded by the
+reporter (`captureDetails.images`). Configure Playwright screenshot capture too;
+Logbook does not create screenshots. File-only screenshots and videos show recorded
+metadata with an explicit unavailable preview. Video playback and safe local-file
+artifact opening are not implemented. "Recorded" means saved in the run record.

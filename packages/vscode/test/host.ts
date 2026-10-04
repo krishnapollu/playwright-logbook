@@ -27,6 +27,10 @@ async function journey(): Promise<void> {
   assert.ok(brokenChildren.some((item) => item.label.includes('schema 2')), 'Incompatible second root must have its own diagnostic');
   const results = await logbook.getChildren(current);
   assert.ok(results.some((item) => item.kind === 'overview'), 'Run overview is discoverable before tests');
+  assert.ok(!results.some(item => item.label.startsWith('Other results')), 'All tests appear directly under the run');
+  const overviewIcon = logbook.getTreeItem(results.find(item => item.kind === 'overview')!).iconPath;
+  assert.ok(overviewIcon instanceof vscode.ThemeIcon);
+  assert.equal(overviewIcon.id, 'graph'); assert.equal(overviewIcon.color?.id, 'textLink.foreground');
   assert.ok(current.label.includes('00:00:00'), 'Run labels retain seconds');
   console.log('Host journey: compatible runs and isolated incompatible root loaded');
   const errorGroup = results.find((item) => item.kind === 'runErrors')!;

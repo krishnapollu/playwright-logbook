@@ -18,7 +18,7 @@ interface StoreContext {
   runLimit: number; pageSize: number; watchers: vscode.Disposable[]; error: string | null;
 }
 interface TreeNode {
-  id: string; kind: 'folder' | 'run' | 'result' | 'runErrors' | 'runError' | 'other' | 'overview' | 'message' | 'more';
+  id: string; kind: 'folder' | 'run' | 'result' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
   folderKey: string; label: string; description?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string };
 }
 interface Selection {
@@ -149,7 +149,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (this.selection) await this.updatePanel(automatic && (!folderKey || this.selection.folderKey === folderKey));
   }
   getTreeItem(node: TreeNode): vscode.TreeItem {
-    const collapsible = ['folder', 'run', 'runErrors', 'other'].includes(node.kind);
+    const collapsible = ['folder', 'run', 'runErrors'].includes(node.kind);
     const item = new vscode.TreeItem(node.label, collapsible ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
     item.id = node.id; item.description = node.description; item.tooltip = `${node.label}${node.runId ? `\nRun: ${node.runId}` : ''}${node.description ? `\n${node.description}` : ''}`;
     item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
@@ -166,21 +166,20 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       return [...this.stores].map(([key, store]) => this.register({ id: JSON.stringify([key, 'folder']), kind: 'folder', folderKey: key, label: store.folder.name }));
     }
     if (node.kind === 'folder') return this.runNodes(node.folderKey);
-    if (!['run', 'runErrors', 'other'].includes(node.kind) || !node.runId) return [];
+    if (!['run', 'runErrors'].includes(node.kind) || !node.runId) return [];
     const store = this.stores.get(node.folderKey); if (!store) return [];
     try {
       const run = await store.reader.getRun(node.runId, signal);
       if (node.kind === 'runErrors') return (run.globalErrors ?? []).map((error, index) => this.register({ id: JSON.stringify([node.folderKey, run.runId, 'error', recordedErrorKey(error)]), kind: 'runError', folderKey: node.folderKey, runId: run.runId, errorIndex: index, errorKey: recordedErrorKey(error), label: error.message.slice(0, 180) || 'Recorded run error', description: 'Run error · phase unknown', statusIcon: toneIcon('failure') }));
-      const results = run.tests.filter((test) => node.kind === 'other' ? !isRunIssue(test) : isRunIssue(test));
+      const results = run.tests;
       const children = results.map((test) => this.register({ id: JSON.stringify([node.folderKey, executionIdentity(run.runId, test)]), kind: 'result', folderKey: node.folderKey,
         runId: run.runId, resultKey: executionIdentity(run.runId, test), label: test.title, statusIcon: statusIcon(test),
         description: `${statusText(test.status)}${outcomeQualifier(test) ? ` · ${outcomeQualifier(test)}` : ''} · ${test.project || 'Project unknown'}${test.repeatEachIndex === 0 ? '' : ` · Repeat ${test.repeatEachIndex ?? 'unknown'}`}` }));
       if (node.kind === 'run') {
-        children.unshift(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'overview']), kind: 'overview', folderKey: node.folderKey, runId: run.runId, label: 'Run overview', description: `${run.tests.length} recorded results` }));
+        children.unshift(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'overview']), kind: 'overview', folderKey: node.folderKey, runId: run.runId, label: 'Run overview', description: `${run.tests.length} recorded results`, statusIcon: { id: 'graph', color: 'textLink.foreground' } }));
         if (run.globalErrors?.length) children.push(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'errors']), kind: 'runErrors', folderKey: node.folderKey, runId: run.runId, label: `Recorded run errors (${run.globalErrors.length})` }));
         if (run.globalErrors === null) children.push(this.message(node.folderKey, 'Run error metadata unavailable.', `${run.runId}-errors`));
-        if (!results.length) children.push(this.message(node.folderKey, 'No unexpected test failures recorded.', `${run.runId}-no-issues`));
-        if (run.tests.some((test) => !isRunIssue(test))) children.push(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'other']), kind: 'other', folderKey: node.folderKey, runId: run.runId, label: `Other results (${run.tests.filter((test) => !isRunIssue(test)).length})` }));
+        if (!results.length) children.push(this.message(node.folderKey, 'No recorded tests.', `${run.runId}-no-tests`));
         if (run.complete !== true) children.push(this.message(node.folderKey, `${completionLabel(run.complete)}; results may be missing.`, `${run.runId}-completion`));
       }
       return children;

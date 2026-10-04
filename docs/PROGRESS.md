@@ -479,3 +479,28 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   brand mismatch case to its details. Summary showed 8 ms, one recorded retry,
   two 4 ms attempt bars and four loaded historical result marks. Left both views
   open for local use.
+
+### VS Code flat tests, logs and attachment evidence (preview 0.2.7)
+
+- [x] Approved next-phase spec §17: all tests directly under each run in recorded
+  order, accent graph icon for overview, Logs label and Attachments evidence tab.
+  Reader preserves optional attachment metadata. Only bounded embedded PNG/JPEG
+  images render; file-only images, videos and other files get explicit states.
+  Arbitrary URL/file loading and video playback are not implemented.
+- Done when output: `npm run check` exited 0; `Test Files 32 passed (32)` and
+  `Tests 161 passed (161)`. Attachment checks cover retention, escaped labels,
+  hostile URLs, per-image and preview-count limits, missing metadata and videos.
+- `npm run test:vscode -- --vsix` exited 0 against packaged 0.2.7, including flat
+  sidebar and accent graph icon assertions plus the existing failure/history/
+  source, refresh, invalid-action and multi-root isolation journey.
+- Narrow/wide theme-token renders and tab navigation/refresh passed without page
+  overflow. Broader native all-theme/screen-reader and Windows/Linux checks remain
+  outstanding. Screenshot data rendering is regression-tested; no real screenshot
+  was present in the selected external-project API execution.
+- Installed 0.2.7 and reloaded pw-test. Verified 20 flat test rows across Passed,
+  Failed and Skipped. The selected API failure's Attachments tab showed its trace
+  and error-context metadata; Logs showed captured console output and warnings.
+- Existing stdout/stderr capture is documented, including captureDetails.output
+  and maxOutputLength. Framework/browser/file logger adapters remain follow-up
+  design work, pending identification of the user's loggers; no universal logger
+  capture is claimed.

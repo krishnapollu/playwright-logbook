@@ -236,3 +236,9 @@ h4 { font-size: .85em; margin: 12px 0 6px; color: var(--vscode-descriptionForegr
 .case-link { color: var(--accent); background: transparent; border: 0; padding: 0; font-size: inherit; }
 .case-link:hover { background: var(--vscode-list-hoverBackground); text-decoration: underline; }
 @media (max-width: 750px) { .summary-layout, .overview-charts { grid-template-columns: minmax(0, 1fr); } .summary-insights { border-left: 0; border-top: 1px solid var(--border); padding: 10px 0 0; } }
+.attachments-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+.attachment-card { margin: 0; border: 1px solid var(--border); border-radius: 4px; padding: 8px; min-width: 0; }
+.attachment-card figcaption { margin-bottom: 8px; }
+.attachment-card figcaption small, .attachment-card > small { display: block; font-size: .8em; color: var(--vscode-descriptionForeground); }
+.attachment-card img { display: block; width: 100%; max-height: 320px; object-fit: contain; background: var(--surface); border-radius: 3px; margin: 6px 0; }
+.attachment-card code { font-size: .8em; }

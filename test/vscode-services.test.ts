@@ -189,3 +189,24 @@ it('keeps chart counts truthful, bounds overview cases and validates recorded ca
   expect(insights).toContain('Attempt durations unavailable'); expect(insights).toContain('No history available');
   expect(insights).not.toMatch(/NaN|Infinity/);
 });
+
+it('retains recorded attachments and previews only bounded embedded PNG/JPEG images', async () => {
+  const root = await fixture(), writer = new FileHistoryStore(root), reader = new HistoryReader(new LocalHistoryFiles(root));
+  const dataUri = 'data:image/png;base64,iVBORw0KGgo=';
+  const attachment = { name: '<screenshot>', contentType: 'image/png', path: 'test-results/failure.png', inline: false, sizeBytes: 8, dataUri };
+  const test = testRecord('media', 'unexpected');
+  test.attempts = [{ retry: 0, status: 'failed', durationMs: 1, startedAt: '2026-01-01T00:00:00.000Z', workerIndex: 0, errors: [], attachments: [attachment, { ...attachment, name: 'Video', contentType: 'video/webm', dataUri: undefined }, { ...attachment, name: 'Hostile', dataUri: 'https://example.com/image.png' }, { ...attachment, name: 'Large', dataUri: `data:image/png;base64,${'A'.repeat(350000)}` }] }];
+  await writer.saveRun({ ...run('media'), tests: [test] });
+  const record = await reader.getRun('media');
+  expect(record.tests[0]!.attempts![0]!.attachments).toHaveLength(4);
+  const html = renderAttemptWorkspace(record.tests[0]!.attempts);
+  expect(html).toContain('Attachments'); expect(html).toContain('Logs');
+  expect(html).toContain(`src="${dataUri}"`); expect(html).toContain('alt="&lt;screenshot&gt;"');
+  expect(html).not.toContain('src="https:'); expect(html.match(/<img /g)).toHaveLength(1);
+  expect(html).toContain('Video attachment recorded; playback is not available');
+  expect(html).toContain('Screenshot preview unavailable');
+  const missing = renderAttemptWorkspace([{ ...record.tests[0]!.attempts![0]!, attachments: undefined }]);
+  expect(missing).toContain('Attachment metadata not recorded');
+  const bounded = renderAttemptWorkspace([{ ...record.tests[0]!.attempts![0]!, attachments: Array.from({ length: 17 }, () => attachment) }]);
+  expect(bounded.match(/<img /g)).toHaveLength(16); expect(bounded).toContain('Showing the first 16 attachments');
+});

@@ -326,3 +326,29 @@ isolation. Recorded data stays escaped, with no new dependencies.
 Done when: count/unknown/escaping/navigation checks and full checks pass; packaged
 host journey, graphic narrow/wide theme renders and installed-editor walkthrough
 pass. Broader native all-theme and Windows/Linux acceptance remain tracked.
+
+## 17. Approved flat sidebar and recorded attachment evidence
+
+Show all recorded tests directly under each run in recorded order, after Run
+overview. Keep recorded run errors in a separate group. Overview uses an accent
+colored graph icon. Replace the Other results group and failure-only placeholder.
+
+Attempt evidence includes an Attachments tab and names Output as Logs. Preserve
+attachment metadata in the shared reader. Render bounded embedded PNG/JPEG data
+images only (up to 16 previews, at most 350000 URI characters each); do not load
+arbitrary URLs or follow recorded file paths. Missing embeds, file-only images,
+video playback and other file previews have explicit unavailable states. Preserve
+escaped labels, restrictive CSP, accessible tabs and old records lacking metadata.
+"Recorded" describes saved execution data, not a video recording.
+
+Existing logs capture test stdout/stderr when captureDetails.output is enabled,
+with sanitization/redaction and bounded output tails. Console and logger output
+reaching those streams is supported; browser-console and file/custom logger data
+need explicit producer integration. Follow-up structured log capture should use a
+test/attempt-scoped fixture or logger adapter (level, message and source), preserve
+parallel-test attribution and limits, and never globally patch arbitrary loggers.
+Select adapters after identifying the user's framework/logger. This follow-up is
+not claimed as implemented by displaying existing stdout/stderr.
+
+Done when: reader/escaping/attachment-limit tests, full check and packaged sidebar
+journey pass; inspect the installed flat list and evidence tabs locally.
