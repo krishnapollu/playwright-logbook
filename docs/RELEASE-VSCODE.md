@@ -69,16 +69,19 @@ npm exec --yes --package=@vscode/vsce@4.0.0 -- vsce package --no-dependencies --
 ## Publish the verified artifacts
 
 AGENTS.md says "Never run `npm publish`." The maintainer performs publication.
-The npm login preflight returned 401, so sign in before publishing. These commands
-are for the maintainer to run from the repository root after validation:
+The npm login preflight returned 401, so sign in before publishing. From the
+repository root, verify the prepared artifacts and then publish the reporter:
 
 ```sh
+npm run release:publish -- --verify
 npm login
-npm publish ./dist/releases/playwright-logbook-0.3.0.tgz --access public --tag latest
+npm run release:publish
 ```
 
-Publishing the verified tarball avoids rebuilding a different package at release
-time. See the [npm publishing command](https://docs.npmjs.com/cli/v11/commands/npm-publish/).
+The command checks both artifact hashes, versions, npm sign-in and whether the
+reporter version is already published. It then publishes the verified npm tarball
+without rebuilding it. It does **not** upload the VSIX. See the
+[npm publishing command](https://docs.npmjs.com/cli/v11/commands/npm-publish/).
 
 Then upload `packages/vscode/dist/playwright-logbook-vscode-0.2.9.vsix` through
 the publisher management page: **New extension → Visual Studio Code**, select
@@ -95,4 +98,5 @@ See the [official publishing guide](https://code.visualstudio.com/api/working-wi
 - If publication fails, preserve the validated artifacts and diagnose the error.
   Published versions cannot be reused; do not bump versions blindly.
 
-No preparation or validation command above performs npm or Marketplace publication.
+Preparation and `--verify` perform no publication. Only the maintainer-run
+`npm run release:publish` publishes the npm package; Marketplace upload is separate.

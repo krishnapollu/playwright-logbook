@@ -70,7 +70,8 @@
     "shots": "npm run demo && node scripts/make-shots.mjs",
     "check": "npm run lint && npm run typecheck && npm run build && npm test",
     "test:release": "node scripts/release-smoke.mjs",
-    "test:release:views": "node scripts/release-views.mjs"
+    "test:release:views": "node scripts/release-views.mjs",
+    "release:publish": "node scripts/publish-release.mjs"
   },
   "dependencies": {
     "commander": "^14.0.0",
