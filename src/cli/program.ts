@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { BundleError } from '../bundles/archive.js';
+import { exportCommand, importCommand } from './commands/bundles.js';
 import { Command, CommanderError, Option } from 'commander';
 import { LogbookError } from '../errors.js';
 import type { CliContext } from './format.js';
@@ -35,6 +37,12 @@ export function createProgram(deps: CliDeps = {}): Command {
     .option('--quiet', 'suppress progress messages')
     .exitOverride()
     .configureOutput({ writeOut: stdout, writeErr: stderr });
+  program.command('export').description('Export recorded runs as a portable Logbook ZIP bundle')
+    .option('--run <id...>').requiredOption('--out <file>').option('--history <n>').option('--artifacts').option('--project-id <key>')
+    .action(async (options) => done(await exportCommand(context(), options)));
+  program.command('import').description('Ingest distinct bundled runs into existing history (not shard merge)')
+    .requiredOption('--from <file...>').option('--dry-run').option('--project-id <key>')
+    .action(async (options) => done(await importCommand(context(), options)));
   program.command('merge').description('Merge shard files into a run')
     .option('--run-id <id>').option('--from <dir...>').option('--force')
     .option('--no-report').option('--no-history').option('--no-timestamp')
@@ -68,6 +76,7 @@ export async function runCli(args: string[], deps: CliDeps = {}): Promise<number
     return code;
   } catch (error) {
     if (error instanceof CommanderError || error instanceof CliUsageError) return 2;
+    if (error instanceof BundleError) { stderr(`logbook: ${error.message}\n`); return 4; }
     if (error instanceof LogbookError) {
       stderr(`logbook: ${error.message}\n`);
       if (error.code === 'NO_DATA' || error.code === 'RUN_NOT_FOUND' || error.code === 'TEST_NOT_FOUND') return 3;

@@ -35,6 +35,7 @@ export interface InspectedBundle { manifest: BundleManifest; digest: string; fil
 /** Verify structured record paths without attempting to rewrite or infer provenance. */
 export function validatePortableRun(value: unknown): RunRecord {
   const run = readRun(value, 'bundle record');
+  if (!z.string().datetime().safeParse(run.startedAt).success || !z.number().nonnegative().safeParse(run.durationMs).success || run.tests.some(test => !test.testId.trim() || [test.line, test.column, test.durationMs, test.repeatEachIndex].some(value => value < 0) || !Number.isInteger(test.repeatEachIndex) || test.attempts.some(attempt => attempt.retry < 0 || !Number.isInteger(attempt.retry) || attempt.durationMs < 0))) throw new BundleError('Run is not compatible with the history reader.');
   if (!id.safeParse(run.runId).success) throw new BundleError('Invalid run identity.');
   const paths = [run.paths.outputDir, run.project.configFile, ...run.project.projects.map(project => project.testDir), ...run.tests.flatMap(test => [test.file, test.firstError?.location?.file, ...test.attempts.flatMap(attempt => [...attempt.attachments.map(item => item.path), ...attempt.errors.map(error => error.location?.file)])]), ...run.globalErrors.map(error => error.location?.file)];
   for (const file of paths) if (file != null && file !== '.' && !safeBundlePath(file)) throw new BundleError('Run contains an unsafe recorded path.');

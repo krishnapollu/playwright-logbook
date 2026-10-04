@@ -25,6 +25,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./bundles": {
+      "types": "./dist/bundles/index.d.ts",
+      "import": "./dist/bundles/index.js"
     }
   },
   "bin": {

@@ -50,14 +50,14 @@ export async function ingestBundles(root: string, bundles: readonly InspectedBun
       try { const target = path.join(root, 'runs', `${id}.json`); const info = await fs.lstat(target); if (!info.isFile() || info.isSymbolicLink() || info.size > BUNDLE_LIMITS.record) throw new BundleError('Unsafe existing run.'); existing = await store.loadRun(id); }
       catch (error) { if (!isMissing(error)) { result.conflicts.push(id); continue; } }
       if (existing && canonicalJson(existing) !== canonicalJson(run)) { result.conflicts.push(id); continue; }
-      const entry = catalog.runs[id] ?? { bundles: [], artifacts: {} };
+      const entry = Object.hasOwn(catalog.runs, id) ? catalog.runs[id]! : { bundles: [], artifacts: {} };
       const pending = new Map<string, Buffer>(), mappings = { ...entry.artifacts };
       let artifactConflict = false;
       for (const bundle of bundles.filter(bundle => bundle.runs.has(id))) {
         for (const ref of bundle.manifest.artifactReferences.filter(ref => ref.runId === id && ref.file)) {
           const relative = ref.file!, bytes = bundle.files.get(relative)!;
-          if (mappings[ref.recordedPath] && mappings[ref.recordedPath] !== relative) { artifactConflict = true; break; }
-          mappings[ref.recordedPath] = relative; pending.set(relative, bytes);
+          if (Object.hasOwn(mappings, ref.recordedPath) && mappings[ref.recordedPath] !== relative) { artifactConflict = true; break; }
+          Object.defineProperty(mappings, ref.recordedPath, { value: relative, enumerable: true, configurable: true, writable: true }); pending.set(relative, bytes);
           try {
             // Read-only preflight also guards dry-run; never follow child symlinks.
             let target = root;
@@ -75,7 +75,7 @@ export async function ingestBundles(root: string, bundles: readonly InspectedBun
         for (const [relative, bytes] of pending) await atomicStoreFile(root, relative, bytes);
         entry.artifacts = mappings;
         for (const bundle of bundles.filter(bundle => bundle.runs.has(id))) if (!entry.bundles.includes(bundle.digest)) entry.bundles.push(bundle.digest);
-        await options.afterPhase?.('artifacts', id); entry.bundles.sort(compare); catalog.runs[id] = entry;
+        await options.afterPhase?.('artifacts', id); entry.bundles.sort(compare); Object.defineProperty(catalog.runs, id, { value: entry, enumerable: true, configurable: true, writable: true });
         await atomicStoreFile(root, 'imports.json', canonicalJson(catalog)); await options.afterPhase?.('catalog', id);
         await fs.unlink(path.join(root, 'pending-imports', `${id}.json`));
       }

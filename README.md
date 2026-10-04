@@ -148,3 +148,10 @@ Everything stays in your project under `.logbook/`. This release makes no networ
 ## License
 
 MIT
+
+### Portable CI run bundles
+
+Export a saved run as a ZIP and import runs from other machines into existing local
+history. Optional file attachments include screenshots, videos, traces and custom
+logs. See [setup, CI recipe and import behavior](docs/RUN-BUNDLES.md). Bundle support
+is currently available in the repository build, pending a package release.

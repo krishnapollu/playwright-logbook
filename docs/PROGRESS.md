@@ -557,3 +557,17 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Readers may see a complete record before optional artifacts finish; pending
   markers retain incomplete import association until replay. Stale locks require
   explicit removal after verifying that no writer is active; never auto-stolen.
+
+### Portable bundles B3 — CLI and CI
+
+- [x] B3: `export` and `import` commands, public bundles subpath, latest/explicit/
+  earlier-history selection, opt-in reference-driven artifact export, imported
+  evidence re-export, exclusive complete ZIP output and partial-batch diagnostics.
+  Added generated-content matrix, local/central examples and CI upload recipe.
+- Done when: `npm run check` exited 0; `Test Files 35 passed (35)` and
+  `Tests 175 passed (175)`. CLI tests cover deterministic ZIPs, selected history,
+  screenshots/video/trace/context/custom nested logs, missing/symlink escape,
+  oversized evidence, re-export, dry-run, conflicts, project mismatch, duplicates
+  and mixed valid/invalid archives. Golden remains unchanged. `git diff --check`
+  passed. Root package remains unreleased; guide explicitly distinguishes the
+  repository build from an installed version containing this feature.
