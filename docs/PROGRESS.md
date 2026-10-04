@@ -518,3 +518,16 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when output: `npm run check` exited 0; `Test Files 32 passed (32)` and
   `Tests 161 passed (161)`. `git diff --check` passed. Documentation-only task;
   extension behavior/version are unchanged.
+
+### Portable run bundle specification
+
+- [x] Wrote `docs/SPEC-run-bundles-v0.1.md` for core ZIP export, reusable history
+  ingestion and extension import. Specifies blended CI/local history, project
+  binding, immutable identities, duplicates/conflicts, optional artifacts, bounded
+  validation, per-run recovery and shared writer coordination. Distinguishes
+  history ingestion from existing single-run shard merge.
+- Repository discovery identified a record/index interruption gap and missing
+  cross-writer coordination; implementation tasks explicitly address both.
+- Four implementation tasks (B1–B4) have acceptance gates and remain unstarted.
+- Done when output for this documentation task: `npm run check` exited 0;
+  `Test Files 32 passed (32)` and `Tests 161 passed (161)`.
