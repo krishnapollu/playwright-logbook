@@ -69,16 +69,15 @@ npm exec --yes --package=@vscode/vsce@4.0.0 -- vsce package --no-dependencies --
 ## Publish the verified artifacts
 
 AGENTS.md says "Never run `npm publish`." The maintainer performs publication.
-The npm login preflight returned 401, so sign in before publishing. From the
-repository root, verify the prepared artifacts and then publish the reporter:
+The release script reads `npm_pat` from `.env` (or the environment) and passes it
+to npm without writing a login file. From the repository root:
 
 ```sh
 npm run release:publish -- --verify
-npm login
 npm run release:publish
 ```
 
-The command checks both artifact hashes, versions, npm sign-in and whether the
+The command checks both artifact hashes, versions, npm authentication and whether the
 reporter version is already published. It then publishes the verified npm tarball
 without rebuilding it. It does **not** upload the VSIX. See the
 [npm publishing command](https://docs.npmjs.com/cli/v11/commands/npm-publish/).
