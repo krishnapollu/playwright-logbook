@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { afterEach, expect, it } from 'vitest';
 import { permittedRoot, recordedSource, sourcePosition } from '../packages/vscode/src/workspace.js';
-import { renderDetail, panelAction } from '../packages/vscode/src/detail.js';
+import { renderDetail, panelAction, outcomeTone } from '../packages/vscode/src/detail.js';
 import { HistoryReader } from '../src/historyreader.js';
 import { LocalHistoryFiles } from '../src/historyfiles.js';
 import { FileHistoryStore } from '../src/store.js';
@@ -59,4 +59,14 @@ it('displays recorded run errors even with zero tests and discloses unknown phas
   const html = renderDetail({ run: await reader.getRun('global'), result: null, runError: 0, history: { items: [], nextOffset: null, diagnostics: [] }, scope: { kind: 'all' }, anchorRunId: 'global', storeLabel: '.logbook', sourceLabel: '.', newHistory: false }, { css: 'local:css', script: 'local:js', cspSource: 'local:' });
   expect(html).toContain('recorded setup-looking error'); expect(html).toContain('phase unknown');
   expect(html).not.toContain('Open recorded source location');
+});
+
+it('keeps badge emphasis consistent with expected outcomes, retry recovery and unknown metadata', () => {
+  const test = { ...testRecord('opaque', 'unexpected'), status: 'passed' as const, expectedStatus: 'failed' as const };
+  expect(outcomeTone(test)).toBe('failure'); // An unexpected pass remains an issue.
+  expect(outcomeTone({ ...test, status: 'failed', outcome: 'expected' })).toBe('success');
+  expect(outcomeTone({ ...test, expectedStatus: 'passed', outcome: 'flaky' })).toBe('warning');
+  expect(outcomeTone({ ...test, status: 'interrupted' })).toBe('warning');
+  expect(outcomeTone({ ...test, status: 'skipped' })).toBe('neutral');
+  expect(outcomeTone({ ...test, expectedStatus: null })).toBe('neutral');
 });

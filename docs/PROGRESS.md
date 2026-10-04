@@ -282,6 +282,29 @@ milestone. Users can review and manually share a `logbook debug` packet later.
 
 - [ ] LBX full 0.1 preview acceptance, cross-platform/performance/accessibility checks and real-session validation
 
+## VS Code next iteration (specification 0.3.1)
+
+- [x] NEXT readiness and Stage B panel implementation
+
+  Focused reader/navigation checks passed (16 tests), and the isolated desktop
+  journey verified refresh, stable errors, history/source navigation and root isolation.
+  Refreshed result hierarchy, outcome badges, source actions, collapsible provenance,
+  adjacent history and responsive attempt/error areas. Historical working-tree state
+  remains unknown; no report actions or synthetic run numbers were added.
+  Outcome-color coverage includes unexpected passes, expected failures, retry
+  recovery, interruptions, skips and missing metadata.
+
+  Done when: `npm run check`: `Test Files 30 passed (30); Tests 149 passed (149)`.
+  `npm run test:vscode`: `VS Code host: failure → scoped history → source, refresh,
+  invalid actions and multi-root isolation passed.` Headless rendering with light,
+  dark and both high-contrast token sets had no page overflow at 360/1100 px.
+  This rendering check is not full actual-editor accessibility acceptance.
+
+- [ ] NEXT-006 full actual-editor theme, contrast, zoom, keyboard and screen-reader acceptance
+- [ ] Stage C pinned execution comparison
+- [ ] Stage D optional read-only historical Git source and diffs
+- [ ] Stage A retained per-run HTML and embedded report (deferred; not a current gate)
+
 ## Blockers
 
 Human-only release steps remain: replace the LICENSE placeholder, check npm name

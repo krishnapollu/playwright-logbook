@@ -30,6 +30,11 @@ result, read the error and adjacent history, then explicitly choose **Open
 recorded source location**. Expected failures and skips are available under
 Other recorded results. Recorded run errors have their own group.
 
+The result panel uses theme-aware outcome badges and places history alongside the
+error in wide panes, stacking it below attempts in narrow panes. Recorded identity
+and mapping details can be expanded. Historical working-tree state is unknown.
+Embedded HTML reports are deferred until retained per-run copies are available.
+
 Auto-discovery checks `.logbook` directly below each workspace folder. Use
 **Logbook: Select History Folder** for a custom/copied store. Copy `index.jsonl`
 and `runs/`; an HTML report alone is insufficient. Configure **Source Mapping**
