@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { AnalysisSession, analysisAction, analysisPrompt, analysisText, agentKey, renderAnalysis } from '../packages/vscode/src/analysis.js';
+import { AnalysisHandoffError, AnalysisSession, analysisAction, analysisPrompt, analysisText, agentKey, renderAnalysis } from '../packages/vscode/src/analysis.js';
 import type { AnalysisBackend, AnalysisAgent } from '../packages/vscode/src/analysis.js';
 import { renderDetail } from '../packages/vscode/src/detail.js';
 import { executionIdentity } from '../src/historyreader.js';
@@ -10,7 +10,7 @@ const model = { vendor: 'copilot', id: 'model', name: 'Test model' };
 const record = (): ReaderRun => ({ ...run('selected'), tests: [{ ...testRecord('test'), repeatEachIndex: 1 }], globalErrors: [] });
 const entry = (result: ReaderResult, runId = 'previous', branch = 'main'): RecordedExecution => ({ runId, key: executionIdentity(runId, result),
   startedAt: '2025-01-01T00:00:00.000Z', branch, result });
-const backend = (): AnalysisBackend => ({ discover: vi.fn(async () => [model]), request: vi.fn(async () => 'Task copied; paste and submit.') });
+const backend = (): AnalysisBackend => ({ discover: vi.fn(async () => [model]), request: vi.fn(async () => 'Analysis draft ready in chat. Review and submit.') });
 
 it('keeps the selected repeat/project and filters history by exact identity, branch and execution date', () => {
   const run = record(), result = run.tests[0]!;
@@ -54,7 +54,7 @@ it('discovers only on action and refuses unknown agent selections', async () => 
   await session.run('unavailable-agent', 'evidence'); expect(api.request).not.toHaveBeenCalled();
   await session.run(agentKey(model), 'bounded evidence');
   expect(api.request).toHaveBeenCalledWith(model, 'bounded evidence', expect.any(AbortSignal));
-  expect(session.state.status).toBe('complete'); expect(session.state.message).toContain('paste and submit');
+  expect(session.state.status).toBe('complete'); expect(session.state.message).toContain('Review and submit');
 });
 
 it('ignores stale discovery and late handoffs after switching execution', async () => {
@@ -84,4 +84,17 @@ it('renders compact source actions without a dedicated section, dropdown or resp
   expect(renderAnalysis({ status: 'running', agents: [], selected: null, message: '' })).toContain('disabled');
   expect(analysisAction({ type: 'chooseAnalysisAgent', identity: 'selected' })).toEqual({ type: 'chooseAnalysisAgent', identity: 'selected' });
   expect(analysisAction({ type: 'analyze', identity: 1 })).toBeNull();
+});
+
+it('reports actionable handoff failures without exposing unexpected provider errors', async () => {
+  const api = backend(), session = new AnalysisSession(api, () => {});
+  session.reset('execution'); await session.discover();
+  api.request = async () => { throw new AnalysisHandoffError('Choose another analysis agent.'); };
+  await session.run(agentKey(model), 'evidence');
+  expect(session.state.status).toBe('error');
+  expect(session.state.message).toBe('Choose another analysis agent.');
+  api.request = async () => { throw new Error('private provider details'); };
+  await session.run(agentKey(model), 'evidence');
+  expect(session.state.message).toContain('retry Analyze');
+  expect(session.state.message).not.toMatch(/private provider|paste/i);
 });

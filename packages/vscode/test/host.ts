@@ -1,3 +1,5 @@
+import { pasteIntoAgentInput } from '../src/ideanalysis.js';
+import { analysisPrompt } from '../../../src/analyze.js';
 import { createBundle } from '../../../src/bundles/archive.js';
 import { run as makeRun, testRecord } from '../../../test/factories.js';
 import type { ReaderRun } from '../../../src/historyreader.js';
@@ -19,6 +21,7 @@ async function journey(): Promise<void> {
   assert.ok(extension, 'Development extension must be discoverable');
   const logbook = await extension.activate();
   console.log('Host journey: activated');
+  await draftPasteJourney();
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.analyze'), 'Analyze Selected Test must be registered in the editor');
   const roots = await logbook.getChildren();
   assert.equal(roots.length, 2, 'Multi-root grouping should appear');
@@ -169,4 +172,54 @@ async function journey(): Promise<void> {
   });
   assert.ok((await logbook.getChildren()).some((item) => item.runId === 'current'), 'One remaining folder should show runs directly');
   console.log('VS Code host: failure → scoped history → source, refresh, invalid actions and multi-root isolation passed.');
+}
+
+/** Real native clipboard routing into a webview composer; no provider or model involved. */
+async function draftPasteJourney(): Promise<void> {
+  const previousClipboard = await vscode.env.clipboard.readText();
+  const document = await vscode.workspace.openTextDocument({ content: 'Source editor must remain unchanged', language: 'plaintext' });
+  await vscode.window.showTextDocument(document);
+  const panel = vscode.window.createWebviewPanel('logbook-test-draft', 'Unsent analysis draft fixture', vscode.ViewColumn.Active, { enableScripts: true });
+  let ready!: () => void, focused: (() => void) | undefined;
+  const loaded = new Promise<void>(resolve => { ready = resolve; });
+  let received!: (value: { text: string; submits: number }) => void;
+  const inserted = new Promise<{ text: string; submits: number }>(resolve => { received = resolve; });
+  const listener = panel.webview.onDidReceiveMessage((message: unknown) => {
+    if (!message || typeof message !== 'object' || !('type' in message)) return;
+    if (message.type === 'ready') ready();
+    if (message.type === 'focused') focused?.();
+    if (message.type === 'input' && 'text' in message && typeof message.text === 'string' && 'submits' in message && typeof message.submits === 'number') {
+      received({ text: message.text, submits: message.submits });
+    }
+  });
+  const command = vscode.commands.registerCommand('logbook.test.focusAnalysisDraft', async () => {
+    panel.reveal(vscode.ViewColumn.Active, false);
+    await loaded;
+    const acknowledged = new Promise<void>(resolve => { focused = resolve; });
+    await panel.webview.postMessage({ type: 'focus' });
+    await acknowledged;
+  });
+  try {
+    panel.webview.html = `<!doctype html><html><body><form><textarea aria-label="Agent input"></textarea><button>Submit</button></form><script>
+      const api = acquireVsCodeApi(), input = document.querySelector('textarea'); let submits = 0;
+      document.querySelector('form').addEventListener('submit', event => { event.preventDefault(); submits += 1; });
+      input.addEventListener('input', () => api.postMessage({ type: 'input', text: input.value, submits }));
+      window.addEventListener('message', event => { if (event.data.type === 'focus') { input.focus(); api.postMessage({ type: 'focused' }); } });
+      api.postMessage({ type: 'ready' });
+    </script></body></html>`;
+    const result = testRecord('draft-test');
+    const run: ReaderRun = { ...makeRun('draft-run'), tests: [result], globalErrors: [] };
+    const task = analysisPrompt(run, result, [], { kind: 'all' });
+    await pasteIntoAgentInput('logbook.test.focusAnalysisDraft', task, new AbortController().signal);
+    const draft = await inserted;
+    assert.equal(draft.text, task, 'Full prompt and JSON context must be in the composer');
+    assert.equal(draft.submits, 0, 'Native paste must not submit');
+    assert.equal(document.getText(), 'Source editor must remain unchanged', 'Paste must never land in the source editor');
+    console.log('Host journey: full analysis task pasted into webview composer, zero submissions, source editor unchanged');
+  } finally {
+    command.dispose(); listener.dispose(); panel.dispose();
+    await vscode.env.clipboard.writeText(previousClipboard);
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+  }
 }

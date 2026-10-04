@@ -94,10 +94,12 @@ No analysis section, context preview or AI response appears in Logbook; a brief
 editor notification reports the handoff result.
 
 Native VS Code Chat receives an **unsent draft**, including a declared chat
-participant when available. Other agents, including Codex, receive a clipboard
-handoff: Logbook opens their contributed panel when possible and copies the full
-prepared task. **Paste the task, choose the model in your agent, review and submit.**
-The status distinguishes draft placement, panel opening and clipboard-only fallback.
+participant when available. Codex, Antigravity, Amazon Q and Cline use their
+input-focus commands and VS Code's native paste routing to insert the full
+prepared task into the chat composer. **Review the draft, choose the model in
+your agent and submit.** No manual paste is required. For other installed agents,
+automatic insertion requires a supported input integration; unsupported inputs
+report an error so you can choose another agent.
 An installed/active label describes extension activation, not sign-in or model access.
 Logbook does not automatically send a request or read the agent's answer.
 

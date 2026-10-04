@@ -7,6 +7,8 @@ export interface AnalysisState {
   status: 'idle' | 'discovering' | 'ready' | 'running' | 'complete' | 'cancelled' | 'error';
   agents: AnalysisAgent[]; selected: string | null; message: string;
 }
+/** Only controlled, non-sensitive messages are exposed to the user. */
+export class AnalysisHandoffError extends Error {}
 export interface AnalysisBackend {
   discover(): Promise<AnalysisAgent[]>;
   request(agent: AnalysisAgent, prompt: string, signal: AbortSignal): Promise<string>;
@@ -63,9 +65,9 @@ export class AnalysisSession {
       const message = await this.backend.request(agent, prompt, abort.signal);
       if (revision !== this.revision) return;
       this.state = { ...this.state, status: 'complete', message };
-    } catch {
+    } catch (error) {
       if (revision !== this.revision) return;
-      this.state = { ...this.state, status: 'error', message: 'Could not open agent chat. The prepared task may be on the clipboard; paste it into your agent and submit.' };
+      this.state = { ...this.state, status: 'error', message: error instanceof AnalysisHandoffError ? error.message : 'Could not insert the analysis task into agent chat. Open the agent, finish sign-in if needed, then retry Analyze.' };
     } finally { clearTimeout(timeout); if (this.abort === abort) this.abort = undefined; }
     if (revision === this.revision) this.changed();
   }

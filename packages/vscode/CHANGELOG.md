@@ -6,7 +6,7 @@
   Logbook: Analyze Selected Test. Remember the chosen agent per workspace folder;
   use the arrow to change it and editor notifications for handoff status.
 - Discover installed coding-agent chat extensions, hand off an unsent native chat
-  draft or open the agent panel with the prepared task copied for pasting.
+  draft or insert the full task into supported agent inputs for review and submission.
 - Share the terminal analyze evidence builder, including exact execution identity,
   scoped history and accessible attachment references; request answers within 200 words.
 - Keep model selection, submission and responses in the chosen agent's chat.

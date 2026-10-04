@@ -801,3 +801,30 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   Isolated package manifest version 0.2.13; source remains Marketplace 0.2.10.
   Packaged compiled extension/webview bytes match the checked build. No publication,
   new dependencies, golden-test edits or live agent submissions.
+
+### Automatic analysis chat draft insertion
+
+- [x] Replace copy-only agent handoff with full prompt/context insertion into
+  supported chat composers. Native chat uses its unsent draft API; Codex,
+  Antigravity, Amazon Q and Cline use explicit input-focus commands and native
+  VS Code webview paste. User reviews and submits in the agent UI.
+- Dynamic installed-agent discovery remains unchanged. Unsupported integrations
+  fail with an actionable agent-selection message rather than a manual-paste
+  instruction or misleading success. Cancellation prevents late paste; unexpected
+  provider errors are not exposed in notifications.
+- Listed tests: `test/vscode-ide-analysis.test.ts` covers all four command routes,
+  complete multiline evidence, native/participant drafts, removed/forged targets,
+  missing integrations and cancellation during clipboard/focus. Updated
+  `test/vscode-analysis.test.ts` covers controlled and unexpected failure messages.
+  `packages/vscode/test/host.ts` verifies actual native paste into a webview input,
+  exact complete prompt/context, zero submissions and an unchanged source editor.
+- Done when output: `npm run check` exited 0: `Test Files 40 passed (40)`;
+  `Tests 201 passed (201)`. VS Code 1.140.0 development and exact packaged-host
+  journeys exited 0: `Host journey: full analysis task pasted into webview composer,
+  zero submissions, source editor unchanged`. A harmless manual Codex composer
+  probe appeared unsubmitted and was cleared; other agent routes have command
+  contract/unit coverage, without live model requests.
+- Manual build: `packages/vscode/dist/playwright-logbook-vscode-0.2.14-dev.vsix`.
+  Isolated manifest version 0.2.14; source remains Marketplace 0.2.10. Packaged
+  extension/webview bytes match the checked build. No publication, new dependencies,
+  golden-test edits or live agent submissions.
