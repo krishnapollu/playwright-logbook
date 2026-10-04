@@ -2,7 +2,7 @@
   "name": "playwright-logbook-vscode",
   "displayName": "Playwright Logbook",
   "description": "See a Playwright failure's recorded history and open its recorded source location.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "logbook-local-preview",
   "private": true,
   "preview": true,
@@ -26,12 +26,14 @@
     "views": { "logbook": [{ "id": "logbook.recentRuns", "name": "Recent Runs" }] },
     "viewsWelcome": [{ "view": "logbook.recentRuns", "contents": "Logbook reads history collected by its reporter. For CI results, download the Logbook records and select their folder. This preview does not fetch CI records automatically.\n[Select History Folder](command:logbook.selectStore)", "when": "!workspaceFolderCount" }],
     "commands": [
+      { "command": "logbook.findTest", "title": "Logbook: Find Test in Run", "icon": "$(search)" },
       { "command": "logbook.refresh", "title": "Logbook: Refresh History", "icon": "$(refresh)" },
       { "command": "logbook.selectStore", "title": "Logbook: Select History Folder", "icon": "$(folder-opened)" },
       { "command": "logbook.configureSource", "title": "Logbook: Configure Source Mapping" },
       { "command": "logbook.openSource", "title": "Logbook: Open Recorded Source Location" }
     ],
     "menus": { "view/title": [
+      { "command": "logbook.findTest", "when": "view == logbook.recentRuns", "group": "navigation" },
       { "command": "logbook.refresh", "when": "view == logbook.recentRuns", "group": "navigation" },
       { "command": "logbook.selectStore", "when": "view == logbook.recentRuns", "group": "navigation" }
     ] },

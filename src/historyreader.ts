@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { errorRecordSchema, outcomeSchema, runStatusSchema, statusSchema, summarySchema } from './schema.js';
+import { errorRecordSchema, outcomeSchema, runStatusSchema, statusSchema, summarySchema, stepRecordSchema } from './schema.js';
 
 /** Read-only, import-safe reader contract. The extension supplies filesystem access. */
 export interface HistoryFiles {
@@ -13,6 +13,9 @@ const attemptSchema = z.object({
   status: statusSchema.nullable().optional().transform((value) => value ?? null),
   durationMs: numberOrUnknown,
   errors: z.array(errorRecordSchema).nullable().optional().transform((value) => value ?? null),
+  steps: z.array(stepRecordSchema).nullable().optional(),
+  stdout: z.string().nullable().optional(),
+  stderr: z.string().nullable().optional(),
 });
 const resultSchema = z.object({
   testId: z.string().min(1).refine((value) => value.trim().length > 0), project: z.string(), title: z.string(),

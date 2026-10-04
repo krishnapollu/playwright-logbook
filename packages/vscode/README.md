@@ -18,7 +18,7 @@ two-folder workspace. It does not use your normal editor profile.
 To package locally, run the following in `packages/vscode`:
 
 ```sh
-npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.1.vsix
+npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.2.vsix
 ```
 
 Then `npm run test:vscode -- --vsix` from the repository root installs the VSIX
@@ -86,3 +86,11 @@ selections have an explicit unavailable state. A watcher debounces changes by
 Context copy is deferred pending a repeat-aware and scope-aware debug-packet
 adapter. Full preview acceptance, clean-profile installation and real-session
 value validation are tracked separately in `docs/PROGRESS.md`.
+
+The compact result view separates **Open test definition** from **Open failure
+location** (available only with a structured recorded error location). Both open
+the current mapped checkout; recorded locations may have moved. Attempts include
+captured steps and stdout/stderr when present. Absent capture is labeled explicitly.
+Use the sidebar search action to find tests in a recorded run with outcome filters,
+or **Run overview** for saved result totals and run-level errors. Comparisons open
+in the result editor group, lead with a change summary, and collapse provenance.

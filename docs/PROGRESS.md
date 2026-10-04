@@ -361,3 +361,28 @@ availability, publish under the `next` tag, install from the registry, and visua
 review and approve the v2 report and screenshots at 360, 768, and 1440 px in both
 themes and print preview. Remote CI has not run yet. The two external-project dry
 runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
+
+### VS Code compact usability iteration (preview 0.2.2)
+
+- [x] Approved usability task in next-phase spec §12: compact failure/history and
+  comparison views, second-resolution run labels, separate structured failure
+  location, optional attempt steps/stdout/stderr, native run-scoped search/outcome
+  filters, and recorded run overview. HTML association remains deferred.
+- Done when output: `npm run check` exited 0; `Test Files 32 passed (32)` and
+  `Tests 158 passed (158)`. Tests cover captured evidence through the shared reader,
+  escaping/ANSI removal, absent versus empty output, comparison summary ordering
+  and missing metadata, plus initial webview messaging without saved state.
+- `npm run test:vscode -- --vsix` exited 0 against packaged 0.2.2:
+  `Host journey: distinct definition and failure locations verified` and
+  `VS Code host: failure → scoped history → source, refresh, invalid actions and
+  multi-root isolation passed.` Historical source/diff preserved HEAD/working tree.
+- Headless theme-token layout checks (dark/light/high-contrast dark/light) at
+  360/1100 px had no page overflow; failure starts at 273/232 px respectively.
+  Inspected narrow light and wide dark renders. These checks do not replace the
+  separately outstanding actual all-theme/keyboard and Windows/Linux acceptance.
+- Installed final 0.2.2 locally and reloaded `pw-test`. Actual-editor walkthrough
+  verified distinct recent timestamps, side-by-side comparison in the existing
+  editor group, eight captured steps plus stdout/stderr disclosures, saved run
+  counts, and Run overview → failure filter → test search → selected result.
+  Caught and fixed missing saved-state initialization during this walkthrough;
+  its regression test passes in the full check above.

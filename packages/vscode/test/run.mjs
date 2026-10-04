@@ -34,7 +34,7 @@ try {
   git('add', 'tests'); git('commit', '-qm', 'selected'); const selectedCommit = git('rev-parse', 'HEAD');
   const index = [];
   for (const [id, date, line, branch] of [['current', '2026-01-03', 3, 'main'], ['previous', '2026-01-02', 2, 'main'], ['feature', '2026-01-01', 1, 'feature']]) {
-    const run = { ...fixture, runId: id, startedAt: `${date}T00:00:00.000Z`, env: { git: { branch, commit: id === 'current' ? selectedCommit : baselineCommit, repository: null } }, tests: fixture.tests.map((test) => ({ ...test, line })) };
+    const run = { ...fixture, runId: id, startedAt: `${date}T00:00:00.000Z`, env: { git: { branch, commit: id === 'current' ? selectedCommit : baselineCommit, repository: null } }, tests: fixture.tests.map((test) => ({ ...test, line, firstError: test.firstError ? { ...test.firstError, location: { file: test.file, line: 1, column: 1 } } : null })) };
     if (id === 'current') run.globalErrors = [{ message: 'First recorded run error', stack: null, snippet: null, location: null }, { message: 'Selected recorded run error', stack: null, snippet: null, location: null }];
     await fs.writeFile(path.join(first, '.logbook/runs', `${id}.json`), JSON.stringify(run));
     index.push(JSON.stringify({ schemaVersion: 1, runId: id, startedAt: run.startedAt, complete: run.complete, status: run.status, summary: run.summary, branch }));

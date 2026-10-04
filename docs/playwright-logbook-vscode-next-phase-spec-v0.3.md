@@ -226,3 +226,22 @@ Verify supported APIs against the extension's declared minimum VS Code version d
 ## 11. Revision history
 
 - **0.3.1 (2026-10-03):** User approved deferring embedded reports until retained per-run copies are available; current order changed to Readiness → B → C → D. Approved native sidebar guidance, actual recorded run IDs, actionable unavailable states and theme/accessibility refinements. Existing report wireframes remain future references; report acceptance gates are explicitly deferred.
+
+## 12. Approved compact usability iteration
+
+Implement the user-approved actual-editor review findings as one usability task:
+compact result headers/cards/controls; second-resolution UTC timestamps with
+shortened recorded IDs and accessible full IDs; test-definition and structured
+failure-location actions; compact history with a Current marker; pinned comparison
+change summary and errors before collapsed metadata; optional committed-source
+controls in a labeled disclosure; per-attempt recorded steps/stdout/stderr with
+explicit absent versus empty capture; native run-scoped test search with outcome
+filters; and a record-backed run overview showing saved counts and run errors.
+The overview is independent of deferred HTML association. Never derive failure
+locations from snippets or stack text, or claim matching error messages establish
+cause. Preserve safe path mapping, escaped content, unknown metadata, bounded
+record reads, theme tokens, keyboard focus and responsive stacking.
+
+Done when: relevant reader/presentation tests, full check, packaged editor journey,
+and visual narrow/wide layout checks pass. Actual all-theme/keyboard acceptance
+and Windows/Linux checks remain separately tracked.

@@ -30,6 +30,20 @@ export function toneIcon(tone: ReturnType<typeof outcomeTone>): { id: string; co
 }
 export function displayTime(value: string): string {
   // Fixed UTC formatting keeps recorded dates readable without depending on host locale/timezone.
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/.exec(value);
   return match ? `${match[1]} · ${match[2]} UTC` : value;
+}
+
+export function shortRunId(id: string): string {
+  return id.length > 24 ? `${id.slice(0, 12)}…${id.slice(-8)}` : id;
+}
+export function renderAttemptEvidence(attempt: NonNullable<ReaderResult['attempts']>[number]): string {
+  const steps = attempt.steps;
+  if (steps == null && attempt.stdout == null && attempt.stderr == null) return '<p class="source-hint">Steps, stdout and stderr not recorded.</p>';
+  const stepList = steps == null ? '<p>Steps not recorded.</p>' : steps.length ? `<ol class="step-list">${steps.map((step) => `<li class="${step.failed ? 'failed-step' : ''}" data-depth="${step.depth}"><span>${step.failed ? '× ' : ''}${escapeHtml(step.title)}</span><small>${escapeHtml(step.durationMs)} ms${step.failed ? ' · Failed' : ''}</small></li>`).join('')}</ol>` : '<p>No steps recorded.</p>';
+  const logs = (['stdout', 'stderr'] as const).map((channel) => {
+    const value = attempt[channel];
+    return value == null ? `<p>${channel}: not recorded.</p>` : value === '' ? `<p>${channel}: no output recorded.</p>` : `<details class="captured-log"><summary>${channel} · captured output</summary><pre tabindex="0" aria-label="Captured ${channel}">${escapeHtml(stripVTControlCharacters(value))}</pre></details>`;
+  }).join('');
+  return `<details class="steps"><summary>Steps${steps == null ? ' · not recorded' : ` · ${steps.length}`}</summary>${stepList}</details>${logs}`;
 }

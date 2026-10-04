@@ -31,3 +31,15 @@ it('shows metric definitions, unknown historical metadata and safely escaped dia
   expect(html).toContain('Working tree at execution</dt><dd>Unknown'); expect(html).toContain('not a performance-regression claim');
   expect(html).toContain('Baseline'); expect(html).toContain('Selected'); expect(html).toContain('default-src');
 });
+
+it('summarizes known differences before errors and collapses execution metadata', async () => {
+  const a = await fixture('baseline'), b = await fixture('selected');
+  const error = { message: 'Expected: A\nReceived: B', stack: null, snippet: null, location: null };
+  a.tests[0]!.firstError = error; b.tests[0]!.firstError = error;
+  const html = renderComparison(comparisonSide(comparisonRef(a, a.tests[0]!), a), comparisonSide(comparisonRef(b, b.tests[0]!), b), { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' });
+  expect(html).toContain('Same recorded message'); expect(html.indexOf('What changed')).toBeLessThan(html.indexOf('Recorded error</h3>'));
+  expect(html.indexOf('Recorded error</h3>')).toBeLessThan(html.indexOf('<summary>Execution metadata'));
+  b.tests[0]!.firstError = null; b.tests[0]!.attempts = null;
+  const unknown = renderComparison(comparisonSide(comparisonRef(a, a.tests[0]!), a), comparisonSide(comparisonRef(b, b.tests[0]!), b), { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' });
+  expect(unknown).toContain('<dt>Recorded error</dt><dd>Unknown</dd>');
+});

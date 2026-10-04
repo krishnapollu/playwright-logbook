@@ -26,6 +26,8 @@ async function journey(): Promise<void> {
   const brokenChildren = await logbook.getChildren(broken);
   assert.ok(brokenChildren.some((item) => item.label.includes('schema 2')), 'Incompatible second root must have its own diagnostic');
   const results = await logbook.getChildren(current);
+  assert.ok(results.some((item) => item.kind === 'overview'), 'Run overview is discoverable before tests');
+  assert.ok(current.label.includes('00:00:00'), 'Run labels retain seconds');
   console.log('Host journey: compatible runs and isolated incompatible root loaded');
   const errorGroup = results.find((item) => item.kind === 'runErrors')!;
   assert.ok(errorGroup);
@@ -65,6 +67,9 @@ async function journey(): Promise<void> {
   let editor = vscode.window.activeTextEditor;
   assert.ok(editor); assert.equal(editor.selection.start.line, 2, 'Current execution opens its recorded third line');
   assert.ok(editor.document.uri.path.endsWith('/tests/ui.spec.ts'));
+  await vscode.commands.executeCommand('logbook.openFailure');
+  assert.equal(vscode.window.activeTextEditor?.selection.start.line, 0, 'Failure location uses structured error location, separately from test definition');
+  console.log('Host journey: distinct definition and failure locations verified');
   assert.ok(vscode.window.tabGroups.all.flatMap((group) => group.tabs).some((tab) => tab.input instanceof vscode.TabInputWebview), 'Opening source must preserve the adjacent history panel');
   // History contains current/main and previous/main, excluding the feature run by default.
   await vscode.commands.executeCommand('logbook.inspectHistory', 1);

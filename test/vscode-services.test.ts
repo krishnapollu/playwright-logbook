@@ -1,13 +1,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { runInNewContext } from 'node:vm';
 import { afterEach, expect, it } from 'vitest';
 import { permittedRoot, recordedSource, sourcePosition } from '../packages/vscode/src/workspace.js';
-import { renderDetail, panelAction, outcomeTone } from '../packages/vscode/src/detail.js';
+import { renderDetail, renderRunOverview, panelAction, outcomeTone } from '../packages/vscode/src/detail.js';
 import { HistoryReader } from '../src/historyreader.js';
 import { LocalHistoryFiles } from '../src/historyfiles.js';
 import { FileHistoryStore } from '../src/store.js';
-import { errorPresentation, renderError, statusIcon } from '../packages/vscode/src/presentation.js';
+import { errorPresentation, renderError, statusIcon, displayTime, renderAttemptEvidence } from '../packages/vscode/src/presentation.js';
 import { run, testRecord } from './factories.js';
 
 const temporary: string[] = [];
@@ -47,7 +48,7 @@ it('renders failure beside scoped history with escaped hostile content and expli
   const html = renderDetail({ run: current, result: current.tests[0]!, runError: null, history, scope, anchorRunId: 'current', storeLabel: '.logbook', sourceLabel: '.', newHistory: true }, { css: 'local:css', script: 'local:js', cspSource: 'local:' });
   expect(html).toContain('&lt;script&gt;bad()&lt;/script&gt;'); expect(html).not.toContain('<img onerror');
   expect(html).toContain('History alongside this error'); expect(html).toContain('Selected run&#39;s branch: main');
-  expect(html).toContain('Open recorded source location'); expect(html).toContain('Exact historical source alignment is unknown');
+  expect(html).toContain('Open test definition'); expect(html).toContain('Exact historical source alignment is unknown');
   expect(html).toContain('does not establish a first-ever failure'); expect(html).toContain('Shard completeness unknown');
   expect(html).toContain("default-src 'none'"); expect(html).toContain('Selected execution preserved');
   expect(panelAction({ type: 'history', key: history.items[0]!.key }, history.items.map((item) => item.key))).toEqual({ type: 'history', key: history.items[0]!.key });
@@ -59,7 +60,7 @@ it('displays recorded run errors even with zero tests and discloses unknown phas
   await writer.saveRun({ ...run('global'), tests: [], globalErrors: [{ message: 'recorded setup-looking error', stack: null, snippet: null, location: null }] });
   const html = renderDetail({ run: await reader.getRun('global'), result: null, runError: 0, history: { items: [], nextOffset: null, diagnostics: [] }, scope: { kind: 'all' }, anchorRunId: 'global', storeLabel: '.logbook', sourceLabel: '.', newHistory: false }, { css: 'local:css', script: 'local:js', cspSource: 'local:' });
   expect(html).toContain('recorded setup-looking error'); expect(html).toContain('phase unknown');
-  expect(html).not.toContain('Open recorded source location');
+  expect(html).not.toContain('Open test definition');
 });
 
 it('keeps badge emphasis consistent with expected outcomes, retry recovery and unknown metadata', () => {
@@ -94,4 +95,39 @@ it('keeps browser launch output in the full log and gives every result a semanti
   expect(statusIcon({ ...result, outcome: 'expected' })).toEqual({ id: 'pass', color: 'testing.iconPassed' });
   expect(statusIcon({ ...result, outcome: 'flaky' }).color).toBe('testing.iconQueued');
   expect(statusIcon({ ...result, status: 'skipped' }).id).toBe('circle-slash');
+});
+
+it('retains per-attempt captured steps and logs, escapes content, and distinguishes absence from empty capture', async () => {
+  const root = await fixture(), writer = new FileHistoryStore(root), reader = new HistoryReader(new LocalHistoryFiles(root));
+  const test = testRecord('evidence', 'unexpected');
+  test.attempts = [{ retry: 0, status: 'failed', durationMs: 4, startedAt: '2026-01-01T00:00:00.000Z', workerIndex: 0, errors: [], attachments: [] }];
+  test.attempts[0]!.steps = [{ title: '<failed assertion>', category: 'test.step', durationMs: 4, depth: 1, failed: true }];
+  test.attempts[0]!.stdout = '\u001b[31m<logged output>\u001b[0m'; test.attempts[0]!.stderr = '';
+  test.firstError = { message: 'assertion', stack: null, snippet: null, location: { file: 'tests/a.spec.ts', line: 57, column: 3 } };
+  await writer.saveRun({ ...run('captured'), tests: [test] });
+  const record = await reader.getRun('captured'), result = record.tests[0]!;
+  const html = renderAttemptEvidence(result.attempts![0]!);
+  expect(html).toContain('&lt;failed assertion&gt;'); expect(html).toContain('failed-step');
+  expect(html).toContain('&lt;logged output&gt;'); expect(html).not.toContain('\u001b');
+  expect(html).toContain('stderr: no output recorded');
+  expect(renderAttemptEvidence({ retry: 0, status: 'failed', durationMs: 0, errors: [] })).toContain('Steps, stdout and stderr not recorded.');
+  const detail = renderDetail({ run: record, result, runError: null, history: { items: [], nextOffset: null, diagnostics: [] }, scope: { kind: 'all' }, anchorRunId: record.runId, storeLabel: '.', sourceLabel: '.', newHistory: false }, { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' });
+  expect(detail).toContain('Open failure location'); expect(detail).toContain('Open test definition');
+  expect(panelAction({ type: 'openFailure' }, [])).toEqual({ type: 'openFailure' });
+  expect(renderRunOverview(record, { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' })).toContain('Recorded results · 1');
+  expect(displayTime('2026-10-04T01:22:59.423Z')).toBe('2026-10-04 · 01:22:59 UTC');
+});
+
+it('initializes run overview messaging without saved webview state', async () => {
+  const script = await fs.readFile(new URL('../packages/vscode/media/detail.js', import.meta.url), 'utf8');
+  let click: ((event: unknown) => void) | undefined;
+  const messages: unknown[] = [];
+  runInNewContext(script, {
+    acquireVsCodeApi: () => ({ getState: () => undefined, setState: () => {}, postMessage: (message: unknown) => messages.push(message) }),
+    window: { addEventListener: () => {}, scrollTo: () => {} },
+    document: { body: { dataset: {} }, addEventListener: (_name: string, handler: (event: unknown) => void) => { click = handler; } },
+  });
+  expect(click).toBeTypeOf('function');
+  click!({ target: { closest: () => ({ dataset: { action: 'find' } }) } });
+  expect(messages).toEqual([{ type: 'find' }]);
 });
