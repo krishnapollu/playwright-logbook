@@ -1,6 +1,5 @@
 import { compareRecordedStrings } from '../../../src/historyreader.js';
 export { analysisPrompt, analysisText } from '../../../src/analyze.js';
-import { escapeHtml } from './format.js';
 
 export interface AnalysisAgent { id: string; vendor: string; name: string }
 export const agentKey = (agent: AnalysisAgent): string => JSON.stringify([agent.vendor, agent.id]);
@@ -74,15 +73,11 @@ export class AnalysisSession {
 
 export function renderAnalysis(state: AnalysisState): string {
   const busy = state.status === 'running' || state.status === 'discovering';
-  return `${state.agents.length ? `<div class="analysis-choices"><label>Agent<select data-analysis-agent ${busy ? 'disabled' : ''}>${state.agents.map(agent => `<option value="${escapeHtml(agentKey(agent))}" ${agentKey(agent) === state.selected ? 'selected' : ''}>${escapeHtml(agent.name)}</option>`).join('')}</select></label></div>` : ''}
-  <div class="actions"><button data-action="analyze" title="Prepare a task for your agent; you review and submit it" ${busy ? 'disabled' : ''}>Analyze</button>${busy ? '<button class="secondary" data-action="cancelAnalysis">Cancel</button>' : ''}</div>
-  ${state.agents.length ? '<p class="chart-caption">Choose the model in the agent chat. Review and submit there; the answer appears there. Requested answer limit: 200 words.</p>' : ''}
-  <p role="status" data-analysis-status ${state.message ? '' : 'hidden'}>${escapeHtml(state.message)}</p>`;
+  return `<div class="analysis-button-group"><button class="source-link" data-action="analyze" title="Prepare an analysis task for your chosen agent; review and submit in chat" ${busy ? 'disabled' : ''}><span aria-hidden="true">✧</span> Analyze with AI</button><button class="source-link analysis-agent-toggle" data-action="chooseAnalysisAgent" aria-label="Choose analysis agent" title="Change the agent used for this workspace" ${busy ? 'disabled' : ''}>▾</button>${busy ? '<button class="source-link" data-action="cancelAnalysis">Cancel</button>' : ''}</div>`;
 }
 
-export function analysisAction(value: unknown): { type: 'analyze' | 'cancelAnalysis'; identity: string; agent?: string } | null {
+export function analysisAction(value: unknown): { type: 'analyze' | 'chooseAnalysisAgent' | 'cancelAnalysis'; identity: string } | null {
   if (!value || typeof value !== 'object' || !('type' in value) || !('identity' in value) || typeof value.identity !== 'string') return null;
-  if (value.type === 'cancelAnalysis') return { type: value.type, identity: value.identity };
-  if (value.type !== 'analyze' || ('agent' in value && typeof value.agent !== 'string')) return null;
-  return { type: 'analyze', identity: value.identity, ...('agent' in value ? { agent: value.agent as string } : {}) };
+  if (value.type !== 'analyze' && value.type !== 'chooseAnalysisAgent' && value.type !== 'cancelAnalysis') return null;
+  return { type: value.type, identity: value.identity };
 }

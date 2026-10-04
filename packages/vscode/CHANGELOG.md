@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Add a fifth test-level Analyze section and Logbook: Analyze Selected Test command.
+- Add a compact Analyze with AI split button beside test source actions and
+  Logbook: Analyze Selected Test. Remember the chosen agent per workspace folder;
+  use the arrow to change it and editor notifications for handoff status.
 - Discover installed coding-agent chat extensions, hand off an unsent native chat
   draft or open the agent panel with the prepared task copied for pasting.
 - Share the terminal analyze evidence builder, including exact execution identity,

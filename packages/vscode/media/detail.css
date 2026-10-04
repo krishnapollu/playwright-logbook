@@ -242,8 +242,6 @@ h4 { font-size: .85em; margin: 12px 0 6px; color: var(--vscode-descriptionForegr
 .attachment-card figcaption small, .attachment-card > small { display: block; font-size: .8em; color: var(--vscode-descriptionForeground); }
 .attachment-card img { display: block; width: 100%; max-height: 320px; object-fit: contain; background: var(--surface); border-radius: 3px; margin: 6px 0; }
 .attachment-card code { font-size: .8em; }
-.analysis-card { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 5px; }
-.analysis-choices { display: flex; flex-wrap: wrap; gap: 12px; }
-.analysis-choices label { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 100%; }
-.analysis-choices select { max-width: 100%; min-width: 140px; font: inherit; color: var(--vscode-dropdown-foreground); background: var(--vscode-dropdown-background); border: 1px solid var(--vscode-dropdown-border, var(--border)); padding: 4px; }
-.analysis-choices select:focus-visible { outline: 2px solid var(--vscode-focusBorder); }
+.analysis-button-group { display: inline-flex; align-items: center; gap: 0; }
+.analysis-button-group .analysis-agent-toggle { padding-inline: 7px; margin-left: 2px; }
+.analysis-button-group [data-action="cancelAnalysis"] { margin-left: 6px; }

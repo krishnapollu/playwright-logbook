@@ -84,11 +84,14 @@ show metadata; playback and trace viewing are not available in the extension.
 
 ### Analyze a test (development build)
 
-The fifth test-level **Analyze** section initially shows only an **Analyze** button.
-Choose it to discover installed coding-agent chat extensions and native VS Code
-Chat. Select an agent, then choose **Analyze** again. No context preview or AI
-response appears in Logbook. **Logbook: Analyze Selected Test** also offers a
-native agent picker.
+The test summary places **✧ Analyze with AI ▾** beside the source actions.
+On first use, choose an installed coding-agent chat extension or native VS Code
+Chat. Logbook remembers the agent separately for each workspace folder; later
+clicks prepare the task and open that agent directly. The arrow changes the
+saved agent without starting a handoff. Removed agents trigger a new picker.
+**Logbook: Analyze Selected Test** uses the same saved choice.
+No analysis section, context preview or AI response appears in Logbook; a brief
+editor notification reports the handoff result.
 
 Native VS Code Chat receives an **unsent draft**, including a declared chat
 participant when available. Other agents, including Codex, receive a clipboard

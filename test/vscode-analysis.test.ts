@@ -73,16 +73,15 @@ it('ignores stale discovery and late handoffs after switching execution', async 
   expect(session.state.status).toBe('idle'); expect(session.state.message).toBe('');
 });
 
-it('renders only an action, installed agents and escaped status; never context or a response', async () => {
+it('renders compact source actions without a dedicated section, dropdown or response', () => {
   const run = record(), result = run.tests[0]!;
   const html = renderDetail({ run, result, runError: null, history: { items: [], nextOffset: null, diagnostics: [] },
     scope: { kind: 'all' }, anchorRunId: run.runId, storeLabel: '.', sourceLabel: '.', newHistory: false }, { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' });
-  const section = html.slice(html.indexOf('<section class="analysis-card"'), html.indexOf('<footer'));
-  expect(section).toContain('>Analyze</button>'); expect(section).not.toContain('<select'); expect(section).not.toContain('Recorded evidence');
-  const session = new AnalysisSession(backend(), () => {}); await session.discover();
-  const render = renderAnalysis({ ...session.state, agents: [{ ...model, name: '<hostile agent>' }], message: '<unsafe>' });
-  expect(render).toContain('&lt;hostile agent&gt;'); expect(render).toContain('&lt;unsafe&gt;');
-  expect(render).not.toContain('must not appear'); expect(render).not.toContain('data-analysis-assistant');
-  expect(analysisAction({ type: 'analyze', identity: 'selected', agent: agentKey(model) })).toEqual({ type: 'analyze', identity: 'selected', agent: agentKey(model) });
-  expect(analysisAction({ type: 'analyze', identity: 'selected', agent: 1 })).toBeNull();
+  expect(html).toContain('Analyze with AI'); expect(html).toContain('aria-label="Choose analysis agent"');
+  expect(html).not.toContain('analysis-card'); expect(html).not.toContain('data-analysis-agent');
+  const controls = renderAnalysis({ status: 'complete', agents: [model], selected: agentKey(model), message: '<unsafe handoff status>' });
+  expect(controls).not.toContain('unsafe handoff status'); expect(controls).not.toContain('<select');
+  expect(renderAnalysis({ status: 'running', agents: [], selected: null, message: '' })).toContain('disabled');
+  expect(analysisAction({ type: 'chooseAnalysisAgent', identity: 'selected' })).toEqual({ type: 'chooseAnalysisAgent', identity: 'selected' });
+  expect(analysisAction({ type: 'analyze', identity: 1 })).toBeNull();
 });

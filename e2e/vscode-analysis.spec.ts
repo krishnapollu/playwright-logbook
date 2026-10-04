@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { renderDetail } from '../packages/vscode/src/detail.js';
-import { renderAnalysis, agentKey } from '../packages/vscode/src/analysis.js';
+import { renderAnalysis } from '../packages/vscode/src/analysis.js';
 import type { AnalysisState } from '../packages/vscode/src/analysis.js';
 import type { ReaderRun } from '../src/historyreader.js';
 import { run, testRecord } from '../test/factories.js';
 
-test('IDE analysis discovers agents on click and reports handoff without displaying answers', async ({ page }) => {
+test('compact AI actions send picker and handoff messages and ignore stale updates', async ({ page }) => {
   const record: ReaderRun = { ...run('analysis-browser'), tests: [testRecord('test')], globalErrors: [] };
   const identity = 'selected-execution';
   const state: AnalysisState = { status: 'idle', agents: [], selected: null, message: '' };
@@ -29,28 +29,28 @@ test('IDE analysis discovers agents on click and reports handoff without display
     throw new Error(`Unexpected external request: ${url}`);
   });
   await page.setViewportSize({ width: 360, height: 900 }); await page.goto('https://logbook.preview/detail');
-  const section = page.getByRole('region', { name: 'Analyze', exact: true });
-  await expect(section.getByRole('button', { name: 'Analyze', exact: true })).toBeVisible();
-  await expect(section.getByRole('combobox')).toHaveCount(0); expect(messages).toEqual([]);
-  await section.getByRole('button', { name: 'Analyze', exact: true }).click();
+  const actions = page.locator('.source-actions');
+  await expect(page.locator('.analysis-card')).toHaveCount(0);
+  await expect(actions.getByRole('button', { name: 'Analyze with AI', exact: true })).toBeVisible();
+  await expect(actions.getByRole('combobox')).toHaveCount(0); expect(messages).toEqual([]);
+  await actions.getByRole('button', { name: 'Analyze with AI', exact: true }).click();
   await expect.poll(() => messages).toEqual([{ type: 'analyze', identity }]);
-  const agents = [{ vendor: 'copilot', id: 'remote', name: 'Copilot model' }, { vendor: 'local', id: 'small', name: 'Local model' }];
+  await actions.getByRole('button', { name: 'Choose analysis agent', exact: true }).click();
+  await expect.poll(() => messages.at(-1)).toEqual({ type: 'chooseAnalysisAgent', identity });
   const send = async (state: AnalysisState, target = identity) => {
     await page.evaluate(data => window.dispatchEvent(new MessageEvent('message', { data })), { type: 'analysis', identity: target, html: renderAnalysis(state) });
   };
-  const ready: AnalysisState = { ...state, status: 'ready', agents, selected: agentKey(agents[0]!) }; await send(ready);
-  await section.locator('[data-analysis-agent]').selectOption(agentKey(agents[1]!));
-  await section.getByRole('button', { name: 'Analyze', exact: true }).click();
-  await expect.poll(() => messages.at(-1)).toEqual({ type: 'analyze', identity, agent: agentKey(agents[1]!) });
-  const running: AnalysisState = { ...ready, status: 'running', selected: agentKey(agents[1]!), message: 'Opening agent chat…' };
+  const running: AnalysisState = { ...state, status: 'running', message: 'Opening agent chat…' };
   await send(running);
-  await expect(section.getByRole('button', { name: 'Analyze', exact: true })).toBeDisabled();
-  await section.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect.poll(() => messages.at(-1)).toMatchObject({ type: 'cancelAnalysis', identity });
-  await send({ ...running, status: 'complete', message: '<task copied> Paste and submit in chat.' });
-  await expect(section.getByRole('status')).toHaveText('<task copied> Paste and submit in chat.');
-  await expect(section.locator('pre')).toHaveCount(0);
-  await send({ ...running, message: 'Wrong test' }, 'different-execution');
-  await expect(section.getByRole('status')).not.toContainText('Wrong test');
+  await expect(actions.getByRole('button', { name: 'Analyze with AI', exact: true })).toBeDisabled();
+  await expect(actions.getByRole('button', { name: 'Choose analysis agent', exact: true })).toBeDisabled();
+  await send({ ...state, status: 'ready' }, 'different-execution');
+  await expect(actions.getByRole('button', { name: 'Analyze with AI', exact: true })).toBeDisabled();
+  await actions.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect.poll(() => messages.at(-1)).toEqual({ type: 'cancelAnalysis', identity });
+  await send({ ...state, status: 'complete', message: '<task copied> Paste and submit in chat.' });
+  await expect(actions.getByRole('button', { name: 'Analyze with AI', exact: true })).toBeEnabled();
+  await expect(actions.getByRole('status')).toHaveCount(0);
+  await expect(actions.locator('pre')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); expect(failures).toEqual([]);
 });

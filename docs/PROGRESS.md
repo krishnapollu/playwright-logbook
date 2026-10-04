@@ -776,3 +776,28 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   matched the current compiled extension and webview assets. This exact VSIX was
   installed and checked in a disposable editor profile. Authenticated agent panels,
   model selection and generated answers still require the user's manual submission.
+
+### Compact analysis action
+
+- [x] Replaced the fifth Analyze section with an Analyze with AI split button
+  beside test source actions. First use selects an installed agent and hands off
+  immediately; later clicks reuse the saved workspace-folder choice. The arrow
+  changes that choice without handing off a task. Editor notifications report
+  completion/errors; models and responses remain in the agent window.
+- Preferences persist through reloads and isolate folders in multi-root workspaces.
+  Removed agents prompt for a replacement. Cancelled/stale picker results and
+  stale selection changes cannot trigger a late handoff. Existing native-draft
+  and panel/clipboard transports are retained.
+- Listed tests: `test/vscode-agent-choice.test.ts` covers reload persistence,
+  folder isolation, changed/removed agents and cancelled/stale/unlisted choices.
+  Updated `test/vscode-analysis.test.ts` covers compact rendering and validated
+  actions; `e2e/vscode-analysis.spec.ts` exercises the production split button,
+  busy/cancel state, stale updates and narrow layout without inline responses.
+- Done when output: `npm run check` exited 0: `Test Files 40 passed (40)`;
+  `Tests 194 passed (194)`. Browser checks: `7 passed (2.1s)`. Visual review of
+  the actual rendered detail confirmed the action sits alongside source links.
+  VS Code 1.140.0 development and exact packaged-host journeys exited 0.
+- Manual build: `packages/vscode/dist/playwright-logbook-vscode-0.2.13-dev.vsix`.
+  Isolated package manifest version 0.2.13; source remains Marketplace 0.2.10.
+  Packaged compiled extension/webview bytes match the checked build. No publication,
+  new dependencies, golden-test edits or live agent submissions.

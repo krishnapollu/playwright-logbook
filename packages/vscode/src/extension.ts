@@ -1,3 +1,4 @@
+import { AgentChoices } from './agentchoice.js';
 import { analysisSource, analysisAttachments } from '../../../src/analysisfiles.js';
 import { prepareImport } from './bundleimport.js';
 import type { PreparedImport } from './bundleimport.js';
@@ -68,7 +69,10 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   private readonly analysis = new AnalysisSession(ideAnalysisBackend, () => this.postAnalysis());
 
   private postAnalysis(): void {
-    if (!this.disposed) void this.panel?.webview.postMessage({ type: 'analysis', identity: this.analysis.identity, html: renderAnalysis(this.analysis.state) });
+    if (this.disposed) return;
+    void this.panel?.webview.postMessage({ type: 'analysis', identity: this.analysis.identity, html: renderAnalysis(this.analysis.state) });
+    if (this.analysis.state.status === 'complete') void vscode.window.showInformationMessage(this.analysis.state.message);
+    if (this.analysis.state.status === 'error') void vscode.window.showWarningMessage(this.analysis.state.message);
   }
 
   constructor(private readonly extension: vscode.ExtensionContext) {
@@ -336,7 +340,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (analysis) {
       if (!this.analysis.identity || analysis.identity !== this.analysis.identity) return;
       if (analysis.type === 'cancelAnalysis') this.analysis.cancel();
-      else await this.analyze(analysis.agent);
+      else await this.analyzeCommand(analysis.type === 'chooseAnalysisAgent');
       return;
     }
     const action = panelAction(message, this.history.items.map((entry) => entry.key)); const selected = this.selection;
@@ -363,17 +367,35 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     return { css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(),
       script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource };
   }
-  private async analyzeCommand(): Promise<void> {
-    if (!this.selection?.resultKey || !this.analysis.identity) { await vscode.window.showInformationMessage('Select a recorded test in Logbook first.'); return; }
+  private async analyzeCommand(changeAgent = false): Promise<void> {
+    const selection = this.selection;
+    if (!selection?.resultKey || !this.analysis.identity) { await vscode.window.showInformationMessage('Select a recorded test in Logbook first.'); return; }
     if (!vscode.workspace.isTrusted) { await this.analyze(); return; }
     const identity = this.analysis.identity;
     if (this.analysis.state.status === 'running' || this.analysis.state.status === 'discovering') return;
     await this.analysis.discover();
-    if (identity !== this.analysis.identity) return;
+    const generation = this.analysis.generation;
+    if (identity !== this.analysis.identity || this.selection !== selection) return;
     const agents = this.analysis.state.agents;
-    if (!agents.length) return;
-    const agent = await vscode.window.showQuickPick(agents.map(agent => ({ label: agent.name, agent })), { title: 'Analyze · choose agent chat (review and submit there)' });
-    if (agent && identity === this.analysis.identity) await this.analyze(agentKey(agent.agent));
+    if (!agents.length) {
+      if (this.analysis.state.status !== 'error') await vscode.window.showInformationMessage(this.analysis.state.message);
+      return;
+    }
+    const choices = new AgentChoices({ get: key => this.extension.workspaceState.get<string>(key),
+      set: (key, value) => Promise.resolve(this.extension.workspaceState.update(key, value)) }, async (available, remembered) => {
+      const picked = await vscode.window.showQuickPick(available.map(agent => ({ label: agent.name,
+        description: agentKey(agent) === remembered ? 'Current workspace choice' : undefined, agent })),
+      { title: changeAgent ? 'Choose analysis agent for this workspace' : 'Analyze with AI · choose agent', placeHolder: 'Model selection and answers stay in the agent chat' });
+      return picked?.agent;
+    });
+    const chosen = await choices.choose(selection.folderKey, agents, changeAgent,
+      () => identity === this.analysis.identity && this.selection === selection && generation === this.analysis.generation);
+    if (!chosen || identity !== this.analysis.identity || this.selection !== selection || generation !== this.analysis.generation) return;
+    if (changeAgent) {
+      await vscode.window.showInformationMessage(`Analysis agent set to ${chosen.name}.`);
+      return;
+    }
+    await this.analyze(agentKey(chosen));
   }
   private async analyze(key?: string): Promise<void> {
     const selection = this.selection, identity = this.analysis.identity, generation = this.analysis.generation;

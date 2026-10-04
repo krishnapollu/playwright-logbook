@@ -8,11 +8,10 @@ window.addEventListener('scroll', saveState, { passive: true });
 document.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
-  if (button.dataset.action === 'analyze' || button.dataset.action === 'cancelAnalysis') {
+  if (['analyze', 'chooseAnalysisAgent', 'cancelAnalysis'].includes(button.dataset.action)) {
     const section = button.closest('[data-analysis-identity]');
     if (!section) return;
-    const agent = section.querySelector('[data-analysis-agent]')?.value;
-    vscode.postMessage({ type: button.dataset.action, identity: section.dataset.analysisIdentity, ...(agent ? { agent } : {}) });
+    vscode.postMessage({ type: button.dataset.action, identity: section.dataset.analysisIdentity });
     return;
   }
   vscode.postMessage({ type: button.dataset.action, ...(button.dataset.key === undefined ? {} : { key: button.dataset.key }) });
@@ -23,7 +22,7 @@ window.addEventListener('message', event => {
   if (message?.type !== 'analysis' || typeof message.html !== 'string') return;
   const section = document.querySelector('[data-analysis-identity]');
   if (!section || section.dataset.analysisIdentity !== message.identity) return;
-  section.querySelector('[data-analysis-content]').innerHTML = message.html;
+  section.innerHTML = message.html;
 });
 
 function selectTab(button) {
