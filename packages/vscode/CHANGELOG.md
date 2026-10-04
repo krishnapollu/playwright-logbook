@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.10
+
+- Graduate the extension to a regular release and remove the Marketplace Preview flag.
+- Document macOS, Windows and Linux desktop support, backed by packaged-host CI.
+- Simplify the user guide with setup snippets, screenshots and an install badge.
+
 ## 0.2.9
 
 - Add the README's Logbook logo as the extension and Marketplace icon.

@@ -676,3 +676,21 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   `Tests 176 passed (176)`. The initial sandboxed check failed the browser scenario;
   the full check passed with browser-launch permissions. README screenshot paths
   exist and are included in the VSIX allow-list. `git diff --check` passed.
+
+### VS Code regular release 0.2.10
+
+- [x] Graduated the extension from preview at the maintainer's request: removed
+  the manifest flag, bumped the published extension version from 0.2.9 to 0.2.10,
+  updated the user guide and changelog, and changed release instructions to update
+  the existing Marketplace listing on the regular channel. Documented desktop
+  macOS/Windows/Linux support using the previously passing packaged-host CI.
+- Done when output: `npm run check` exited 0; `Test Files 36 passed (36)` and
+  `Tests 176 passed (176)`. Pinned vsce 4.0.0 packaged the 0.2.10 VSIX; inspection
+  confirmed its version, absent Preview/prerelease flags, bundled screenshots and
+  rewritten README image URLs. `npm run test:vscode -- --vsix` exited 0 on a fresh
+  VS Code 1.95.3 download: `VS Code host: failure → scoped history → source,
+  refresh, invalid actions and multi-root isolation passed.` Cached editor copies
+  initially failed before extension installation (1.95.3 framework signature,
+  1.140.0 missing cli.js); the minimum-version cache was preserved and replaced.
+  Current-stable host revalidation remains pending. `git diff --check` passed.
+  No publication occurred; Marketplace upload of the new VSIX remains required.

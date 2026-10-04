@@ -19,9 +19,8 @@ or use:
 code --install-extension krishnapollu.playwright-logbook-vscode
 ```
 
-Requires desktop VS Code **1.95+** and a local project folder. The extension is
-currently marked **Preview**. macOS is validated; Windows/Linux support is
-experimental. Remote SSH, containers and browser-based VS Code are unsupported;
+Requires desktop VS Code **1.95+** and a local project folder on macOS, Windows
+or Linux. Remote SSH, containers and browser-based VS Code are unsupported;
 full screen-reader validation is ongoing.
 
 The extension displays saved results. Install the **reporter** in your Playwright

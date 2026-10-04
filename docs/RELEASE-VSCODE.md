@@ -1,20 +1,25 @@
-# Release 0.3.0 reporter and 0.2.9 VS Code preview
+# Release 0.3.0 reporter and 0.2.10 VS Code extension
 
-The reporter and extension are independently versioned. Publish the reporter
-first so the extension's documented collection and CI export workflow can be
-installed from npm. npm latest 0.2.1 has no bundle runtime or CLI export command.
+The reporter and extension are independently versioned. The documented CI bundle
+workflow requires reporter 0.3.0 or newer. This extension update does not require
+a new reporter release.
 
 ## Prepared release
 
 - Reporter: `playwright-logbook@0.3.0`.
-- Extension: `krishnapollu.playwright-logbook-vscode@0.2.9`.
+- Extension: `krishnapollu.playwright-logbook-vscode@0.2.10`.
 - Marketplace publisher: [krishnapollu](https://marketplace.visualstudio.com/manage/publishers/krishnapollu).
-- Keep the Marketplace **Preview** label. This release uses the ordinary update
-  channel, not `--pre-release`.
-- Desktop local workspaces are the release scope. macOS is validated locally;
-  Windows/Linux are experimental. SSH, containers, virtual workspaces and web
-  VS Code remain unsupported. Full screen-reader review is ongoing; automated
+- Publish as a regular release: the extension manifest omits `preview`. Use the
+  ordinary update channel without `--pre-release`. Version 0.2.10 replaces the
+  published 0.2.9 preview; the Marketplace label changes after upload.
+- Desktop local workspaces on macOS, Windows and Linux are the release scope,
+  backed by the six passing packaged-host CI combinations below. SSH, containers,
+  virtual workspaces and web VS Code remain unsupported. Full screen-reader review is ongoing; automated
   accessibility-tree and keyboard-tab checks do not establish screen-reader support.
+
+The checks recorded below originally validated 0.2.9. Rebuild, inspect and test the
+0.2.10 VSIX before uploading; the older artifact hashes do not validate this package.
+The reporter version stays at 0.3.0 and does not need republishing if already live.
 
 ## Preparation checks
 
@@ -63,7 +68,7 @@ editor profile is untouched.
 Package the extension from `packages/vscode`:
 
 ```sh
-npm exec --yes --package=@vscode/vsce@4.0.0 -- vsce package --no-dependencies --out dist/playwright-logbook-vscode-0.2.9.vsix --baseContentUrl https://github.com/krishnapollu/playwright-logbook/tree/main/packages/vscode --baseImagesUrl https://raw.githubusercontent.com/krishnapollu/playwright-logbook/main/packages/vscode
+npm exec --yes --package=@vscode/vsce@4.0.0 -- vsce package --no-dependencies --out dist/playwright-logbook-vscode-0.2.10.vsix --baseContentUrl https://github.com/krishnapollu/playwright-logbook/tree/main/packages/vscode --baseImagesUrl https://raw.githubusercontent.com/krishnapollu/playwright-logbook/main/packages/vscode
 ```
 
 ## Publish the verified artifacts
@@ -82,10 +87,10 @@ reporter version is already published. It then publishes the verified npm tarbal
 without rebuilding it. It does **not** upload the VSIX. See the
 [npm publishing command](https://docs.npmjs.com/cli/v11/commands/npm-publish/).
 
-Then upload `packages/vscode/dist/playwright-logbook-vscode-0.2.9.vsix` through
-the publisher management page: **New extension → Visual Studio Code**, select
-the VSIX, review the listing and choose **Upload**. Manual upload uses your
-Microsoft sign-in and requires no CLI publishing token.
+Upload `packages/vscode/dist/playwright-logbook-vscode-0.2.10.vsix` through
+the publisher management page: open the existing **Playwright Logbook** extension,
+choose **Update**, select the VSIX and review the listing before upload. Manual
+upload uses your Microsoft sign-in and requires no CLI publishing token.
 See the [official publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension).
 
 ## After publication
