@@ -828,3 +828,23 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   Isolated manifest version 0.2.14; source remains Marketplace 0.2.10. Packaged
   extension/webview bytes match the checked build. No publication, new dependencies,
   golden-test edits or live agent submissions.
+
+### Reporter 0.3.1 and extension 0.2.15 release preparation
+
+- [x] Bump reporter/CLI and extension versions, finalize release notes and public
+  command instructions, refresh production-panel screenshots, and prepare the
+  inspected npm tarball and regular-channel VSIX. Extension 0.2.15 follows the
+  locally tested 0.2.11–0.2.14 development packages.
+- Listed checks: `npm run check`, `npm run test:e2e`, `npm run test:release`,
+  `npm run test:release:views`, and packaged editor journeys at VS Code 1.95.3
+  and 1.140.0. The packed npm smoke now validates the installed analyze command,
+  exact test evidence, response budget, deterministic output and unchanged records.
+- Done when output: full check `Test Files 40 passed (40)` and `Tests 201 passed
+  (201)`; browser `7 passed (3.5s)`; `Packed analyze CLI passed: exact execution,
+  bounded prompt/context, deterministic output and unchanged recording.`;
+  `Packed reporter smoke passed`; panel check passed across four themes/three
+  widths; both final VSIX editor journeys `Exit code: 0`.
+- Artifact inspection: npm 120 files, VSIX 14 files; versions and packaged runtime
+  match the checked build. README image URL rewriting is verified. SHA-256/size
+  manifest stored at `dist/releases/artifacts.json`. No development VSIX is used
+  for publication. GitHub CI and public registry verification follow this commit.

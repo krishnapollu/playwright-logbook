@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- Add `logbook analyze` to prepare a bounded investigation task for an exact test execution, with scoped history, optional current source and verified attachment references.
+- Request concise, evidence-backed answers from the coding agent; the command makes no model request and changes no run records.
+
 ## 0.3.0
 
 - Export portable ZIP run bundles with optional file evidence and earlier history.

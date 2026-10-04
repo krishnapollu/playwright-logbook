@@ -20,8 +20,7 @@ limits, interrupted import recovery and CI recipes.
 
 `debug` does not contact a model or inspect attachment contents. It includes only stored evidence and marks missing capture data as unavailable. Redaction cannot detect every secret; review the output before sharing it with an AI provider or another person.
 
-`analyze` is available in the current repository build, beyond published reporter
-0.3.0. It prints the agent task and evidence; it does not produce an AI diagnosis,
+`analyze` requires reporter 0.3.1 or newer. It prints the agent task and evidence; it does not produce an AI diagnosis,
 invoke an agent or change run records. The default response instruction is at most
 200 words (`--max-words` accepts 50–1000). Response length is requested from the
 agent, not trimmed by Logbook. Ambiguous identities require `--project` and/or
@@ -34,7 +33,7 @@ adds a bounded excerpt from the current test file, labelled as potentially diffe
 from the recorded source. Review the prompt before submitting it. For example:
 
 ```sh
-node dist/cli/bin.js analyze --run latest --test TEST_ID --project chromium --repeat 0 --source --max-words 150
+npx playwright-logbook analyze --run latest --test TEST_ID --project chromium --repeat 0 --source --max-words 150
 ```
 
 `merge` discovers `shard-*.json` under each `--from` directory recursively. If no run ID is specified, it chooses the run with the latest shard end time, breaking ties by run ID. It rejects incompatible shards and duplicate shard numbers unless `--force` is set. An incomplete merge still writes output; `--fail-on-incomplete` then returns 5.

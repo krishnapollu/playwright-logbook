@@ -82,7 +82,7 @@ show metadata; playback and trace viewing are not available in the extension.
 
 *Screenshots show the extension's panels with sample Playwright results.*
 
-### Analyze a test (development build)
+### Analyze a test
 
 The test summary places **✧ Analyze with AI ▾** beside the source actions.
 On first use, choose an installed coding-agent chat extension or native VS Code
@@ -115,8 +115,9 @@ Answers are requested in **at most 200 words**, with cause, supporting reference
 and next steps; the agent writes the concise answer, without client trimming.
 Cancel or change execution to discard an in-progress handoff.
 
-This feature and CLI command are in the repository development build;
-Marketplace 0.2.10 does not include them. Provider integration remains future work.
+Available in extension **0.2.15+**. The terminal `analyze` command requires
+reporter **0.3.1+**; the extension includes its own task builder. Provider
+integration remains future work.
 
 ### Framework loggers
 

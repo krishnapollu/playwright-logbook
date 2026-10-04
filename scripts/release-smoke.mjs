@@ -65,6 +65,23 @@ test('flaky retry succeeds', async ({}, info) => { console.log('retry attempt', 
   const recordPath = path.join(project, 'ci/.logbook/runs/release-second.json');
   const recordFlag = process.argv.indexOf('--record-out');
   if (recordFlag >= 0) await fs.copyFile(recordPath, path.resolve(process.argv[recordFlag + 1]));
+  const selectedRun = JSON.parse(await fs.readFile(recordPath, 'utf8'));
+  const failedTest = selectedRun.tests.find(test => test.outcome === 'unexpected');
+  assert.ok(failedTest);
+  const beforeAnalysis = await fs.readFile(recordPath, 'utf8');
+  const analysisArgs = ['analyze', '--run', 'release-second', '--test', failedTest.testId,
+    '--project', failedTest.project, '--source', '--max-words', '150', '--format', 'json'];
+  const analysisOutput = run(process.execPath, [cli, ...analysisArgs], path.join(project, 'ci'));
+  const analysis = JSON.parse(analysisOutput);
+  assert.equal(analysis.kind, 'analysis-request');
+  assert.equal(analysis.maxWords, 150);
+  assert.ok(analysis.prompt.includes('at most 150 words'));
+  const evidence = JSON.parse(analysis.prompt.split('Recorded evidence (JSON):\n')[1]);
+  assert.equal(evidence.testId, failedTest.testId);
+  assert.ok(analysis.prompt.includes('assertion mismatch'));
+  assert.equal(run(process.execPath, [cli, ...analysisArgs], path.join(project, 'ci')), analysisOutput);
+  assert.equal(await fs.readFile(recordPath, 'utf8'), beforeAnalysis);
+  console.log('Packed analyze CLI passed: exact execution, bounded prompt/context, deterministic output and unchanged recording.');
   const zip = path.join(project, 'ci/investigation.logbook.zip');
   run(process.execPath, [cli, 'export', '--run', 'release-second', '--history', '1', '--artifacts', '--out', 'investigation.logbook.zip', '--project-id', 'release-project'], path.join(project, 'ci'));
   const local = path.join(project, 'local');
@@ -84,7 +101,7 @@ test('flaky retry succeeds', async ({}, info) => { console.log('retry attempt', 
   assert.ok(imported.tests.every(test => !test.file || !path.isAbsolute(test.file)));
   assert.equal(await fs.readFile(path.join(local, 'tests/ui.spec.ts'), 'utf8'), tests);
   await fs.writeFile(path.join(artifacts, 'reporter-smoke.json'), JSON.stringify({ reporterVersion: manifest.version,
-    playwrightVersion: playwright.version, packageEntrypoints: 'passed', collection: 'passed', artifacts: 'passed',
+    playwrightVersion: playwright.version, packageEntrypoints: 'passed', analysisTask: 'passed', collection: 'passed', artifacts: 'passed',
     exportHistory: 'passed', dryRun: 'passed', import: 'passed', duplicates: 'passed', blendedHistory: 'passed', sourcePaths: 'passed' }, null, 2) + '\n');
   console.log('Packed reporter smoke passed: collection → artifact export → reviewed import → blended history and source.');
   if (process.argv.includes('--keep')) await fs.writeFile(path.join(os.tmpdir(), 'logbook-release-workspace.txt'), local);

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.15
 
 - Add a compact Analyze with AI split button beside test source actions and
   Logbook: Analyze Selected Test. Remember the chosen agent per workspace folder;

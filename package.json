@@ -1,6 +1,6 @@
 {
   "name": "playwright-logbook",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A local, self-contained Playwright report with run history and flaky-test tracking",
   "repository": {
     "type": "git",

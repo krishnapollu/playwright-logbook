@@ -18,7 +18,7 @@ describe('buildReportModel', () => {
     const base = sample();
     const before = { ...buildReportModel({ run: run('previous'), summaries: [] }).history[0]!, runId: 'previous', startedAt: '2025-01-01T00:00:00.000Z', durationMs: 1000 };
     const model = buildReportModel({ run: base, summaries: [before], previous: before, comparison });
-    expect(model.generator).toEqual({ name: 'playwright-logbook', version: '0.3.0' });
+    expect(model.generator).toEqual({ name: 'playwright-logbook', version: '0.3.1' });
     expect(model.summaryMarkdown).toBe(renderMarkdownSummary(model));
     expect(model.delta).toMatchObject({ previousRunId: 'previous', failed: 2, flaky: 1, durationPct: 20 });
     expect(model.projects).toEqual([{ name: 'alpha', total: 3, passed: 1, failed: 1, flaky: 1, skipped: 0, durationMs: 60 }]);

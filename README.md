@@ -95,6 +95,7 @@ npx playwright-logbook flaky
 npx playwright-logbook summary --format markdown
 npx playwright-logbook report --run latest
 npx playwright-logbook debug --run latest --test <testId> --format markdown
+npx playwright-logbook analyze --run latest --test <testId> --source --max-words 200
 ```
 
 Use `--root <dir>` when running the CLI outside your Playwright project. See the [CLI reference](docs/CLI.md) for all commands and exit codes.

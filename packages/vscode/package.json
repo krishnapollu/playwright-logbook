@@ -2,7 +2,7 @@
   "name": "playwright-logbook-vscode",
   "displayName": "Playwright Logbook",
   "description": "Browse Playwright runs, investigate failures and retries, compare test history, and import CI results.",
-  "version": "0.2.10",
+  "version": "0.2.15",
   "publisher": "krishnapollu",
   "private": true,
   "license": "MIT",
@@ -69,7 +69,7 @@
     "viewsWelcome": [
       {
         "view": "logbook.recentRuns",
-        "contents": "Open a local workspace folder to inspect Logbook history or import a CI run bundle. The reporter records local runs; Import Run Bundle adds exported CI runs to that same history.\n[Import Run Bundle…](command:logbook.importBundle)",
+        "contents": "Open a local workspace folder to inspect Logbook history or import a CI run bundle. The reporter records local runs; Import Run Bundle adds exported CI runs to that same history.\n[Import Run Bundle\u2026](command:logbook.importBundle)",
         "when": "!workspaceFolderCount"
       }
     ],
@@ -80,7 +80,7 @@
       },
       {
         "command": "logbook.importBundle",
-        "title": "Logbook: Import Run Bundle…",
+        "title": "Logbook: Import Run Bundle\u2026",
         "icon": "$(cloud-download)"
       },
       {
