@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import * as vscode from 'vscode';
 import type { activate } from '../src/extension.js';
 
@@ -76,6 +77,19 @@ async function journey(): Promise<void> {
   await vscode.commands.executeCommand('logbook.openSource');
   assert.equal(vscode.window.activeTextEditor?.selection.start.line, 1, 'Invalid history messages must not change selection');
   console.log('Host journey: source navigation and refresh verified');
+  const mappedRoot = vscode.workspace.workspaceFolders![0]!.uri.fsPath;
+  const gitState = () => execFileSync('git', ['-C', mappedRoot, 'status', '--porcelain'], { encoding: 'utf8' });
+  const head = () => execFileSync('git', ['-C', mappedRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' });
+  const beforeStatus = gitState(), beforeHead = head();
+  await vscode.commands.executeCommand('logbook.viewComparedSource', 'baseline');
+  assert.equal(vscode.window.activeTextEditor?.document.uri.scheme, 'logbook-history');
+  assert.ok(vscode.window.activeTextEditor?.document.getText().startsWith('// mapped source'));
+  await vscode.commands.executeCommand('logbook.diffComparedSource');
+  const diff = vscode.window.tabGroups.all.flatMap((group) => group.tabs).find((tab) => tab.input instanceof vscode.TabInputTextDiff && tab.input.original.scheme === 'logbook-history');
+  assert.ok(diff && diff.input instanceof vscode.TabInputTextDiff);
+  assert.notEqual(diff.input.original.path, diff.input.modified.path, 'Two recorded commits must remain distinct virtual resources');
+  assert.equal(head(), beforeHead); assert.equal(gitState(), beforeStatus);
+  console.log('Host journey: read-only committed source and native diff preserve HEAD and working tree');
   const watchersBeforeRemoval = roots.length;
   assert.equal(watchersBeforeRemoval, 2);
   assert.equal(vscode.workspace.updateWorkspaceFolders(1, 1), true);

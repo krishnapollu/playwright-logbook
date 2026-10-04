@@ -314,7 +314,26 @@ milestone. Users can review and manually share a `logbook debug` packet later.
   Done when: `npm run check`: `Test Files 31 passed (31); Tests 151 passed (151)`.
   `npm run test:vscode` exited 0, including `Host journey: pinned comparison
   survives selection changes and refresh` and the unchanged source/root journey.
-- [ ] Stage D optional read-only historical Git source and diffs
+- [x] Stage D local read-only historical Git source and native diff implementation
+
+  Optional trusted-workspace Git actions resolve recorded commits and paths
+  independently, reject unsafe revisions/paths and historical symlinks, and read
+  bounded blobs through a known system Git executable. Missing commits/files and
+  mappings have nearby explanations; available sides remain usable. Historical
+  virtual documents retain source extensions and contain repository digests rather
+  than machine paths in their URIs. Same-commit and unknown working-tree limitations
+  are explicit. No fetch, checkout or current-file substitution occurs.
+  `test/vscode-gitsource.test.ts` uses two disposable commits, renamed/removed files,
+  a symlink, unsafe input, absent objects and dirty current source.
+
+  Done when: `npm run check`: `Test Files 32 passed (32); Tests 153 passed (153)`.
+  `npm run test:vscode` exited 0, including `Host journey: read-only committed source
+  and native diff preserve HEAD and working tree`.
+  `npm run test:vscode -- --vsix` passed against the installed 0.2.0 bundle in a
+  clean profile. VSIX has nine allow-listed files; code/styles match the verified
+  build. Comparison renders also had no overflow at 360/1100 px in four token sets.
+  Full theme/accessibility and cross-platform validation remain unchecked above;
+  these implementation checks do not establish every NEXT acceptance criterion.
 - [ ] Stage A retained per-run HTML and embedded report (deferred; not a current gate)
 
 ## Blockers

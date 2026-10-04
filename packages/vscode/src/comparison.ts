@@ -2,11 +2,11 @@ import { completionLabel, executionIdentity, outcomeLabel } from '../../../src/h
 import type { ReaderResult, ReaderRun } from '../../../src/historyreader.js';
 import { escapeHtml, outcomeTone } from './detail.js';
 
-export interface ExecutionRef { runId: string; key: string; project: string; testId: string; title: string }
+export interface ExecutionRef { runId: string; key: string; project: string; testId: string; title: string; startedAt: string; branch: string | null; commit: string | null }
 export interface ComparisonSide { ref: ExecutionRef; run: ReaderRun | null; result: ReaderResult | null; unavailable: string | null }
 export function comparisonRef(run: ReaderRun, result: ReaderResult): ExecutionRef {
   if (!result.project.trim() || !result.testId.trim()) throw new Error('Comparison identity unavailable.');
-  return { runId: run.runId, key: executionIdentity(run.runId, result), project: result.project, testId: result.testId, title: result.title };
+  return { runId: run.runId, key: executionIdentity(run.runId, result), project: result.project, testId: result.testId, title: result.title, startedAt: run.startedAt, branch: run.env?.git?.branch ?? null, commit: run.env?.git?.commit ?? null };
 }
 export function comparisonSide(ref: ExecutionRef, run: ReaderRun | null): ComparisonSide {
   const result = run?.tests.find((test) => executionIdentity(run.runId, test) === ref.key && test.project === ref.project && test.testId === ref.testId) ?? null;
@@ -17,7 +17,7 @@ export function matchingPair(a: ExecutionRef, b: ExecutionRef): boolean {
 }
 function renderSide(side: ComparisonSide, label: string): string {
   const { ref, run, result } = side;
-  if (!run || !result) return `<section class="comparison-card"><h2>${label}</h2><p>Run <code>${escapeHtml(ref.runId)}</code></p><p class="note">${escapeHtml(side.unavailable)}</p></section>`;
+  if (!run || !result) return `<section class="comparison-card"><h2>${label}</h2><p>Run <code>${escapeHtml(ref.runId)}</code></p><p>${escapeHtml(ref.startedAt)} · ${escapeHtml(ref.project)}</p><p>Branch: ${escapeHtml(ref.branch)} · Commit: <code>${escapeHtml(ref.commit)}</code></p><p class="note">${escapeHtml(side.unavailable)}</p></section>`;
   const attempts = result.attempts;
   const finalDuration = attempts?.length ? attempts.at(-1)?.durationMs : null;
   const knownNoError = attempts !== null && attempts.length > 0 && attempts.every((attempt) => attempt.errors !== null && attempt.errors.length === 0);

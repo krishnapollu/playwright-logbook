@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 
 const extensionRoot = fileURLToPath(new URL('../', import.meta.url));
+const extensionManifest = JSON.parse(await fs.readFile(path.join(extensionRoot, 'package.json'), 'utf8'));
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-editor-host-'));
 const fixture = JSON.parse(await fs.readFile(path.join(repository, 'test/fixtures/vscode/recorded-playwright.json'), 'utf8'));
@@ -19,9 +20,21 @@ try {
     await fs.mkdir(path.dirname(path.join(first, file)), { recursive: true });
     await fs.writeFile(path.join(first, file), '// mapped source\n// earlier recorded line\n// current recorded line\n');
   }
+  const git = (...args) => {
+    const result = spawnSync('git', ['-C', first, ...args], { encoding: 'utf8', env: { ...process.env,
+      GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 'Fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+      GIT_COMMITTER_NAME: 'Fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
+      GIT_AUTHOR_DATE: '2026-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z' } });
+    if (result.status !== 0) throw new Error('Disposable Git fixture setup failed.');
+    return result.stdout.trim();
+  };
+  git('init', '-q'); git('add', 'tests'); git('commit', '-qm', 'baseline');
+  const baselineCommit = git('rev-parse', 'HEAD');
+  for (const file of new Set(fixture.tests.map((test) => test.file))) await fs.writeFile(path.join(first, file), '// changed committed source\n// earlier recorded line\n// current recorded line\n');
+  git('add', 'tests'); git('commit', '-qm', 'selected'); const selectedCommit = git('rev-parse', 'HEAD');
   const index = [];
   for (const [id, date, line, branch] of [['current', '2026-01-03', 3, 'main'], ['previous', '2026-01-02', 2, 'main'], ['feature', '2026-01-01', 1, 'feature']]) {
-    const run = { ...fixture, runId: id, startedAt: `${date}T00:00:00.000Z`, env: { git: { branch, commit: null, repository: null } }, tests: fixture.tests.map((test) => ({ ...test, line })) };
+    const run = { ...fixture, runId: id, startedAt: `${date}T00:00:00.000Z`, env: { git: { branch, commit: id === 'current' ? selectedCommit : baselineCommit, repository: null } }, tests: fixture.tests.map((test) => ({ ...test, line })) };
     if (id === 'current') run.globalErrors = [{ message: 'First recorded run error', stack: null, snippet: null, location: null }, { message: 'Selected recorded run error', stack: null, snippet: null, location: null }];
     await fs.writeFile(path.join(first, '.logbook/runs', `${id}.json`), JSON.stringify(run));
     index.push(JSON.stringify({ schemaVersion: 1, runId: id, startedAt: run.startedAt, complete: run.complete, status: run.status, summary: run.summary, branch }));
@@ -37,11 +50,11 @@ try {
   if (process.argv.includes('--vsix')) {
     executable = await downloadAndUnzipVSCode({ version: '1.95.3', cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries') });
     const [cli, ...args] = resolveCliArgsFromVSCodeExecutablePath(executable, { reuseMachineInstall: true });
-    const install = spawnSync(cli, [...args, '--install-extension', path.join(extensionRoot, 'dist/playwright-logbook-vscode-0.1.0.vsix'), '--user-data-dir', path.join(directory, 'profile'), '--extensions-dir', path.join(directory, 'extensions')], {
+    const install = spawnSync(cli, [...args, '--install-extension', path.join(extensionRoot, `dist/playwright-logbook-vscode-${extensionManifest.version}.vsix`), '--user-data-dir', path.join(directory, 'profile'), '--extensions-dir', path.join(directory, 'extensions')], {
       encoding: 'utf8', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 60_000,
     });
     if (install.status !== 0) throw new Error(`Clean-profile VSIX installation failed: ${install.stderr}`);
-    developmentPath = path.join(directory, 'extensions', 'logbook-local-preview.playwright-logbook-vscode-0.1.0');
+    developmentPath = path.join(directory, 'extensions', `logbook-local-preview.playwright-logbook-vscode-${extensionManifest.version}`);
     await fs.access(path.join(developmentPath, 'dist/extension.cjs'));
   }
   await runTests({ version: '1.95.3', vscodeExecutablePath: executable, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries'), extensionDevelopmentPath: developmentPath, extensionTestsPath,

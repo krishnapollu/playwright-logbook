@@ -8,6 +8,8 @@ import { permittedRoot, recordedSource, sourcePosition } from './workspace.js';
 import { escapeHtml, panelAction, renderDetail } from './detail.js';
 import { comparisonRef, comparisonSide, matchingPair, renderComparison } from './comparison.js';
 import type { ExecutionRef, ComparisonSide } from './comparison.js';
+import { readHistoricalSource, GitSourceError } from './gitsource.js';
+import type { HistoricalSource } from './gitsource.js';
 
 interface StoreContext {
   folder: vscode.WorkspaceFolder; reader: HistoryReader; storeRoot: string; sourceRoot: string;
@@ -44,6 +46,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private comparisonPanel: vscode.WebviewPanel | undefined;
+  private readonly historicalDocuments = new Map<string, string>();
   private pair: { storeRoot: string; folderKey: string; baseline: ExecutionRef; selected: ExecutionRef; selection: Selection } | undefined;
   private selection: Selection | undefined;
   private history: Page<RecordedExecution> = { items: [], nextOffset: null, diagnostics: [] };
@@ -55,6 +58,10 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
 
   constructor(private readonly extension: vscode.ExtensionContext) {
     this.disposables.push(
+      vscode.workspace.registerTextDocumentContentProvider('logbook-history', { provideTextDocumentContent: (uri) => this.historicalDocuments.get(uri.toString()) ?? 'Historical source is no longer available.' }),
+      vscode.workspace.onDidCloseTextDocument((document) => { if (document.uri.scheme === 'logbook-history') this.historicalDocuments.delete(document.uri.toString()); }),
+      vscode.commands.registerCommand('logbook.viewComparedSource', (side: unknown) => this.handleComparison({ type: side === 'baseline' ? 'baselineSource' : side === 'selected' ? 'selectedSource' : 'invalid' })),
+      vscode.commands.registerCommand('logbook.diffComparedSource', () => this.handleComparison({ type: 'diff' })),
       vscode.commands.registerCommand('logbook.refresh', () => this.refresh()),
       vscode.commands.registerCommand('logbook.selectStore', () => this.selectFolder('historyPath')),
       vscode.commands.registerCommand('logbook.configureSource', () => this.selectFolder('sourceRoot')),
@@ -81,7 +88,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     this.disposed = true; this.setupGeneration += 1; this.operation.abort();
     for (const timer of this.timers.values()) clearTimeout(timer);
     for (const store of this.stores.values()) store.watchers.forEach((watcher) => watcher.dispose());
-    this.disposables.forEach((item) => item.dispose()); this.panel?.dispose(); this.comparisonPanel?.dispose(); this.changed.dispose();
+    this.historicalDocuments.clear(); this.disposables.forEach((item) => item.dispose()); this.panel?.dispose(); this.comparisonPanel?.dispose(); this.changed.dispose();
   }
   private folderKey(folder: vscode.WorkspaceFolder): string { return folder.uri.toString(); }
   private register(node: TreeNode): TreeNode { this.nodes.set(node.id, node); return node; }
@@ -313,14 +320,65 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (!pair || !panel) return;
     const [baseline, selected] = await Promise.all([this.loadComparisonSide(pair.baseline, pair.folderKey), this.loadComparisonSide(pair.selected, pair.folderKey)]);
     if (this.pair !== pair || this.comparisonPanel !== panel || this.generation !== generation || this.disposed) return;
-    panel.webview.html = renderComparison(baseline, selected, this.resources(panel));
+    const inspectSource = async (ref: ExecutionRef): Promise<{ source: HistoricalSource | null; reason: string | null }> => {
+      try { return { source: await this.historicalSide(ref), reason: null }; }
+      catch (error) { return { source: null, reason: error instanceof GitSourceError ? error.message : 'Historical source unavailable; verify repository and source mapping.' }; }
+    };
+    const [baselineGit, selectedGit] = await Promise.all([inspectSource(pair.baseline), inspectSource(pair.selected)]);
+    if (this.pair !== pair || this.comparisonPanel !== panel || this.generation !== generation || this.disposed) return;
+    const sourceAction = (side: 'baseline' | 'selected', available: typeof baselineGit) => `<div><button class="secondary" data-action="${side}Source" ${available.source ? '' : 'disabled'}>View ${side} source at recorded commit</button>${available.reason ? `<p class="note">${side === 'baseline' ? 'Baseline' : 'Selected'}: ${escapeHtml(available.reason)}</p>` : ''}</div>`;
+    const sameCommit = baselineGit.source && selectedGit.source && baselineGit.source.commit === selectedGit.source.commit;
+    const gitActions = `<section><h2>Committed source</h2><p class="note">Committed content may differ from executed source; working-tree state at execution is unknown. Repository mapping does not prove recorded provenance.</p><div class="actions">${sourceAction('baseline', baselineGit)}${sourceAction('selected', selectedGit)}</div><div class="actions"><button data-action="diff" ${baselineGit.source && selectedGit.source ? '' : 'disabled'}>Compare test file between runs</button><button class="secondary" data-action="configureSource">Configure Source Mapping</button></div>${sameCommit ? '<p class="note">Same recorded commit: no committed revision change. Dirty or untracked changes at execution remain unknown.</p>' : ''}${baselineGit.source && selectedGit.source ? '' : '<p class="note">The file diff requires both historical files; an available side can still be opened independently.</p>'}<p>Git actions use local objects only; no fetch or checkout occurs.</p></section>`;
+    panel.webview.html = renderComparison(baseline, selected, this.resources(panel), gitActions);
+  }
+  private historicalUri(source: HistoricalSource): vscode.Uri {
+    // URIs expose a repository digest, never a machine path. Content is session-only.
+    const uri = vscode.Uri.from({ scheme: 'logbook-history', authority: source.repositoryKey, path: `/${source.commit}/${source.file}` });
+    if (!this.historicalDocuments.has(uri.toString()) && this.historicalDocuments.size >= 16) throw new GitSourceError('Historical document limit reached. Close a historical source tab and try again.');
+    this.historicalDocuments.set(uri.toString(), source.text);
+    return uri;
+  }
+  private async historicalSide(ref: ExecutionRef): Promise<HistoricalSource> {
+    const pair = this.pair, store = pair ? this.stores.get(pair.folderKey) : undefined;
+    if (!pair || !store || store.storeRoot !== pair.storeRoot) throw new GitSourceError('Pinned source mapping unavailable. Configure Source Mapping.');
+    const side = await this.loadComparisonSide(ref, pair.folderKey);
+    if (!side.result || !side.run) throw new GitSourceError('Pinned execution unavailable.');
+    const roots = await this.roots(store.folder);
+    return readHistoricalSource(roots.sourceRoot, side.result.file, side.run.env?.git?.commit ?? null, vscode.workspace.isTrusted);
   }
   private async handleComparison(message: unknown): Promise<void> {
-    if (!message || typeof message !== 'object' || !('type' in message) || message.type !== 'back' || !this.pair) return;
-    this.selection = { ...this.pair.selection };
-    this.generation += 1;
-    await this.updatePanel();
-    this.panel?.reveal(vscode.ViewColumn.Two);
+    if (!message || typeof message !== 'object' || !('type' in message) || typeof message.type !== 'string' || !this.pair) return;
+    const pair = this.pair;
+    if (message.type === 'back') {
+      this.selection = { ...pair.selection }; this.generation += 1;
+      await this.updatePanel(); this.panel?.reveal(vscode.ViewColumn.Two); return;
+    }
+    if (message.type === 'configureSource') {
+      this.selection = { ...pair.selection }; await this.selectFolder('sourceRoot'); return;
+    }
+    if (!['baselineSource', 'selectedSource', 'diff'].includes(message.type)) return;
+    try {
+      if (message.type === 'diff') {
+        const baseline = await this.historicalSide(pair.baseline), selected = await this.historicalSide(pair.selected);
+        if (this.pair !== pair) return;
+        await vscode.commands.executeCommand('vscode.diff', this.historicalUri(baseline), this.historicalUri(selected), `Committed test source: ${pair.baseline.runId} ↔ ${pair.selected.runId}${baseline.commit === selected.commit ? ' (same commit)' : ''}`, { preview: false });
+      } else {
+        const ref = message.type === 'baselineSource' ? pair.baseline : pair.selected;
+        const source = await this.historicalSide(ref);
+        if (this.pair !== pair) return;
+        const document = await vscode.workspace.openTextDocument(this.historicalUri(source));
+        await vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.One, preview: false });
+      }
+    } catch (error) {
+      if (this.pair !== pair) return;
+      const reason = error instanceof GitSourceError ? error.message : 'Historical source unavailable; verify repository and source mapping.';
+      const panel = this.comparisonPanel;
+      if (panel) {
+        // Explain unavailability alongside the still-usable actions, without replacing the pair.
+        panel.webview.html = panel.webview.html.replace('<h2>Committed source</h2>', `<h2>Committed source</h2><p role="status" class="note">${escapeHtml(reason)}</p>`);
+        panel.reveal(vscode.ViewColumn.Two);
+      }
+    }
   }
   private async openSource(): Promise<void> {
     const selected = this.selection;

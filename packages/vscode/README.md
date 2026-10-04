@@ -18,7 +18,7 @@ two-folder workspace. It does not use your normal editor profile.
 To package locally, run the following in `packages/vscode`:
 
 ```sh
-npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.1.0.vsix
+npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.0.vsix
 ```
 
 Then `npm run test:vscode -- --vsix` from the repository root installs the VSIX
@@ -37,6 +37,19 @@ Choose **Compare with selected** on another execution in history to pin a baseli
 and selected pair. Comparison names the final-attempt duration metric and remains
 available without local Git. Refresh preserves the pair; missing records are not
 replaced. **Back to selected result** returns to the pinned selected execution.
+Comparison also offers **View baseline/selected source at recorded commit** and
+**Compare test file between runs**. Locally available revisions open as read-only
+virtual documents; diffs use both recorded paths. Each side explains unavailable
+commits, files, mappings or Git independently. Same-commit comparisons are labeled.
+These actions require Workspace Trust and never fetch, checkout or modify files.
+Committed content may differ from executed source; historical working-tree state
+remains unknown. Mapping a repository does not prove recorded provenance.
+
+Git reads use a known system executable (`/usr/bin/git` on macOS/Linux, the standard
+Program Files Git installation on Windows), bounded output and a five-second
+process timeout. Historical text is limited to 2 MiB per read and 16 session
+resources; close source tabs to release resources. Alternate Git installations
+and Windows/Linux behavior still require validation before support is advertised.
 Embedded HTML reports are deferred until retained per-run copies are available.
 
 Auto-discovery checks `.logbook` directly below each workspace folder. Use
