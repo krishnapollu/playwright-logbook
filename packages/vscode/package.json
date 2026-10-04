@@ -1,12 +1,28 @@
 {
   "name": "playwright-logbook-vscode",
   "displayName": "Playwright Logbook",
-  "description": "See a Playwright failure's recorded history and open its recorded source location.",
-  "version": "0.2.8",
-  "publisher": "logbook-local-preview",
+  "description": "Browse Playwright runs, investigate failures and retries, compare test history, and import CI results.",
+  "version": "0.2.9",
+  "publisher": "krishnapollu",
   "private": true,
   "preview": true,
   "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0F3D2E",
+    "theme": "dark"
+  },
+  "keywords": [
+    "playwright",
+    "test history",
+    "test results",
+    "flaky tests",
+    "logbook"
+  ],
+  "homepage": "https://github.com/krishnapollu/playwright-logbook/tree/main/packages/vscode#readme",
+  "bugs": {
+    "url": "https://github.com/krishnapollu/playwright-logbook/issues"
+  },
   "type": "module",
   "engines": {
     "vscode": "^1.95.0"
@@ -54,14 +70,14 @@
     "viewsWelcome": [
       {
         "view": "logbook.recentRuns",
-        "contents": "Open a local workspace folder to inspect Logbook history or import a CI run bundle. The reporter records local runs; Import Run Bundle adds exported CI runs to that same history.\n[Import Run Bundle\u2026](command:logbook.importBundle)",
+        "contents": "Open a local workspace folder to inspect Logbook history or import a CI run bundle. The reporter records local runs; Import Run Bundle adds exported CI runs to that same history.\n[Import Run Bundle…](command:logbook.importBundle)",
         "when": "!workspaceFolderCount"
       }
     ],
     "commands": [
       {
         "command": "logbook.importBundle",
-        "title": "Logbook: Import Run Bundle\u2026",
+        "title": "Logbook: Import Run Bundle…",
         "icon": "$(cloud-download)"
       },
       {

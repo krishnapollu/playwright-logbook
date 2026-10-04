@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased — v3 reporter/debugging milestone
+## 0.3.0
+
+- Export portable ZIP run bundles with optional file evidence and earlier history.
+- Import CI and local runs into shared history with project binding, bounded
+  validation, duplicate/conflict checks, cancellation and interrupted-write repair.
+- Expose import-safe `history-reader` and `bundles` entrypoints for integrations.
+- Coordinate history writers to protect concurrent collection and imports.
 
 - Verified attempt-level trace and attachment availability; missing artifacts no longer appear as working links. Protected ordinary run/shard writes against different-content run-ID collisions.
 - Added local, bounded debug-context preview/copy/export and evidence-linked debugging clues. These are not AI diagnoses and make no model or telemetry request.
@@ -18,5 +24,3 @@
 - Shard merge, file-backed history, flaky analysis, summaries and self-contained HTML reports.
 - CLI commands: `merge`, `report`, `history`, `flaky` and `summary`.
 - Sample project and golden integration coverage.
-
-This is the planned 0.1.0 feature set; publishing remains a human-only step.

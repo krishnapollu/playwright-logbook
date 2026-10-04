@@ -15,7 +15,7 @@ export async function run(): Promise<void> {
 }
 
 async function journey(): Promise<void> {
-  const extension = vscode.extensions.getExtension<Awaited<ReturnType<typeof activate>>>('logbook-local-preview.playwright-logbook-vscode');
+  const extension = vscode.extensions.getExtension<Awaited<ReturnType<typeof activate>>>('krishnapollu.playwright-logbook-vscode');
   assert.ok(extension, 'Development extension must be discoverable');
   const logbook = await extension.activate();
   console.log('Host journey: activated');

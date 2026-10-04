@@ -1,0 +1,46 @@
+name: Release artifacts
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  extension:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        vscode: ['1.95.3', stable]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Package extension
+        working-directory: packages/vscode
+        shell: bash
+        run: |
+          version=$(node -p "JSON.parse(require('fs').readFileSync('package.json')).version")
+          npm exec --yes --package=@vscode/vsce@4.0.0 -- vsce package --no-dependencies --out "dist/playwright-logbook-vscode-$version.vsix" --baseContentUrl https://github.com/krishnapollu/playwright-logbook/tree/main/packages/vscode --baseImagesUrl https://raw.githubusercontent.com/krishnapollu/playwright-logbook/main/packages/vscode
+      - name: Packaged editor journey (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:vscode -- --vsix --vscode-version ${{ matrix.vscode }}
+      - name: Packaged editor journey (macOS/Windows)
+        if: runner.os != 'Linux'
+        run: npm run test:vscode -- --vsix --vscode-version ${{ matrix.vscode }}
+  reporter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run test:release
+      - run: npm run test:release:views

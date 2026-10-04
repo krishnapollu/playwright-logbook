@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="media/icon.png" alt="Playwright Logbook logo" width="128">
+</p>
+
 # Playwright Logbook for VS Code
 
 Investigate Playwright results without leaving your editor. Logbook brings saved
@@ -9,8 +13,8 @@ both: the reporter collects results when Playwright runs; the extension displays
 those saved results. They share the Logbook brand but are installed and versioned
 independently.
 
-This is a **local desktop preview**, currently version **0.2.8**. Installation uses
-a VSIX file; the preview publisher is not a registered Marketplace identity.
+This is a **desktop preview**, version **0.2.9**, published by `krishnapollu`.
+The reporter and extension have independent version numbers.
 
 ## What you can do
 
@@ -26,14 +30,34 @@ a VSIX file; the preview publisher is not a registered Marketplace identity.
 Logbook does not run your tests or fetch CI results. **Recorded** means saved in a
 run record; it does not mean a video recording.
 
+### Run overview
+
+![Run overview with recorded results and a cases list](media/run-overview.png)
+
+### Failure investigation
+
+![Failure details, attempts, evidence and execution history](media/result-detail.png)
+
+These are the extension's rendered panels using sample Playwright records.
+
 ## Install the extension
 
-Use desktop VS Code **1.95 or newer** and a local project folder. The preview has
-been exercised on macOS; broader Windows/Linux validation remains pending.
+Use desktop VS Code **1.95 or newer** and a local project folder. This preview is
+validated on macOS. Windows and Linux remain experimental; broader platform and
+screen-reader validation is ongoing.
 Remote SSH, containers, browser-based VS Code and virtual workspaces are not
 supported by this preview.
 
-If you have a Logbook `.vsix` file:
+Find **Playwright Logbook** by **krishnapollu** in the Extensions view and choose
+**Install**, or use the CLI:
+
+```sh
+code --install-extension krishnapollu.playwright-logbook-vscode
+```
+
+[Open the Marketplace listing](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode).
+
+For offline installation with a Logbook `.vsix` file:
 
 1. Open VS Code's Extensions view.
 2. Open the **…** menu and choose **Install from VSIX…**.
@@ -43,7 +67,7 @@ If you have a Logbook `.vsix` file:
 Alternatively, use the VS Code CLI:
 
 ```sh
-code --install-extension path/to/playwright-logbook-vscode-0.2.8.vsix
+code --install-extension path/to/playwright-logbook-vscode-0.2.9.vsix
 ```
 
 If you are working from this repository, see [Build a local VSIX](#build-a-local-vsix).
@@ -53,10 +77,11 @@ If you are working from this repository, see [Build a local VSIX](#build-a-local
 In your Playwright project, install the reporter:
 
 ```sh
-npm install --save-dev playwright-logbook
+npm install --save-dev playwright-logbook@^0.3.0
 ```
 
-The reporter supports Node.js 20+ and Playwright 1.42+. Add Logbook alongside your
+The reporter supports Node.js 20+ and Playwright 1.42+. Reporter **0.3.0 or newer**
+is required for CI bundle export. Add Logbook alongside your
 existing reporters in `playwright.config.ts`:
 
 ```ts
@@ -327,13 +352,13 @@ Then package from `packages/vscode`:
 
 ```sh
 cd packages/vscode
-npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --out dist/playwright-logbook-vscode-0.2.8.vsix
+npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --out dist/playwright-logbook-vscode-0.2.9.vsix
 ```
 
 Install the resulting file with **Install from VSIX…** or, from the repository root:
 
 ```sh
-code --install-extension packages/vscode/dist/playwright-logbook-vscode-0.2.8.vsix
+code --install-extension packages/vscode/dist/playwright-logbook-vscode-0.2.9.vsix
 ```
 
 For development, open the repository and launch **Logbook extension development
@@ -349,5 +374,6 @@ npm run test:vscode -- --vsix
 ```
 
 The final command requires the version-matching VSIX to have been packaged. The
-editor checks download pinned VS Code 1.95.3 and use a disposable profile/workspace,
-leaving your normal editor profile untouched. None of these commands publishes.
+editor checks use VS Code 1.95.3 by default and use a disposable profile/workspace,
+leaving your normal editor profile untouched. Use `--vscode-version VERSION` to
+check another editor release. None of these commands publishes.

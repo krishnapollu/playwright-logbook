@@ -12,7 +12,7 @@
   <a href="https://www.npmjs.com/package/playwright-logbook"><img src="https://img.shields.io/npm/dm/playwright-logbook?logo=npm" alt="npm downloads"></a>
 </p>
 
-**[Install from npm](https://www.npmjs.com/package/playwright-logbook)** · **[View the source on GitHub](https://github.com/krishnapollu/playwright-logbook)**
+**[Install from npm](https://www.npmjs.com/package/playwright-logbook)** · **[VS Code extension](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode)** · **[View the source on GitHub](https://github.com/krishnapollu/playwright-logbook)**
 
 Playwright Logbook turns every test run into a searchable, self-contained report with failure details, retry history, flaky-test tracking, project views, and CI-friendly summaries.
 
@@ -154,4 +154,4 @@ MIT
 Export a saved run as a ZIP and import runs from other machines into existing local
 history. Optional file attachments include screenshots, videos, traces and custom
 logs. See [setup, CI recipe and import behavior](docs/RUN-BUNDLES.md). Bundle support
-is currently available in the repository build, pending a package release.
+requires **playwright-logbook 0.3.0 or newer**.

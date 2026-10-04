@@ -5,17 +5,14 @@ existing history store. Matching test IDs and Playwright project names appear in
 the same history as local executions. Branch filters still apply. Test renames,
 different test IDs and different project names are not reconciled automatically.
 
-These commands are included in the repository build; use the built CLI until a
-release containing them is published:
+These commands require **playwright-logbook 0.3.0 or newer**:
 
 ```sh
-npm run build
-node dist/cli/bin.js export --out ci-run.logbook.zip --project-id my-project
-node dist/cli/bin.js import --from ci-run.logbook.zip --project-id my-project
+npm install --save-dev playwright-logbook@^0.3.0
+npx playwright-logbook export --out ci-run.logbook.zip --project-id my-project
+npx playwright-logbook import --from ci-run.logbook.zip --project-id my-project
 ```
-
-Installed versions containing this feature can use `npx playwright-logbook` in
-place of `node dist/cli/bin.js`. The first import requires a stable project ID,
+ The first import requires a stable project ID,
 such as `my-project`; use the same value on every machine. The target remembers it
 in `imports.json`. Known project mismatches are rejected. An unbound bundle stays
 unknown until you explicitly choose its target project.

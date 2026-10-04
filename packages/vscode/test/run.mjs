@@ -9,9 +9,11 @@ import process from 'node:process';
 
 const extensionRoot = fileURLToPath(new URL('../', import.meta.url));
 const extensionManifest = JSON.parse(await fs.readFile(path.join(extensionRoot, 'package.json'), 'utf8'));
+const option = (name) => process.argv[process.argv.indexOf(name) + 1];
+const editorVersion = process.argv.includes('--vscode-version') ? option('--vscode-version') : '1.95.3';
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-editor-host-'));
-const fixture = JSON.parse(await fs.readFile(path.join(repository, 'test/fixtures/vscode/recorded-playwright.json'), 'utf8'));
+const fixture = JSON.parse(await fs.readFile(process.argv.includes('--record') ? option('--record') : path.join(repository, 'test/fixtures/vscode/recorded-playwright.json'), 'utf8'));
 try {
   const first = path.join(directory, 'first'), second = path.join(directory, 'second');
   await fs.mkdir(path.join(first, '.logbook/runs'), { recursive: true });
@@ -48,16 +50,16 @@ try {
   let developmentPath = extensionRoot;
   let executable;
   if (process.argv.includes('--vsix')) {
-    executable = await downloadAndUnzipVSCode({ version: '1.95.3', cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries') });
+    executable = await downloadAndUnzipVSCode({ version: editorVersion, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries') });
     const [cli, ...args] = resolveCliArgsFromVSCodeExecutablePath(executable, { reuseMachineInstall: true });
     const install = spawnSync(cli, [...args, '--install-extension', path.join(extensionRoot, `dist/playwright-logbook-vscode-${extensionManifest.version}.vsix`), '--user-data-dir', path.join(directory, 'profile'), '--extensions-dir', path.join(directory, 'extensions')], {
-      encoding: 'utf8', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 60_000,
+      encoding: 'utf8', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 60_000, shell: process.platform === 'win32',
     });
     if (install.status !== 0) throw new Error(`Clean-profile VSIX installation failed: ${install.stderr}`);
-    developmentPath = path.join(directory, 'extensions', `logbook-local-preview.playwright-logbook-vscode-${extensionManifest.version}`);
+    developmentPath = path.join(directory, 'extensions', `${extensionManifest.publisher}.${extensionManifest.name}-${extensionManifest.version}`);
     await fs.access(path.join(developmentPath, 'dist/extension.cjs'));
   }
-  await runTests({ version: '1.95.3', vscodeExecutablePath: executable, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries'), extensionDevelopmentPath: developmentPath, extensionTestsPath,
+  await runTests({ version: editorVersion, vscodeExecutablePath: executable, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries'), extensionDevelopmentPath: developmentPath, extensionTestsPath,
     extensionTestsEnv: { ELECTRON_RUN_AS_NODE: undefined },
     launchArgs: [workspace, '--disable-extensions', '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes', '--user-data-dir', path.join(directory, 'profile'), '--extensions-dir', path.join(directory, 'extensions')] });
 } finally { await fs.rm(directory, { recursive: true, force: true }); }

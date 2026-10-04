@@ -1,4 +1,8 @@
 node_modules
+.DS_Store
+.env
+.env.*
+!.env.example
 dist
 .logbook
 .logbook-demo
@@ -7,3 +11,4 @@ test-results
 *.tsbuildinfo
 *.vsix
 packages/vscode/LICENSE
+packages/vscode/THIRD_PARTY_NOTICES.txt

@@ -1,6 +1,6 @@
 {
   "name": "playwright-logbook",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A local, self-contained Playwright report with run history and flaky-test tracking",
   "repository": {
     "type": "git",
@@ -36,9 +36,17 @@
     "logbook": "dist/cli/bin.js"
   },
   "files": [
-    "dist",
+    "dist/**/*.js",
+    "dist/**/*.cjs",
+    "dist/**/*.d.ts",
+    "docs/img/logo.svg",
     "docs/img/report-dark.png",
-    "docs/img/report-light.png"
+    "docs/img/report-light.png",
+    "docs/RUN-BUNDLES.md",
+    "docs/CI.md",
+    "docs/CLI.md",
+    "docs/SCHEMA.md",
+    "docs/ADAPTERS.md"
   ],
   "keywords": [
     "playwright",
@@ -60,7 +68,9 @@
     "demo": "npm run build && node scripts/make-demo.mjs",
     "test:e2e": "npm run demo && playwright test --config=e2e/playwright.config.ts",
     "shots": "npm run demo && node scripts/make-shots.mjs",
-    "check": "npm run lint && npm run typecheck && npm run build && npm test"
+    "check": "npm run lint && npm run typecheck && npm run build && npm test",
+    "test:release": "node scripts/release-smoke.mjs",
+    "test:release:views": "node scripts/release-views.mjs"
   },
   "dependencies": {
     "commander": "^14.0.0",

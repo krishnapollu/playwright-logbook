@@ -1,8 +1,13 @@
 **/*
 !package.json
 !README.md
+!CHANGELOG.md
 !LICENSE
+!THIRD_PARTY_NOTICES.txt
 !dist/extension.cjs
 !media/logbook.svg
+!media/icon.png
+!media/run-overview.png
+!media/result-detail.png
 !media/detail.js
 !media/detail.css

@@ -10,6 +10,12 @@ Both `logbook` and `playwright-logbook` invoke the same CLI. Run `npx playwright
 | `flaky` | `--last <n>`, `--min-runs <n>`, `--json` | Find recurrent or in-run flaky tests |
 | `summary` | `--run <id|latest>`, `--format text|markdown|json` | Print CI-friendly results |
 | `debug` | `--run <id|latest>`, `--test <testId>`, `--format markdown|json` | Preview a bounded, redacted evidence packet for one test |
+| `export` | `--run <id...>`, `--history <n>`, `--artifacts`, `--out <file>`, `--project-id <key>` | Export recorded runs and optional evidence as a portable ZIP |
+| `import` | `--from <file...>`, `--dry-run`, `--project-id <key>` | Ingest distinct bundled runs into existing history with duplicate/conflict checks |
+
+`export` and `import` require 0.3.0 or newer. Bundle import is distinct from shard
+merge. See [portable run bundles](RUN-BUNDLES.md) for project binding, validation,
+limits, interrupted import recovery and CI recipes.
 
 `debug` does not contact a model or inspect attachment contents. It includes only stored evidence and marks missing capture data as unavailable. Redaction cannot detect every secret; review the output before sharing it with an AI provider or another person.
 
