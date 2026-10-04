@@ -31,6 +31,20 @@ async function journey(): Promise<void> {
   const results = await logbook.getChildren(current);
   assert.ok(results.some((item) => item.kind === 'overview'), 'Run overview is discoverable before tests');
   assert.ok(!results.some(item => item.label.startsWith('Other results')), 'All tests appear directly under the run');
+  // Native watchers start asynchronously, especially on a fresh Windows host.
+  // Observe a real automatic refresh before testing a one-shot record mutation.
+  const indexPath = path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, '.logbook/index.jsonl');
+  const indexText = await fs.readFile(indexPath, 'utf8');
+  await new Promise<void>((resolve, reject) => {
+    let finished = false;
+    const cleanUp = () => { finished = true; subscription.dispose(); clearInterval(retry); clearTimeout(timeout); };
+    const subscription = logbook.onDidChangeTreeData(() => { cleanUp(); resolve(); });
+    const timeout = setTimeout(() => { cleanUp(); reject(new Error('Native history watcher did not become ready.')); }, 15_000);
+    const retry = setInterval(() => {
+      if (!finished) void fs.writeFile(indexPath, indexText).catch(error => { cleanUp(); reject(error); });
+    }, 1000);
+  });
+  console.log('Host journey: native history watcher ready');
   const overviewIcon = logbook.getTreeItem(results.find(item => item.kind === 'overview')!).iconPath;
   assert.ok(overviewIcon instanceof vscode.ThemeIcon);
   assert.equal(overviewIcon.id, 'graph'); assert.equal(overviewIcon.color?.id, 'textLink.foreground');

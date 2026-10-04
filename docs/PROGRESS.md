@@ -637,3 +637,15 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Preview scope explicitly discloses experimental Windows/Linux and ongoing full
   screen-reader review. npm login preflight returned 401; maintainer sign-in is
   required at publication. Nothing published; remote release CI is the next gate.
+
+### Release host watcher startup
+
+- [x] Windows current-stable CI exposed an asynchronous native watcher startup
+  race in the host harness: a one-shot mutation could precede watch registration.
+  The harness now observes a real automatic refresh from an unchanged index before
+  testing record mutation. Readiness probes are bounded to 15 seconds; existing
+  watcher, stable error identity, history and source assertions remain intact.
+- Done when output: `npm run check` exited 0; `Test Files 36 passed (36)` and
+  `Tests 176 passed (176)`. Packaged VS Code 1.140.0 host exited 0 and logged
+  `Host journey: native history watcher ready` before the full journey. Product
+  runtime and release artifact bytes are unchanged; cross-platform CI is rerun.
