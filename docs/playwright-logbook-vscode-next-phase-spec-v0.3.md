@@ -245,3 +245,24 @@ record reads, theme tokens, keyboard focus and responsive stacking.
 Done when: relevant reader/presentation tests, full check, packaged editor journey,
 and visual narrow/wide layout checks pass. Actual all-theme/keyboard acceptance
 and Windows/Linux checks remain separately tracked.
+
+## 13. Approved investigation workspace redesign
+
+Replace repeated nested attempt accordions with a single attempt inspector: an
+attempt tab row and a distinct Steps / Output / Errors evidence tab row. Default
+to the final recorded attempt, prioritize recorded steps then output then errors,
+and preserve tab selections for the same execution on refresh. Use accessible
+tab/tabpanel semantics, roving focus, arrow/Home/End navigation and visible focus.
+
+Use labeled context pills for project/run/attempt count and available recorded Git
+context. Keep outcome colors semantic; missing values stay explicit. Show assertion
+fields as aligned label/value rows, distinguish primary failure navigation from
+secondary test-definition navigation, and render history as a compact timeline with
+an explicit Current pill. Move provenance to a technical footer and history evidence
+below its timeline. Raw diagnostic disclosures have distinct document controls.
+Run overview totals use status-labeled metric tiles. Comparisons retain aligned
+errors, pinned identities, unknown states and clearly labeled technical disclosures.
+
+Done when: full checks, packaged host journey, tab click/keyboard/refresh checks,
+and narrow/wide visual inspection pass. Broader all-theme native-editor acceptance
+and Windows/Linux validation remain outstanding separately.

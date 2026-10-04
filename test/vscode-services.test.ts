@@ -8,7 +8,7 @@ import { renderDetail, renderRunOverview, panelAction, outcomeTone } from '../pa
 import { HistoryReader } from '../src/historyreader.js';
 import { LocalHistoryFiles } from '../src/historyfiles.js';
 import { FileHistoryStore } from '../src/store.js';
-import { errorPresentation, renderError, statusIcon, displayTime, renderAttemptEvidence } from '../packages/vscode/src/presentation.js';
+import { errorPresentation, renderError, statusIcon, displayTime, renderAttemptWorkspace } from '../packages/vscode/src/presentation.js';
 import { run, testRecord } from './factories.js';
 
 const temporary: string[] = [];
@@ -106,11 +106,13 @@ it('retains per-attempt captured steps and logs, escapes content, and distinguis
   test.firstError = { message: 'assertion', stack: null, snippet: null, location: { file: 'tests/a.spec.ts', line: 57, column: 3 } };
   await writer.saveRun({ ...run('captured'), tests: [test] });
   const record = await reader.getRun('captured'), result = record.tests[0]!;
-  const html = renderAttemptEvidence(result.attempts![0]!);
+  const html = renderAttemptWorkspace(result.attempts!);
   expect(html).toContain('&lt;failed assertion&gt;'); expect(html).toContain('failed-step');
+  expect(html).toContain('role="tablist"'); expect(html).toContain('aria-controls="evidence-0-steps"');
+  expect(html).not.toContain('<summary>Steps');
   expect(html).toContain('&lt;logged output&gt;'); expect(html).not.toContain('\u001b');
-  expect(html).toContain('stderr: no output recorded');
-  expect(renderAttemptEvidence({ retry: 0, status: 'failed', durationMs: 0, errors: [] })).toContain('Steps, stdout and stderr not recorded.');
+  expect(html).toContain('No output recorded.');
+  expect(renderAttemptWorkspace([{ retry: 0, status: 'failed', durationMs: 0, errors: [] }])).toContain('Steps not recorded for this attempt.');
   const detail = renderDetail({ run: record, result, runError: null, history: { items: [], nextOffset: null, diagnostics: [] }, scope: { kind: 'all' }, anchorRunId: record.runId, storeLabel: '.', sourceLabel: '.', newHistory: false }, { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' });
   expect(detail).toContain('Open failure location'); expect(detail).toContain('Open test definition');
   expect(panelAction({ type: 'openFailure' }, [])).toEqual({ type: 'openFailure' });
@@ -120,14 +122,14 @@ it('retains per-attempt captured steps and logs, escapes content, and distinguis
 
 it('initializes run overview messaging without saved webview state', async () => {
   const script = await fs.readFile(new URL('../packages/vscode/media/detail.js', import.meta.url), 'utf8');
-  let click: ((event: unknown) => void) | undefined;
+  const clicks: ((event: unknown) => void)[] = [];
   const messages: unknown[] = [];
   runInNewContext(script, {
     acquireVsCodeApi: () => ({ getState: () => undefined, setState: () => {}, postMessage: (message: unknown) => messages.push(message) }),
     window: { addEventListener: () => {}, scrollTo: () => {} },
-    document: { body: { dataset: {} }, addEventListener: (_name: string, handler: (event: unknown) => void) => { click = handler; } },
+    document: { body: { dataset: {} }, addEventListener: (_name: string, handler: (event: unknown) => void) => { if (_name === 'click') clicks.push(handler); } },
   });
-  expect(click).toBeTypeOf('function');
-  click!({ target: { closest: () => ({ dataset: { action: 'find' } }) } });
+  expect(clicks[0]).toBeTypeOf('function');
+  clicks[0]!({ target: { closest: () => ({ dataset: { action: 'find' } }) } });
   expect(messages).toEqual([{ type: 'find' }]);
 });

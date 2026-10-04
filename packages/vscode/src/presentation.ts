@@ -18,7 +18,7 @@ export function renderError(error: RecordedError | null | undefined): string {
   if (!error) return '<p class="empty-message">Error text unavailable.</p>';
   const view = errorPresentation(error);
   const pre = (text: string, label: string) => `<pre tabindex="0" aria-label="${label}">${escapeHtml(text)}</pre>`;
-  return `<div class="error-summary"><p class="error-headline">${escapeHtml(view.headline)}</p>${view.browserLaunch ? '<p>Playwright reported a browser launch error. The full diagnostic log contains its launch output.</p>' : ''}${view.context ? pre(view.context, 'Error assertion details') : ''}</div>
+  return `<div class="error-summary"><p class="error-headline">${escapeHtml(view.headline)}</p>${view.browserLaunch ? '<p>Playwright reported a browser launch error. The full diagnostic log contains its launch output.</p>' : ''}${view.context ? `<dl class="assertion-fields" aria-label="Error assertion details">${view.context.split('\n').map((line) => { const separator = line.indexOf(':'); return `<dt>${escapeHtml(line.slice(0, separator))}</dt><dd>${escapeHtml(line.slice(separator + 1).trim())}</dd>`; }).join('')}</dl>` : ''}</div>
 ${view.snippet ? `<div class="source-snippet"><h3>At the failure</h3>${pre(view.snippet, 'Recorded source excerpt')}</div>` : ''}
 <details class="full-diagnostic"><summary>Full diagnostic log</summary>${pre(view.message, 'Complete recorded error message')}${view.stack ? `<h3>Stack trace</h3>${pre(view.stack, 'Recorded stack trace')}` : ''}</details>`;
 }
@@ -37,13 +37,22 @@ export function displayTime(value: string): string {
 export function shortRunId(id: string): string {
   return id.length > 24 ? `${id.slice(0, 12)}…${id.slice(-8)}` : id;
 }
-export function renderAttemptEvidence(attempt: NonNullable<ReaderResult['attempts']>[number]): string {
-  const steps = attempt.steps;
-  if (steps == null && attempt.stdout == null && attempt.stderr == null) return '<p class="source-hint">Steps, stdout and stderr not recorded.</p>';
-  const stepList = steps == null ? '<p>Steps not recorded.</p>' : steps.length ? `<ol class="step-list">${steps.map((step) => `<li class="${step.failed ? 'failed-step' : ''}" data-depth="${step.depth}"><span>${step.failed ? '× ' : ''}${escapeHtml(step.title)}</span><small>${escapeHtml(step.durationMs)} ms${step.failed ? ' · Failed' : ''}</small></li>`).join('')}</ol>` : '<p>No steps recorded.</p>';
-  const logs = (['stdout', 'stderr'] as const).map((channel) => {
-    const value = attempt[channel];
-    return value == null ? `<p>${channel}: not recorded.</p>` : value === '' ? `<p>${channel}: no output recorded.</p>` : `<details class="captured-log"><summary>${channel} · captured output</summary><pre tabindex="0" aria-label="Captured ${channel}">${escapeHtml(stripVTControlCharacters(value))}</pre></details>`;
-  }).join('');
-  return `<details class="steps"><summary>Steps${steps == null ? ' · not recorded' : ` · ${steps.length}`}</summary>${stepList}</details>${logs}`;
+export function contextPill(label: string, value: string, kind = 'context'): string {
+  return `<span class="pill ${kind}"><span class="pill-label">${escapeHtml(label)}</span>${escapeHtml(value)}</span>`;
+}
+export function renderAttemptWorkspace(attempts: ReaderResult['attempts']): string {
+  if (attempts === null) return '<p>Attempt details unavailable.</p>';
+  if (!attempts.length) return '<p>No attempts recorded.</p>';
+  return `<div class="attempt-workspace" data-tab-group><div class="attempt-nav" role="tablist" aria-label="Recorded attempts">${attempts.map((attempt, index) => {
+    const active = index === attempts.length - 1;
+    return `<button class="attempt-tab" role="tab" id="attempt-tab-${index}" aria-controls="attempt-panel-${index}" aria-selected="${active}" tabindex="${active ? '0' : '-1'}" data-tab-target="attempt-panel-${index}">${escapeHtml(attempt.retry === null ? 'Attempt unknown' : attempt.retry === 0 ? 'Initial attempt' : `Retry ${attempt.retry}`)}${active ? '<span class="pill mini">Final</span>' : ''}</button>`;
+  }).join('')}</div>${attempts.map((attempt, index) => {
+    const steps = attempt.steps;
+    const defaultTab = steps?.length ? 'steps' : attempt.stdout || attempt.stderr ? 'output' : 'errors';
+    const stepList = steps == null ? '<p class="empty-message">Steps not recorded for this attempt.</p>' : steps.length ? `<ol class="step-list">${steps.map((step) => `<li class="${step.failed ? 'failed-step' : ''}" data-depth="${step.depth}"><span><span class="step-marker" aria-hidden="true">${step.failed ? '×' : '·'}</span>${escapeHtml(step.title)}${step.failed ? '<span class="pill mini failure">Failed</span>' : ''}</span><small>${escapeHtml(step.durationMs)} ms</small></li>`).join('')}</ol>` : '<p>No steps recorded.</p>';
+    const output = (['stdout', 'stderr'] as const).map((channel) => `<section class="output-channel"><h3>${contextPill(channel === 'stdout' ? 'OUT' : 'ERR', channel, channel === 'stdout' ? 'project' : 'context')}</h3>${attempt[channel] == null ? '<p>Not recorded.</p>' : attempt[channel] === '' ? '<p>No output recorded.</p>' : `<pre tabindex="0" aria-label="Captured ${channel}">${escapeHtml(stripVTControlCharacters(attempt[channel]))}</pre>`}</section>`).join('');
+    const errors = attempt.errors === null ? '<p>Attempt errors unavailable.</p>' : attempt.errors.map(renderError).join('') || '<p>No recorded attempt errors.</p>';
+    const panels = { steps: stepList, output, errors };
+    return `<section role="tabpanel" id="attempt-panel-${index}" aria-labelledby="attempt-tab-${index}" ${index === attempts.length - 1 ? '' : 'hidden'}><div class="attempt-context">${contextPill('Status', attempt.status ?? 'Unknown', attempt.status === 'failed' || attempt.status === 'timedOut' ? 'failure' : 'context')}${contextPill('Duration', attempt.durationMs === null ? 'Unknown' : `${attempt.durationMs} ms`)}<span class="source-hint">Recorded attempt ${index + 1} of ${attempts.length}</span></div><div class="evidence-workspace" data-tab-group><div class="evidence-nav" role="tablist" aria-label="Attempt ${index + 1} evidence">${(['steps', 'output', 'errors'] as const).map((tab) => `<button role="tab" id="evidence-tab-${index}-${tab}" aria-controls="evidence-${index}-${tab}" aria-selected="${defaultTab === tab}" tabindex="${defaultTab === tab ? '0' : '-1'}" data-tab-target="evidence-${index}-${tab}">${tab === 'steps' ? 'Steps' : tab === 'output' ? 'Output' : 'Errors'}<span class="section-count">${tab === 'steps' ? steps?.length ?? '?' : tab === 'errors' ? attempt.errors?.length ?? '?' : attempt.stdout == null && attempt.stderr == null ? '?' : [attempt.stdout, attempt.stderr].filter((value) => value != null).length}</span></button>`).join('')}</div>${(['steps', 'output', 'errors'] as const).map((tab) => `<div role="tabpanel" tabindex="0" id="evidence-${index}-${tab}" aria-labelledby="evidence-tab-${index}-${tab}" ${defaultTab === tab ? '' : 'hidden'}>${panels[tab]}</div>`).join('')}</div></section>`;
+  }).join('')}</div>`;
 }

@@ -386,3 +386,26 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   counts, and Run overview → failure filter → test search → selected result.
   Caught and fixed missing saved-state initialization during this walkthrough;
   its regression test passes in the full check above.
+
+### VS Code investigation workspace redesign (preview 0.2.3)
+
+- [x] User-approved redesign in next-phase spec §13: context pills, aligned assertion
+  fields, distinct primary/secondary source actions, history timeline and Current
+  pill, tabbed attempt/evidence inspector, technical footer, and run metric tiles.
+  Removed nested attempt/step/log/error accordions from the investigation flow.
+- Done when output: `npm run check` exited 0; `Test Files 32 passed (32)` and
+  `Tests 158 passed (158)`. Evidence tests now exercise tabbed output, escaping,
+  absent/empty capture, tab roles/control associations and webview initialization.
+- `npm run test:vscode -- --vsix` exited 0 against packaged 0.2.3, including
+  `Host journey: distinct definition and failure locations verified` and
+  `VS Code host: failure → scoped history → source, refresh, invalid actions and
+  multi-root isolation passed.` Historical source/diff preserved HEAD/working tree.
+- Headless browser exercised actual tab scripts: output clicks, evidence ArrowLeft,
+  attempt Home/End, isolated nested tab groups, and restoration after creating a
+  fresh document with saved state. All passed at 360/1100 px with dark/light/
+  high-contrast dark/light theme tokens, without page overflow. Narrow light and
+  wide dark screenshots were inspected; these are not full native theme acceptance.
+- Installed 0.2.3 locally; actual `pw-test` editor walkthrough verified the pill/
+  timeline hierarchy, final-attempt Steps default, recorded stdout/stderr on Output,
+  Left-key evidence navigation, and selected Output preservation after Refresh.
+  Broader native all-theme/screen-reader and Windows/Linux acceptance remain open.

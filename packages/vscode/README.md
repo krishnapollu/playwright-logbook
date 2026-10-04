@@ -18,7 +18,7 @@ two-folder workspace. It does not use your normal editor profile.
 To package locally, run the following in `packages/vscode`:
 
 ```sh
-npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.2.vsix
+npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.3.vsix
 ```
 
 Then `npm run test:vscode -- --vsix` from the repository root installs the VSIX
@@ -94,3 +94,8 @@ captured steps and stdout/stderr when present. Absent capture is labeled explici
 Use the sidebar search action to find tests in a recorded run with outcome filters,
 or **Run overview** for saved result totals and run-level errors. Comparisons open
 in the result editor group, lead with a change summary, and collapse provenance.
+
+The investigation workspace uses labeled context pills, a history timeline, and
+attempt/evidence tabs instead of nested attempt accordions. The final attempt is
+selected initially. Use Left/Right or Home/End within either tab row; Tab moves
+into the selected evidence panel. Technical context stays in the footer.
