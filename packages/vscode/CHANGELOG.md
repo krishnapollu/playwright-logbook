@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Add a fifth test-level Analyze section and Logbook: Analyze Selected Test command.
+- Discover installed coding-agent chat extensions, hand off an unsent native chat
+  draft or open the agent panel with the prepared task copied for pasting.
+- Share the terminal analyze evidence builder, including exact execution identity,
+  scoped history and accessible attachment references; request answers within 200 words.
+- Keep model selection, submission and responses in the chosen agent's chat.
+
 ## 0.2.10
 
 - Graduate the extension to a regular release and remove the Marketplace Preview flag.

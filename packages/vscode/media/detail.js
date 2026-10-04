@@ -8,7 +8,22 @@ window.addEventListener('scroll', saveState, { passive: true });
 document.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
+  if (button.dataset.action === 'analyze' || button.dataset.action === 'cancelAnalysis') {
+    const section = button.closest('[data-analysis-identity]');
+    if (!section) return;
+    const agent = section.querySelector('[data-analysis-agent]')?.value;
+    vscode.postMessage({ type: button.dataset.action, identity: section.dataset.analysisIdentity, ...(agent ? { agent } : {}) });
+    return;
+  }
   vscode.postMessage({ type: button.dataset.action, ...(button.dataset.key === undefined ? {} : { key: button.dataset.key }) });
+});
+
+window.addEventListener('message', event => {
+  const message = event.data;
+  if (message?.type !== 'analysis' || typeof message.html !== 'string') return;
+  const section = document.querySelector('[data-analysis-identity]');
+  if (!section || section.dataset.analysisIdentity !== message.identity) return;
+  section.querySelector('[data-analysis-content]').innerHTML = message.html;
 });
 
 function selectTab(button) {

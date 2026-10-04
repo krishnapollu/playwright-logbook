@@ -75,6 +75,10 @@
     ],
     "commands": [
       {
+        "command": "logbook.analyze",
+        "title": "Logbook: Analyze Selected Test"
+      },
+      {
         "command": "logbook.importBundle",
         "title": "Logbook: Import Run Bundle…",
         "icon": "$(cloud-download)"

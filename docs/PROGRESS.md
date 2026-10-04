@@ -300,7 +300,7 @@ milestone. Users can review and manually share a `logbook debug` packet later.
   dark and both high-contrast token sets had no page overflow at 360/1100 px.
   This rendering check is not full actual-editor accessibility acceptance.
 
-- [ ] NEXT-006 full actual-editor theme, contrast, zoom, keyboard and screen-reader acceptance
+- [ ] NEXT-006 full actual-editor theme, contrast, zoom, keyboard and screen-reader acceptance (deferred by user on 2026-10-04)
 - [x] Stage C pinned execution comparison
 
   Comparison pins distinct verified test/project executions independently of the
@@ -352,7 +352,8 @@ milestone. Users can review and manually share a `logbook debug` packet later.
   default and no page overflow occurred. All nine packaged files were allow-listed;
   built code/styles matched. Full actual-editor accessibility remains outstanding.
 
-- [ ] Stage A retained per-run HTML and embedded report (deferred; not a current gate)
+Stage A retained per-run HTML and embedded report removed from the current backlog
+by user choice on 2026-10-04: HTML embedding is not required.
 
 ## Blockers
 
@@ -695,6 +696,45 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   Current-stable host revalidation remains pending. `git diff --check` passed.
   No publication occurred; Marketplace upload of the new VSIX remains required.
 
+### Published release verification (2026-10-04)
+
+- The maintainer confirmed extension 0.2.10 is published. A clean disposable
+  profile installed `krishnapollu.playwright-logbook-vscode@0.2.10` directly from
+  Marketplace on macOS with VS Code 1.95.3. The full existing editor journey
+  exited 0, including history/source, watcher refresh, comparison, committed Git
+  source/diff, reviewed import, cancellation, duplicates/conflicts and root isolation.
+- npm confirmed reporter 0.3.0. The release smoke was run against an installation
+  of `playwright-logbook@0.3.0` from the registry in a clean temporary project,
+  rather than a locally packed artifact. Output: `Published reporter smoke passed:
+  collection → artifact export → reviewed import → blended history and source.`
+- These checks supersede earlier notes that Marketplace upload and clean
+  registry-package verification are pending. Full screen-reader review and
+  release tags/notes are separate outstanding work.
+- Current-stable VS Code 1.140.0 was downloaded into a fresh temporary binary
+  cache; a second disposable profile installed Marketplace 0.2.10 and passed the
+  same full editor journey, exit 0. Current-stable host revalidation is complete
+  on macOS; this does not add new Windows/Linux post-publication validation.
+
+### IDE test analysis prototype (superseded)
+
+- The original in-panel Language Model API prototype was checked with 188 tests,
+  seven browser checks and a VS Code 1.140.0 host journey. It was packaged locally
+  as 0.2.11-dev, without publication. It could only discover exposed LM providers,
+  rather than every installed coding agent; the user requested an agent-window
+  workflow instead. The following task replaces its transport and UI tests.
+
+### Framework logger experiment
+
+- In a disposable external project, installed registry reporter 0.3.0 with
+  Playwright 1.63.0, Winston 3.19.0 and Pino 10.4.0. Real test runs verified both
+  loggers' console markers in the correct attempt's stdout, and file-only markers
+  absent from stdout. Per-test attached log files retained those file-only markers
+  and the exported `--artifacts` ZIP contained both log-file payloads.
+- Probe output: `Logger probe passed: Winston and Pino console output captured
+  per test; file-only output absent from console capture; attached log files
+  retained and exported with bundle artifacts.` No repository dependencies were
+  added. The extension guide documents the tested attachment recipe and bounds.
+
 ### Analyze CLI preparation
 
 - [x] Implemented local `logbook analyze` before changing the extension workflow.
@@ -709,3 +749,30 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when output: `npm run check` exited 0; `Test Files 39 passed (39)` and
   `Tests 192 passed (192)`. Built `node dist/cli/bin.js analyze --help` lists
   run/test/project/repeat/scope/max-words/source/format options. Golden unchanged.
+
+### Extension analysis agent handoff
+
+- [x] Replaced the inline-model prototype with dynamically discovered installed
+  coding-agent chat surfaces and native VS Code Chat. The fifth test section
+  initially shows only Analyze; the Command Palette also offers an agent picker.
+  Model selection, explicit submission and answers stay in the agent's own chat.
+- Native chat receives an unsent draft. Separate panels use a complete task on
+  the clipboard and an available contributed panel opener, with a clearly labelled
+  paste-and-submit fallback. No live model call, response stub or UI trimming.
+  The shared CLI evidence builder supplies exact identity/scoped history, bounded
+  source and verified attachment references; the agent is asked for at most 200 words.
+- Listed tests: `test/vscode-analysis.test.ts` covers identity/privacy budgets,
+  action-only discovery, unknown selections, stale discovery/handoffs and escaped
+  rendering. `test/vscode-ide-analysis.test.ts` covers dynamic installed agents,
+  unsent native/participant drafts, panel/clipboard fallback and removed/cancelled
+  targets. `e2e/vscode-analysis.spec.ts` covers actual dropdown/action messages,
+  handoff status, stale identities, cancellation and absence of response rendering.
+- Done when output: `npm run check` exited 0: `Test Files 39 passed (39)`;
+  `Tests 191 passed (191)`. Browser checks: `7 passed (1.8s)`.
+  Disposable VS Code 1.140.0 development and packaged-host journeys exited 0.
+  Golden unchanged; no dependency additions, publication or live agent submission.
+- Local manual build: `packages/vscode/dist/playwright-logbook-vscode-0.2.12-dev.vsix`,
+  staged with version 0.2.12; source release manifest remains 0.2.10. ZIP inspection
+  matched the current compiled extension and webview assets. This exact VSIX was
+  installed and checked in a disposable editor profile. Authenticated agent panels,
+  model selection and generated answers still require the user's manual submission.

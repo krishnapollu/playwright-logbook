@@ -82,6 +82,65 @@ show metadata; playback and trace viewing are not available in the extension.
 
 *Screenshots show the extension's panels with sample Playwright results.*
 
+### Analyze a test (development build)
+
+The fifth test-level **Analyze** section initially shows only an **Analyze** button.
+Choose it to discover installed coding-agent chat extensions and native VS Code
+Chat. Select an agent, then choose **Analyze** again. No context preview or AI
+response appears in Logbook. **Logbook: Analyze Selected Test** also offers a
+native agent picker.
+
+Native VS Code Chat receives an **unsent draft**, including a declared chat
+participant when available. Other agents, including Codex, receive a clipboard
+handoff: Logbook opens their contributed panel when possible and copies the full
+prepared task. **Paste the task, choose the model in your agent, review and submit.**
+The status distinguishes draft placement, panel opening and clipboard-only fallback.
+An installed/active label describes extension activation, not sign-in or model access.
+Logbook does not automatically send a request or read the agent's answer.
+
+The terminal `analyze` command and extension use the same evidence builder; the
+extension does not launch a subprocess or ask the agent to reconstruct the task.
+Evidence includes the exact selected execution/project/repeat, captured output,
+errors, attempts, steps, attachment references and matching scoped history. A
+bounded excerpt from the mapped current test file is included when available;
+current source may differ from the recording. Artifact bodies are excluded, and
+safe project-relative references let the agent read accessible attachments.
+Known secret filtering applies to the task. Analysis requires Workspace Trust.
+Answers are requested in **at most 200 words**, with cause, supporting references
+and next steps; the agent writes the concise answer, without client trimming.
+Cancel or change execution to discard an in-progress handoff.
+
+This feature and CLI command are in the repository development build;
+Marketplace 0.2.10 does not include them. Provider integration remains future work.
+
+### Framework loggers
+
+Winston's Console transport and Pino's stdout destination were verified with
+reporter 0.3.0: their output appears in the corresponding attempt's **Logs** when
+output capture is enabled. This captures output attributed by Playwright to the
+test worker; browser-page console and separate server processes need forwarding.
+Capture is bounded (`maxOutputLength` defaults to a 2,000-character tail per
+channel), so long logs may be truncated.
+
+For a file-only logger, write to a per-test path and attach the file after flushing
+the logger:
+
+```ts
+const logPath = testInfo.outputPath('framework.log');
+// Configure your logger's file transport/destination with logPath.
+// Flush and close it before attaching the file.
+await testInfo.attach('Framework log', {
+  path: logPath,
+  contentType: 'text/plain',
+});
+```
+
+The extension shows attachment metadata. Export with `--artifacts` to include
+the file in a portable bundle, subject to the bundle's evidence limits. This
+route works without a Logbook-specific logger adapter. A file shared across
+parallel tests cannot reliably identify which test produced each line; use
+separate files per test.
+
 ## Bring CI results into your history
 
 With reporter **0.3.0+**, export a run as a portable ZIP using the

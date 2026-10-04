@@ -1,3 +1,4 @@
+import { analysisSource, analysisAttachments } from '../../../src/analysisfiles.js';
 import { prepareImport } from './bundleimport.js';
 import type { PreparedImport } from './bundleimport.js';
 import { ingestBundles, readImportCatalog } from '../../../src/bundles/ingest.js';
@@ -17,6 +18,8 @@ import type { ExecutionRef, ComparisonSide } from './comparison.js';
 import { readHistoricalSource, GitSourceError } from './gitsource.js';
 import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQualifier } from './presentation.js';
 import type { HistoricalSource } from './gitsource.js';
+import { AnalysisSession, analysisAction, analysisPrompt, agentKey, renderAnalysis } from './analysis.js';
+import { ideAnalysisBackend } from './ideanalysis.js';
 
 interface StoreContext {
   folder: vscode.WorkspaceFolder; reader: HistoryReader; storeRoot: string; sourceRoot: string;
@@ -62,6 +65,11 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   private operation = new AbortController();
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private disposed = false;
+  private readonly analysis = new AnalysisSession(ideAnalysisBackend, () => this.postAnalysis());
+
+  private postAnalysis(): void {
+    if (!this.disposed) void this.panel?.webview.postMessage({ type: 'analysis', identity: this.analysis.identity, html: renderAnalysis(this.analysis.state) });
+  }
 
   constructor(private readonly extension: vscode.ExtensionContext) {
     this.disposables.push(
@@ -77,6 +85,8 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       vscode.commands.registerCommand('logbook.configureSource', () => this.selectFolder('sourceRoot')),
       vscode.commands.registerCommand('logbook.openSource', () => this.openSource()),
       vscode.commands.registerCommand('logbook.openFailure', () => this.openSource(true)),
+      vscode.commands.registerCommand('logbook.analyze', () => this.analyzeCommand()),
+      vscode.extensions.onDidChange(() => this.analysis.agentsChanged()),
       vscode.commands.registerCommand('logbook.inspect', (id: unknown) => this.inspect(id)),
       vscode.commands.registerCommand('logbook.inspectHistory', (index: unknown) => {
         if (typeof index !== 'number' || !Number.isInteger(index)) return;
@@ -97,6 +107,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   }
   dispose(): void {
     this.disposed = true; this.setupGeneration += 1; this.operation.abort();
+    this.analysis.cancel();
     for (const timer of this.timers.values()) clearTimeout(timer);
     for (const store of this.stores.values()) store.watchers.forEach((watcher) => watcher.dispose());
     this.historicalDocuments.clear(); this.disposables.forEach((item) => item.dispose()); this.panel?.dispose(); this.comparisonPanel?.dispose(); this.changed.dispose();
@@ -114,6 +125,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     return { storeRoot, sourceRoot };
   }
   async setup(): Promise<void> {
+    this.analysis.cancel();
     const setupGeneration = ++this.setupGeneration;
     const stores = new Map<string, StoreContext>();
     for (const folder of vscode.workspace.workspaceFolders ?? []) {
@@ -267,6 +279,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     try {
       const run = await store.reader.getRun(node.runId);
       const branch = run.env?.git?.branch ?? null;
+      if (this.selection?.folderKey !== node.folderKey || this.selection.runId !== node.runId || this.selection.resultKey !== (node.resultKey ?? null)) this.analysis.reset('');
       this.selection = { folderKey: node.folderKey, runId: run.runId, resultKey: node.resultKey ?? null, errorIndex: node.errorIndex ?? null, errorKey: node.errorKey ?? null,
         anchorRunId: run.runId, anchorBranch: branch, scope: branch ? { kind: 'branch', branch } : { kind: 'all' }, historyLimit: store.pageSize };
       this.generation += 1;
@@ -280,7 +293,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (!this.panel) {
       const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
       const panel = vscode.window.createWebviewPanel('logbook.detail', 'Logbook recorded result', { viewColumn: vscode.ViewColumn.Two, preserveFocus: true }, { enableScripts: true, localResourceRoots: [media] });
-      panel.onDidDispose(() => { if (this.panel === panel) { this.panel = undefined; this.selection = undefined; this.history = { items: [], nextOffset: null, diagnostics: [] }; this.generation += 1; } });
+      panel.onDidDispose(() => { if (this.panel === panel) { this.analysis.reset(''); this.panel = undefined; this.selection = undefined; this.history = { items: [], nextOffset: null, diagnostics: [] }; this.generation += 1; } });
       panel.webview.onDidReceiveMessage((message: unknown) => { void this.handlePanel(message); });
       this.panel = panel;
     }
@@ -291,7 +304,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const generation = this.generation;
     const panel = this.ensurePanel();
     const store = this.stores.get(selected.folderKey);
-    if (!store) { panel.webview.html = '<p>Selected workspace folder is no longer available. Return to Recent Runs.</p>'; return; }
+    if (!store) { this.analysis.reset(''); panel.webview.html = '<p>Selected workspace folder is no longer available. Return to Recent Runs.</p>'; return; }
     try {
       if (store.error) throw new Error(store.error);
       const run = await store.reader.getRun(selected.runId, this.operation.signal);
@@ -301,21 +314,31 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       const history = result ? await collectPages((offset, limit) => store.reader.getTestHistory(result, selected.scope, offset, limit, this.operation.signal), selected.historyLimit) : { items: [], nextOffset: null, diagnostics: [] };
       if (generation !== this.generation || this.selection !== selected || this.disposed) return;
       this.history = history;
+      this.analysis.reset(result ? createHash('sha256').update(JSON.stringify([selected.folderKey, store.storeRoot, store.sourceRoot, run.runId, run.startedAt, run.complete, run.env, result, selected.scope])).digest('hex') : '');
       const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
       const relative = (root: string) => path.relative(store.folder.uri.fsPath, root).split(path.sep).join('/') || '.';
       panel.webview.html = renderDetail({ run, result: result ?? null, runError: errorIndex, runErrorKey: selected.errorKey, history, scope: selected.scope, anchorRunId: selected.anchorRunId,
-        storeLabel: relative(store.storeRoot), sourceLabel: relative(store.sourceRoot), newHistory }, {
+        storeLabel: relative(store.storeRoot), sourceLabel: relative(store.sourceRoot), newHistory,
+        analysis: { identity: this.analysis.identity, state: this.analysis.state } }, {
         css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(),
         script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource,
       });
     } catch (error) {
       if (generation !== this.generation || this.operation.signal.aborted) return;
+      this.analysis.reset('');
       this.history = { items: [], nextOffset: null, diagnostics: [] };
       const message = error instanceof Error && error.message.startsWith('Selected record') ? error.message : diagnosticMessage(error);
       panel.webview.html = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'"><p>${escapeHtml(message)}</p><p>Selected record is no longer available or could not be read. Return to Recent Runs or refresh.</p>`;
     }
   }
   private async handlePanel(message: unknown): Promise<void> {
+    const analysis = analysisAction(message);
+    if (analysis) {
+      if (!this.analysis.identity || analysis.identity !== this.analysis.identity) return;
+      if (analysis.type === 'cancelAnalysis') this.analysis.cancel();
+      else await this.analyze(analysis.agent);
+      return;
+    }
     const action = panelAction(message, this.history.items.map((entry) => entry.key)); const selected = this.selection;
     if (!action || !selected) return;
     if (action.type === 'compare') { await this.compare(action.key!); return; }
@@ -339,6 +362,42 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
     return { css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(),
       script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource };
+  }
+  private async analyzeCommand(): Promise<void> {
+    if (!this.selection?.resultKey || !this.analysis.identity) { await vscode.window.showInformationMessage('Select a recorded test in Logbook first.'); return; }
+    if (!vscode.workspace.isTrusted) { await this.analyze(); return; }
+    const identity = this.analysis.identity;
+    if (this.analysis.state.status === 'running' || this.analysis.state.status === 'discovering') return;
+    await this.analysis.discover();
+    if (identity !== this.analysis.identity) return;
+    const agents = this.analysis.state.agents;
+    if (!agents.length) return;
+    const agent = await vscode.window.showQuickPick(agents.map(agent => ({ label: agent.name, agent })), { title: 'Analyze · choose agent chat (review and submit there)' });
+    if (agent && identity === this.analysis.identity) await this.analyze(agentKey(agent.agent));
+  }
+  private async analyze(key?: string): Promise<void> {
+    const selection = this.selection, identity = this.analysis.identity, generation = this.analysis.generation;
+    if (!selection?.resultKey || !identity || ['running', 'discovering'].includes(this.analysis.state.status)) return;
+    if (!vscode.workspace.isTrusted) {
+      this.analysis.state = { ...this.analysis.state, status: 'error', message: 'Trust this workspace to analyze recorded test evidence.' }; this.postAnalysis(); return;
+    }
+    if (!key || !this.analysis.state.agents.length) { await this.analysis.discover(); return; }
+    if (!this.analysis.state.agents.some(agent => agentKey(agent) === key)) return;
+    const store = this.stores.get(selection.folderKey); if (!store) return;
+    try {
+      const run = await store.reader.getRun(selection.runId);
+      const result = run.tests.find(test => executionIdentity(run.runId, test) === selection.resultKey);
+      if (!result) return;
+      const source = await analysisSource(store.sourceRoot, result);
+      const attachments = await analysisAttachments(store.sourceRoot, result, { storeRoot: store.storeRoot, runId: run.runId });
+      if (this.selection !== selection || this.analysis.identity !== identity || generation !== this.analysis.generation || !vscode.workspace.isTrusted) return;
+      const options = { projectRoot: store.sourceRoot, env: process.env };
+      const prompt = analysisPrompt(run, result, this.history.items, selection.scope, options, source, { attachments: attachments.availability, attachmentPaths: attachments.paths });
+      await this.analysis.run(key, prompt);
+    } catch {
+      if (this.analysis.identity !== identity) return;
+      this.analysis.state = { ...this.analysis.state, status: 'error', message: 'Recorded evidence could not be read. Refresh history and try again.' }; this.postAnalysis();
+    }
   }
   private async compare(key: string): Promise<void> {
     const selection = this.selection;

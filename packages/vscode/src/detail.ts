@@ -4,11 +4,14 @@ import { escapeHtml, outcomeTone } from './format.js';
 export { escapeHtml, outcomeTone } from './format.js';
 import { renderError, displayTime, renderAttemptWorkspace, contextPill, statusText, outcomeQualifier } from './presentation.js';
 import type { HistoryScope, Page, ReaderResult, ReaderRun, RecordedExecution } from '../../../src/historyreader.js';
+import { renderAnalysis } from './analysis.js';
+import type { AnalysisState } from './analysis.js';
 
 export interface DetailInput {
   run: ReaderRun; result: ReaderResult | null; runError: number | null; runErrorKey?: string | null;
   history: Page<RecordedExecution>; scope: HistoryScope; anchorRunId: string;
   storeLabel: string; sourceLabel: string; newHistory: boolean;
+  analysis?: { identity: string; state: AnalysisState };
 }
 const outcomeBadge = (result: ReaderResult): string => {
   const tone = outcomeTone(result);
@@ -51,6 +54,7 @@ ${history.nextOffset !== null ? '<button data-action="more">Load more history</b
 <details class="history-evidence"><summary>About this history</summary><p>Scope: ${escapeHtml(scopeLabel)} · Anchor: ${escapeHtml(input.anchorRunId)}</p><p>${history.items.length} available matching recorded executions shown; newest first. Project and canonical test ID are fixed. Retries are nested within an execution.</p>${history.items.length ? `<p>Shown date window: ${escapeHtml(history.items.at(-1)?.startedAt)} → ${escapeHtml(history.items[0]?.startedAt)}</p>` : ''}${noEarlier ? '<p>No earlier recorded results match this test identity in the selected scope. This does not establish a first-ever failure.</p>' : ''}<p>Gaps and omitted records mean unknown execution, not a pass. Similar errors do not establish a common root cause.</p></details></section>` : '</div>'}</div>
 ${run.globalErrors === null ? '<p>Run error metadata unavailable.</p>' : ''}
 ${history.diagnostics.length ? `<section><h2>History diagnostics</h2><ul>${history.diagnostics.map((item) => `<li>${escapeHtml(item.record)}: ${escapeHtml(item.message)}</li>`).join('')}</ul></section>` : ''}
+${result ? `<section class="analysis-card" aria-label="Analyze" data-analysis-identity="${escapeHtml(input.analysis?.identity ?? selectedKey)}"><h2 class="section-title"><span aria-hidden="true">✧</span> Analyze</h2><div data-analysis-content>${renderAnalysis(input.analysis?.state ?? { status: 'idle', agents: [], selected: null, message: '' })}</div></section>` : ''}
 <footer class="technical-footer"><p class="eyebrow">TECHNICAL CONTEXT</p><details class="provenance"><summary>Run information and source mapping</summary><button class="secondary" data-action="configureSource">Configure Source Mapping</button><p>Run ID: <code>${escapeHtml(run.runId)}</code> · ${escapeHtml(completionLabel(run.complete))} · Shard completeness unknown</p><p>Working tree at execution: unknown. Exact historical source alignment is unknown.</p>
 <p>History store: ${escapeHtml(input.storeLabel)} → mapped checkout: ${escapeHtml(input.sourceLabel)}</p>
 <p>Origin: ${escapeHtml(run.env?.git?.repository ?? 'Unknown')} · Revision: ${escapeHtml(run.env?.git?.commit ?? 'Unknown')}</p>

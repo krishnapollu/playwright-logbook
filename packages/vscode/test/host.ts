@@ -19,6 +19,7 @@ async function journey(): Promise<void> {
   assert.ok(extension, 'Development extension must be discoverable');
   const logbook = await extension.activate();
   console.log('Host journey: activated');
+  assert.ok((await vscode.commands.getCommands(true)).includes('logbook.analyze'), 'Analyze Selected Test must be registered in the editor');
   const roots = await logbook.getChildren();
   assert.equal(roots.length, 2, 'Multi-root grouping should appear');
   const first = roots.find((item) => item.label === 'first')!, broken = roots.find((item) => item.label === 'second')!;

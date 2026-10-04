@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: '.',
-  testMatch: 'report.spec.ts',
+  testMatch: ['report.spec.ts', 'vscode-analysis.spec.ts'],
   use: { browserName: 'chromium', headless: true },
   reporter: 'list',
 });
