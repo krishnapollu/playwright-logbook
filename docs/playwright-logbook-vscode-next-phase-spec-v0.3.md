@@ -305,3 +305,24 @@ timeout/interrupted/unknown metric tiles without changing recorded metadata.
 
 Done when: full checks, packaged host journey and narrow/wide theme-token visual
 checks pass; inspect the installed extension locally.
+
+## 16. Approved recorded-data summary graphics and cases overview
+
+Use spare summary width for an Execution at a glance panel: recorded duration,
+recorded retry count, attempt-duration bars and up to 12 loaded history results,
+oldest to newest. Keep the key/value table beside it on wide screens and stack on
+narrow screens. Missing durations/attempts/history remain explicitly unavailable.
+History graphics describe the loaded scope, without claiming exhaustive history.
+
+Run overview adds an accessible result distribution donut, per-project stacked
+bars with text counts, and a compact clickable cases table (up to 100, issues
+first). Find test remains available for all saved results; disclose truncation.
+Reuse the HTML report's donut geometry and duration formatter, adapting rendering
+to VS Code theme tokens and existing recorded-status grouping. Unknown data stays
+neutral. Do not invent worker timelines from absent timing data. Case navigation
+must validate execution keys against the selected run and preserve workspace
+isolation. Recorded data stays escaped, with no new dependencies.
+
+Done when: count/unknown/escaping/navigation checks and full checks pass; packaged
+host journey, graphic narrow/wide theme renders and installed-editor walkthrough
+pass. Broader native all-theme and Windows/Linux acceptance remain tracked.

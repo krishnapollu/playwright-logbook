@@ -453,3 +453,29 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Installed 0.2.5 and reloaded the local pw-test window. Verified the summary table,
   section header styling and four overview counts: Total 20, Passed 16, Failed 2,
   Skipped 2. Left the updated failure investigation open.
+
+### VS Code summary graphics and cases overview (preview 0.2.6)
+
+- [x] Approved next-phase spec §16: summary at-a-glance duration/retry facts,
+  attempt-duration bars and up to 12 loaded history marks; overview result donut,
+  project distributions and up to 100 clickable cases, issues first. Missing
+  metadata and display bounds remain explicit. Full native Find test stays usable.
+- Extracted pure duration formatting and donut geometry into shared reportgraphics;
+  the report retains its existing exports and behavior. Extension build boundaries
+  still exclude the reporter, CLI and full report client runtime. No new dependency.
+- Done when output: `npm run check` exited 0; `Test Files 32 passed (32)` and
+  `Tests 160 passed (160)`. Coverage includes truthful unknown/exception counts,
+  empty data, escaped titles/projects, bounded cases and validated execution keys;
+  existing HTML render/client-library and read-only golden tests also passed.
+- `npm run test:vscode -- --vsix` exited 0 against packaged 0.2.6:
+  `VS Code host: failure → scoped history → source, refresh, invalid actions and
+  multi-root isolation passed.` Historical source/diff preserved HEAD/working tree.
+- Detail and overview graphics rendered without page overflow at 360/1100 px in
+  dark/light/high-contrast theme-token sets; tab keyboard/refresh checks passed.
+  Inspected wide dark detail/overview renders. Broader native all-theme,
+  screen-reader and Windows/Linux acceptance remain outstanding.
+- Installed 0.2.6 and reloaded pw-test. Verified donut (20 saved results, 80%
+  recorded Passed), two project distributions, cases and click-through from the
+  brand mismatch case to its details. Summary showed 8 ms, one recorded retry,
+  two 4 ms attempt bars and four loaded historical result marks. Left both views
+  open for local use.

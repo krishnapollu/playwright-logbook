@@ -1,3 +1,4 @@
+import { recordedCounts, renderRunInsights, renderTestInsights, overviewAction } from '../packages/vscode/src/insights.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -163,4 +164,28 @@ it('keeps full run identities, zero-count statuses and semantic qualifiers in th
   const workspace = renderAttemptWorkspace([{ retry: 0, status: 'passed', durationMs: 1, errors: [], steps: [{ title: 'done', category: 'test.step', durationMs: 1, depth: 0, failed: false }] }]);
   expect(workspace).toContain('completed-step'); expect(workspace).toContain('Completed without a recorded error');
   expect(workspace).not.toContain('>Final<'); expect(workspace).not.toContain('Recorded attempt 1 of');
+});
+
+
+it('keeps chart counts truthful, bounds overview cases and validates recorded case navigation', async () => {
+  const root = await fixture(), writer = new FileHistoryStore(root), reader = new HistoryReader(new LocalHistoryFiles(root));
+  await writer.saveRun({ ...run('charts'), tests: [testRecord('one', 'unexpected')] });
+  const record = await reader.getRun('charts'), test = record.tests[0]!;
+  const tests = [{ ...test, status: 'passed' as const }, { ...test, status: 'timedOut' as const }, { ...test, status: 'interrupted' as const }, { ...test, status: 'skipped' as const }, { ...test, status: null }];
+  expect(recordedCounts(tests)).toEqual({ total: 5, passed: 1, failed: 2, skipped: 1, unknown: 1 });
+  const overview = renderRunInsights({ ...record, tests });
+  expect(overview).toContain('5 recorded results: 1 passed, 2 failed, 1 skipped, 1 unknown');
+  expect(overview).toContain('20% recorded as Passed');
+  expect(overview).not.toMatch(/NaN|Infinity/);
+  expect(renderRunInsights({ ...record, tests: [] })).toContain('No recorded results');
+  const hostile = { ...test, title: '<script>bad()</script>', project: '<img onerror=bad()>' };
+  const bounded = renderRunInsights({ ...record, tests: Array.from({ length: 101 }, () => hostile) });
+  expect(bounded.match(/data-action="openResult"/g)).toHaveLength(100);
+  expect(bounded).toContain('First 100 results'); expect(bounded).not.toContain('<script>bad');
+  expect(bounded).toContain('&lt;img onerror=bad()&gt;');
+  expect(overviewAction({ type: 'openResult', key: 'known' }, ['known'])).toEqual({ type: 'openResult', key: 'known' });
+  for (const value of [{ type: 'openResult', key: 'foreign' }, { type: 'openResult', key: 1 }, { type: 'execute' }, null]) expect(overviewAction(value, ['known'])).toBeNull();
+  const insights = renderTestInsights({ ...test, durationMs: null, attempts: null }, []);
+  expect(insights).toContain('Attempt durations unavailable'); expect(insights).toContain('No history available');
+  expect(insights).not.toMatch(/NaN|Infinity/);
 });

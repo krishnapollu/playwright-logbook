@@ -18,7 +18,7 @@ two-folder workspace. It does not use your normal editor profile.
 To package locally, run the following in `packages/vscode`:
 
 ```sh
-npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.5.vsix
+npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.6.vsix
 ```
 
 Then `npm run test:vscode -- --vsix` from the repository root installs the VSIX
@@ -106,3 +106,8 @@ unknown in a note and are included only in Total. Expected failures,
 unexpected passes and retry recovery retain short qualifiers; colors retain
 Logbook outcome semantics. Green step markers mean no step error was recorded,
 not measured code coverage.
+
+Summary graphics show recorded attempt durations and up to 12 loaded history
+results, oldest to newest. Run overview reuses the HTML report donut geometry and
+duration formatting, with project distributions and up to 100 clickable cases
+(issues first). Find test searches all saved results. Unknowns remain explicit.

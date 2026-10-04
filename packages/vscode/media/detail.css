@@ -193,3 +193,46 @@ body.vscode-high-contrast .pill, body.vscode-high-contrast-light .pill { backgro
 .summary-context > div:first-child dd { font-family: inherit; }
 .summary-context code { font-size: inherit; }
 @media (max-width: 400px) { .summary-context > div { grid-template-columns: 72px minmax(0, 1fr); } }
+/* Recorded-data graphics: neutral scaffolding, semantic chart marks. */
+.summary-layout { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(240px, 1fr); gap: 18px; align-items: start; }
+.summary-insights { border-left: 1px solid var(--border); padding-left: 18px; min-width: 0; }
+.summary-insights h3, .overview-charts h3 { margin: 6px 0 10px; font-size: .95em; }
+h4 { font-size: .85em; margin: 12px 0 6px; color: var(--vscode-descriptionForeground); font-weight: 500; }
+.insight-facts { display: flex; gap: 24px; flex-wrap: wrap; }
+.insight-facts strong, .insight-facts span { display: block; }
+.insight-facts strong { font-size: 1.35em; font-variant-numeric: tabular-nums; }
+.insight-facts span, .chart-caption { font-size: .8em; color: var(--vscode-descriptionForeground); }
+.duration-row { display: grid; grid-template-columns: 42px minmax(0, 1fr) 52px; align-items: center; gap: 7px; margin: 5px 0; font-size: .8em; }
+.duration-row > span:last-child { text-align: right; }
+.duration-row svg, .project-row svg { width: 100%; height: 12px; }
+.bar-track { fill: var(--surface); stroke: var(--border); stroke-width: 1; }
+.duration-fill { fill: var(--accent); }
+.result-strip { display: flex; gap: 4px; flex-wrap: wrap; }
+.result-cell { display: inline-flex; align-items: center; justify-content: center; width: 23px; height: 21px; font-size: .85em; border: 1px solid var(--border); border-radius: 3px; }
+.result-cell.passed, .case-status.passed { color: var(--success); }
+.result-cell.failed, .case-status.failed { color: var(--failure); }
+.result-cell.skipped, .result-cell.unknown, .case-status.skipped, .case-status.unknown { color: var(--vscode-descriptionForeground); }
+.overview-charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; margin-top: 12px; border: 1px solid var(--border); border-radius: 5px; padding: 12px; }
+.distribution { display: flex; align-items: center; gap: 14px; margin: 0; min-width: 0; }
+.distribution > svg { width: 120px; height: 120px; flex-shrink: 0; }
+.donut-track, .donut-segment { fill: none; stroke-width: 10; }
+.donut-track { stroke: var(--vscode-descriptionForeground); opacity: .35; }
+.donut-segment.passed { stroke: var(--success); } .donut-segment.failed { stroke: var(--failure); } .donut-segment.skipped { stroke: var(--vscode-descriptionForeground); }
+.donut-total { text-anchor: middle; font-size: 22px; fill: var(--vscode-editor-foreground); font-weight: 600; }
+.donut-label { text-anchor: middle; font-size: 10px; fill: var(--vscode-descriptionForeground); }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .8em; }
+.chart-legend span::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; background: var(--vscode-descriptionForeground); }
+.chart-legend .passed::before { background: var(--success); } .chart-legend .failed::before { background: var(--failure); }
+.project-row { margin-top: 10px; }
+.project-row > div { display: flex; justify-content: space-between; gap: 8px; font-size: .85em; margin-bottom: 4px; }
+.project-row small { color: var(--vscode-descriptionForeground); flex-shrink: 0; }
+.distribution-fill.passed { fill: var(--success); } .distribution-fill.failed { fill: var(--failure); } .distribution-fill.skipped { fill: var(--vscode-descriptionForeground); } .distribution-fill.unknown { fill: var(--surface); stroke: var(--border); }
+.cases-scroll { overflow-x: auto; }
+.cases-table { width: 100%; border-collapse: collapse; font-size: .85em; }
+.cases-table th, .cases-table td { text-align: left; vertical-align: top; padding: 7px; border-bottom: 1px solid var(--border); }
+.cases-table th { color: var(--vscode-descriptionForeground); font-weight: 500; }
+.cases-table td:first-child { width: 65%; }
+.cases-table small { display: block; color: var(--vscode-descriptionForeground); font-size: .85em; overflow-wrap: anywhere; }
+.case-link { color: var(--accent); background: transparent; border: 0; padding: 0; font-size: inherit; }
+.case-link:hover { background: var(--vscode-list-hoverBackground); text-decoration: underline; }
+@media (max-width: 750px) { .summary-layout, .overview-charts { grid-template-columns: minmax(0, 1fr); } .summary-insights { border-left: 0; border-top: 1px solid var(--border); padding: 10px 0 0; } }

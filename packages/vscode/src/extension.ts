@@ -1,3 +1,4 @@
+import { overviewAction } from './insights.js';
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -214,7 +215,14 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       const panel = vscode.window.createWebviewPanel('logbook.run', 'Logbook run overview', vscode.ViewColumn.Active, { enableScripts: true, localResourceRoots: [media] });
       panel.webview.html = renderRunOverview(run, { css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(), script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource });
       const listener = panel.webview.onDidReceiveMessage((message: unknown) => {
-        if (message && typeof message === 'object' && 'type' in message && message.type === 'find') void this.findTest(node);
+        const action = overviewAction(message, run.tests.map(test => executionIdentity(run.runId, test)));
+        if (action?.type === 'find') void this.findTest(node);
+        if (action?.type === 'openResult') {
+          const test = run.tests.find(test => executionIdentity(run.runId, test) === action.key);
+          if (!test) return;
+          const resultNode = this.register({ id: JSON.stringify([node.folderKey, action.key]), kind: 'result', folderKey: node.folderKey, runId: run.runId, resultKey: action.key, label: test.title });
+          void this.inspect(resultNode.id);
+        }
       });
       panel.onDidDispose(() => listener.dispose());
     } catch (error) { await vscode.window.showWarningMessage(diagnosticMessage(error)); }
