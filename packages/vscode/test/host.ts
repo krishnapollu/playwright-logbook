@@ -50,6 +50,12 @@ async function journey(): Promise<void> {
   const command = logbook.getTreeItem(failure).command!;
   await vscode.commands.executeCommand(command.command, ...(command.arguments ?? []));
   console.log('Host journey: result and history opened');
+  await vscode.commands.executeCommand('logbook.compareHistory', 1);
+  assert.ok(vscode.window.tabGroups.all.flatMap((group) => group.tabs).some((tab) => tab.label === 'Logbook execution comparison'), 'Comparison opens a separate pinned panel');
+  await vscode.commands.executeCommand('logbook.inspectHistory', 1);
+  await vscode.commands.executeCommand('logbook.refresh');
+  await vscode.commands.executeCommand('logbook.returnToComparedResult');
+  console.log('Host journey: pinned comparison survives selection changes and refresh');
   await vscode.commands.executeCommand('logbook.openSource');
   console.log('Host journey: current source opened');
   let editor = vscode.window.activeTextEditor;

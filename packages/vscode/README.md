@@ -33,6 +33,10 @@ Other recorded results. Recorded run errors have their own group.
 The result panel uses theme-aware outcome badges and places history alongside the
 error in wide panes, stacking it below attempts in narrow panes. Recorded identity
 and mapping details can be expanded. Historical working-tree state is unknown.
+Choose **Compare with selected** on another execution in history to pin a baseline
+and selected pair. Comparison names the final-attempt duration metric and remains
+available without local Git. Refresh preserves the pair; missing records are not
+replaced. **Back to selected result** returns to the pinned selected execution.
 Embedded HTML reports are deferred until retained per-run copies are available.
 
 Auto-discovery checks `.logbook` directly below each workspace folder. Use

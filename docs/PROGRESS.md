@@ -301,7 +301,19 @@ milestone. Users can review and manually share a `logbook debug` packet later.
   This rendering check is not full actual-editor accessibility acceptance.
 
 - [ ] NEXT-006 full actual-editor theme, contrast, zoom, keyboard and screen-reader acceptance
-- [ ] Stage C pinned execution comparison
+- [x] Stage C pinned execution comparison
+
+  Comparison pins distinct verified test/project executions independently of the
+  active result; refresh retains the pair and removed results remain unavailable.
+  Shows actual/expected outcomes, named final-attempt durations, error/attempt
+  metadata and recorded Git context without requiring Git. Store remapping does
+  not substitute another store's records. All inputs remain escaped and bounded
+  by the existing reader. `test/vscode-comparison.test.ts` covers matching,
+  removal, unknown metadata and diagnostic escaping.
+
+  Done when: `npm run check`: `Test Files 31 passed (31); Tests 151 passed (151)`.
+  `npm run test:vscode` exited 0, including `Host journey: pinned comparison
+  survives selection changes and refresh` and the unchanged source/root journey.
 - [ ] Stage D optional read-only historical Git source and diffs
 - [ ] Stage A retained per-run HTML and embedded report (deferred; not a current gate)
 

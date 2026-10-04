@@ -47,3 +47,7 @@ body.vscode-high-contrast .badge, body.vscode-high-contrast-light .badge { color
 body.vscode-high-contrast button, body.vscode-high-contrast-light button { border-color: var(--vscode-contrastBorder, var(--vscode-editor-foreground)); }
 @media (max-width: 700px) { .detail-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 400px) { body { padding: 12px; } .actions { flex-direction: column; align-items: stretch; } h1 { font-size: 1.4em; } }
+.comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 24px 0; }
+.comparison-card { min-width: 0; border: 1px solid var(--border); border-radius: 4px; padding: 16px; }
+dl { margin: 18px 0; } dt { margin-top: 12px; font-weight: 600; } dd { margin: 4px 0; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .comparison-grid { grid-template-columns: minmax(0, 1fr); } }

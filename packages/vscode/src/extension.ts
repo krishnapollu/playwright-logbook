@@ -6,6 +6,8 @@ import type { HistoryScope, Page, ReaderRun, RecordedExecution } from '../../../
 import { LocalHistoryFiles } from '../../../src/historyfiles.js';
 import { permittedRoot, recordedSource, sourcePosition } from './workspace.js';
 import { escapeHtml, panelAction, renderDetail } from './detail.js';
+import { comparisonRef, comparisonSide, matchingPair, renderComparison } from './comparison.js';
+import type { ExecutionRef, ComparisonSide } from './comparison.js';
 
 interface StoreContext {
   folder: vscode.WorkspaceFolder; reader: HistoryReader; storeRoot: string; sourceRoot: string;
@@ -41,6 +43,8 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   private readonly nodes = new Map<string, TreeNode>();
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
+  private comparisonPanel: vscode.WebviewPanel | undefined;
+  private pair: { storeRoot: string; folderKey: string; baseline: ExecutionRef; selected: ExecutionRef; selection: Selection } | undefined;
   private selection: Selection | undefined;
   private history: Page<RecordedExecution> = { items: [], nextOffset: null, diagnostics: [] };
   private generation = 0;
@@ -61,6 +65,12 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         const execution = this.history.items[index];
         if (execution) return this.handlePanel({ type: 'history', key: execution.key });
       }),
+      vscode.commands.registerCommand('logbook.returnToComparedResult', () => this.handleComparison({ type: 'back' })),
+      vscode.commands.registerCommand('logbook.compareHistory', (index: unknown) => {
+        if (typeof index !== 'number' || !Number.isInteger(index)) return;
+        const execution = this.history.items[index];
+        if (execution) return this.handlePanel({ type: 'compare', key: execution.key });
+      }),
       vscode.commands.registerCommand('logbook.loadMoreRuns', (id: unknown) => this.moreRuns(id)),
       vscode.workspace.onDidChangeWorkspaceFolders(() => { void this.setup(); }),
       vscode.workspace.onDidChangeConfiguration((event) => { if (event.affectsConfiguration('logbook')) void this.setup(); }),
@@ -71,7 +81,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     this.disposed = true; this.setupGeneration += 1; this.operation.abort();
     for (const timer of this.timers.values()) clearTimeout(timer);
     for (const store of this.stores.values()) store.watchers.forEach((watcher) => watcher.dispose());
-    this.disposables.forEach((item) => item.dispose()); this.panel?.dispose(); this.changed.dispose();
+    this.disposables.forEach((item) => item.dispose()); this.panel?.dispose(); this.comparisonPanel?.dispose(); this.changed.dispose();
   }
   private folderKey(folder: vscode.WorkspaceFolder): string { return folder.uri.toString(); }
   private register(node: TreeNode): TreeNode { this.nodes.set(node.id, node); return node; }
@@ -123,6 +133,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     // The cancellation token spans tree reads, so no store may retain a cancelled catalog.
     for (const store of this.stores.values()) store.reader.invalidate();
     this.changed.fire(undefined);
+    if (this.pair) await this.updateComparison();
     if (this.selection) await this.updatePanel(automatic && (!folderKey || this.selection.folderKey === folderKey));
   }
   getTreeItem(node: TreeNode): vscode.TreeItem {
@@ -244,6 +255,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   private async handlePanel(message: unknown): Promise<void> {
     const action = panelAction(message, this.history.items.map((entry) => entry.key)); const selected = this.selection;
     if (!action || !selected) return;
+    if (action.type === 'compare') { await this.compare(action.key!); return; }
     if (action.type === 'openSource') { await this.openSource(); return; }
     if (action.type === 'configureSource') { await this.selectFolder('sourceRoot'); return; }
     if (action.type === 'history') {
@@ -259,6 +271,56 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       selected.scope = choice.scope;
     }
     this.generation += 1; await this.updatePanel();
+  }
+  private resources(panel: vscode.WebviewPanel): { css: string; script: string; cspSource: string } {
+    const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
+    return { css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(),
+      script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource };
+  }
+  private async compare(key: string): Promise<void> {
+    const selection = this.selection;
+    const entry = this.history.items.find((item) => item.key === key);
+    const store = selection ? this.stores.get(selection.folderKey) : undefined;
+    if (!selection?.resultKey || !entry || !store) return;
+    try {
+      const selectedRun = await store.reader.getRun(selection.runId);
+      const selectedResult = selectedRun.tests.find((item) => executionIdentity(selectedRun.runId, item) === selection.resultKey);
+      const baselineRun = await store.reader.getRun(entry.runId);
+      const baselineResult = baselineRun.tests.find((item) => executionIdentity(baselineRun.runId, item) === key);
+      if (!selectedResult || !baselineResult || this.selection !== selection) return;
+      const selected = comparisonRef(selectedRun, selectedResult), baseline = comparisonRef(baselineRun, baselineResult);
+      if (!matchingPair(baseline, selected)) return;
+      this.pair = { storeRoot: store.storeRoot, folderKey: selection.folderKey, baseline, selected, selection: { ...selection } };
+      if (!this.comparisonPanel) {
+        const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
+        const panel = vscode.window.createWebviewPanel('logbook.comparison', 'Logbook execution comparison', vscode.ViewColumn.Two, { enableScripts: true, localResourceRoots: [media] });
+        panel.onDidDispose(() => { if (this.comparisonPanel === panel) { this.comparisonPanel = undefined; this.pair = undefined; } });
+        panel.webview.onDidReceiveMessage((message: unknown) => { void this.handleComparison(message); });
+        this.comparisonPanel = panel;
+      }
+      await this.updateComparison();
+      this.comparisonPanel.reveal(vscode.ViewColumn.Two);
+      await vscode.commands.executeCommand('workbench.action.keepEditor');
+    } catch (error) { await vscode.window.showWarningMessage(diagnosticMessage(error)); }
+  }
+  private async loadComparisonSide(ref: ExecutionRef, folderKey: string): Promise<ComparisonSide> {
+    const store = this.stores.get(folderKey);
+    try { return comparisonSide(ref, store && store.storeRoot === this.pair?.storeRoot ? await store.reader.getRun(ref.runId) : null); }
+    catch { return comparisonSide(ref, null); }
+  }
+  private async updateComparison(): Promise<void> {
+    const pair = this.pair, panel = this.comparisonPanel, generation = this.generation;
+    if (!pair || !panel) return;
+    const [baseline, selected] = await Promise.all([this.loadComparisonSide(pair.baseline, pair.folderKey), this.loadComparisonSide(pair.selected, pair.folderKey)]);
+    if (this.pair !== pair || this.comparisonPanel !== panel || this.generation !== generation || this.disposed) return;
+    panel.webview.html = renderComparison(baseline, selected, this.resources(panel));
+  }
+  private async handleComparison(message: unknown): Promise<void> {
+    if (!message || typeof message !== 'object' || !('type' in message) || message.type !== 'back' || !this.pair) return;
+    this.selection = { ...this.pair.selection };
+    this.generation += 1;
+    await this.updatePanel();
+    this.panel?.reveal(vscode.ViewColumn.Two);
   }
   private async openSource(): Promise<void> {
     const selected = this.selection;

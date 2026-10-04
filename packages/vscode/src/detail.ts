@@ -58,7 +58,7 @@ ${run.env?.git?.branch ? '' : '<p>Selected execution branch metadata unavailable
 <p>${history.items.length} available matching recorded executions shown; newest first. Project and canonical test ID are fixed. Retries are nested within an execution.</p>
 ${history.items.length ? `<p>Shown date window: ${escapeHtml(history.items.at(-1)?.startedAt)} → ${escapeHtml(history.items[0]?.startedAt)}</p>` : ''}
 ${noEarlier ? '<p>No earlier recorded results match this test identity in the selected scope. This does not establish a first-ever failure.</p>' : ''}
-<ol class="history-list">${history.items.map((entry) => `<li ${entry.key === selectedKey ? 'class="selected"' : ''}>${outcomeBadge(entry.result)}<button class="history-entry" data-action="history" data-key="${escapeHtml(entry.key)}" ${entry.key === selectedKey ? 'aria-current="true"' : ''}><time>${escapeHtml(entry.startedAt)}</time><span>Run ${escapeHtml(entry.runId)} · Repeat ${escapeHtml(entry.result.repeatEachIndex)}${entry.key === selectedKey ? ' · Selected' : ''}</span></button></li>`).join('')}</ol>
+<ol class="history-list">${history.items.map((entry) => `<li ${entry.key === selectedKey ? 'class="selected"' : ''}>${outcomeBadge(entry.result)}<button class="history-entry" data-action="history" data-key="${escapeHtml(entry.key)}" ${entry.key === selectedKey ? 'aria-current="true"' : ''}><time>${escapeHtml(entry.startedAt)}</time><span>Run ${escapeHtml(entry.runId)} · Repeat ${escapeHtml(entry.result.repeatEachIndex)}${entry.key === selectedKey ? ' · Selected' : ''}</span></button>${entry.key !== selectedKey && result.project.trim() ? `<button class="secondary" data-action="compare" data-key="${escapeHtml(entry.key)}">Compare with selected</button>` : ''}</li>`).join('')}</ol>
 ${history.nextOffset !== null ? '<button data-action="more">Load more history</button>' : ''}
 <p>Gaps and omitted records mean unknown execution, not a pass. Similar errors do not establish a common root cause.</p></section>` : '</div>'}</div>
 ${run.globalErrors === null ? '<p>Run error metadata unavailable.</p>' : ''}
@@ -66,11 +66,11 @@ ${history.diagnostics.length ? `<section><h2>History diagnostics</h2><ul>${histo
 </main><script src="${escapeHtml(resources.script)}"></script></body></html>`;
 }
 
-export function panelAction(value: unknown, historyKeys: readonly string[]): { type: 'openSource' | 'configureSource' | 'scope' | 'more' | 'history'; key?: string } | null {
+export function panelAction(value: unknown, historyKeys: readonly string[]): { type: 'openSource' | 'configureSource' | 'scope' | 'more' | 'history' | 'compare'; key?: string } | null {
   if (!value || typeof value !== 'object' || !('type' in value) || typeof value.type !== 'string') return null;
-  if (value.type === 'history') {
+  if (value.type === 'history' || value.type === 'compare') {
     if (!('key' in value) || typeof value.key !== 'string' || !historyKeys.includes(value.key)) return null;
-    return { type: 'history', key: value.key };
+    return { type: value.type, key: value.key };
   }
   return ['openSource', 'configureSource', 'scope', 'more'].includes(value.type) ? { type: value.type as 'openSource' | 'configureSource' | 'scope' | 'more' } : null;
 }
