@@ -34,7 +34,14 @@ installed from npm. npm latest 0.2.1 has no bundle runtime or CLI export command
   360, 768 and 1440 px, including keyboard tabs and accessibility semantics.
 - [x] Add packaged-extension CI on macOS/Linux/Windows against VS Code 1.95.3 and
   stable, plus a clean packed-reporter smoke job. Packaging uses pinned vsce 4.0.0.
-- [ ] Confirm both GitHub workflows pass for the release preparation commit.
+- [x] Confirm both GitHub workflows pass for release code and host readiness fix
+  `a136492`: [CI](https://github.com/krishnapollu/playwright-logbook/actions/runs/37182180933)
+  and [Release artifacts](https://github.com/krishnapollu/playwright-logbook/actions/runs/37182180950).
+  All six packaged editor jobs passed across macOS/Linux/Windows at minimum/stable
+  versions, together with the clean packed-reporter and panel checks.
+- [x] Document uninstalling the old `logbook-local-preview` extension before
+  installing the Marketplace publisher identity. This final documentation change
+  does not alter the CI-verified runtime; final VSIX packaging is rechecked locally.
 
 Local validation commands:
 

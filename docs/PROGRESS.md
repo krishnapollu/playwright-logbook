@@ -649,3 +649,17 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   `Tests 176 passed (176)`. Packaged VS Code 1.140.0 host exited 0 and logged
   `Host journey: native history watcher ready` before the full journey. Product
   runtime and release artifact bytes are unchanged; cross-platform CI is rerun.
+
+### Release validation and preview upgrade guidance
+
+- [x] Release code `a136492` passed both remote workflows: CI run 37182180933 and
+  Release artifacts run 37182180950. All six packaged host combinations passed
+  (macOS/Linux/Windows × minimum/stable), including the Windows startup readiness
+  assertion. The remote clean packed-reporter and panel jobs also passed.
+- [x] Recorded the passing CI evidence in RELEASE-VSCODE.md and documented
+  uninstalling the former local-preview publisher before Marketplace installation.
+  The final README update changes no runtime bytes. No publication occurred.
+- Done when output: final `npm run check` exited 0; `Test Files 36 passed (36)`
+  and `Tests 176 passed (176)`. Repackaged final VSIX installed and completed the
+  current-stable host journey with real packed-reporter records, exit 0.
+  Final package inspection and SHA-256 manifest passed; reporter tarball unchanged.

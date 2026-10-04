@@ -57,6 +57,14 @@ code --install-extension krishnapollu.playwright-logbook-vscode
 
 [Open the Marketplace listing](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode).
 
+If you installed an earlier repository preview under `logbook-local-preview`,
+uninstall that preview before installing this edition. Its publisher identity
+differs, so VS Code otherwise treats them as separate extensions:
+
+```sh
+code --uninstall-extension logbook-local-preview.playwright-logbook-vscode
+```
+
 For offline installation with a Logbook `.vsix` file:
 
 1. Open VS Code's Extensions view.
