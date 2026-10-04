@@ -289,3 +289,19 @@ outlined navigation controls, not solid native primary buttons.
 
 Done when: full checks, packaged host journey, compact wide/narrow visual checks,
 and attempt/evidence navigation checks pass.
+
+## 15. Approved section hierarchy and summary table
+
+Give Summary, Failure/Status, Evidence and History matching compact accent headers
+and clear bounded regions. Summary uses aligned key/value rows for status, full run
+ID, project, attempts, recorded time, workspace and available Git metadata. Keep
+source actions next to their recorded path and preserve narrow-screen wrapping.
+
+Overview shows exactly Total, Passed, Failed and Skipped counters, including zeros.
+Count recorded timeouts and interruptions as Failed. Missing status remains unknown,
+included only in Total with an explicit note when present; never infer a pass.
+Expected-outcome qualifiers remain in test details. This supersedes §14's separate
+timeout/interrupted/unknown metric tiles without changing recorded metadata.
+
+Done when: full checks, packaged host journey and narrow/wide theme-token visual
+checks pass; inspect the installed extension locally.

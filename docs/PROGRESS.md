@@ -432,3 +432,24 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   history, complete summary/history run IDs, green completed steps and outlined
   source actions. Run overview showed Total 20, Passed 16, Failed 2, Skipped 2,
   Timed out 0, Interrupted 0 and Unknown 0. Left the failure investigation open.
+
+### VS Code section hierarchy and summary table (preview 0.2.5)
+
+- [x] Approved next-phase spec §15: matching accent headers for Summary,
+  Failure/Status, Evidence and History; compact aligned key/value summary; four
+  overview counters (Total, Passed, Failed, Skipped), including zero counts.
+  Timeouts/interruptions count as Failed; unknown statuses receive an explicit
+  note and count only toward Total.
+- Done when output: `npm run check` exited 0; `Test Files 32 passed (32)` and
+  `Tests 159 passed (159)`. Regression checks cover four counters, timeout/
+  interruption grouping, missing status handling and summary metadata rows.
+- `npm run test:vscode -- --vsix` exited 0 against packaged 0.2.5:
+  `VS Code host: failure → scoped history → source, refresh, invalid actions and
+  multi-root isolation passed.` Historical source/diff preserved HEAD/working tree.
+- Narrow/wide (360/1100 px) dark/light/high-contrast theme-token checks passed
+  without overflow, including tab keyboard navigation and saved-state restoration.
+  Inspected narrow light and wide dark renders. Broader native all-theme,
+  screen-reader and Windows/Linux acceptance remain outstanding.
+- Installed 0.2.5 and reloaded the local pw-test window. Verified the summary table,
+  section header styling and four overview counts: Total 20, Passed 16, Failed 2,
+  Skipped 2. Left the updated failure investigation open.

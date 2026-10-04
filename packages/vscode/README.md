@@ -18,7 +18,7 @@ two-folder workspace. It does not use your normal editor profile.
 To package locally, run the following in `packages/vscode`:
 
 ```sh
-npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.4.vsix
+npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.5.vsix
 ```
 
 Then `npm run test:vscode -- --vsix` from the repository root installs the VSIX
@@ -95,13 +95,14 @@ Use the sidebar search action to find tests in a recorded run with outcome filte
 or **Run overview** for saved result totals and run-level errors. Comparisons open
 in the result editor group, lead with a change summary, and collapse provenance.
 
-The investigation workspace uses labeled context pills, a history timeline, and
+The investigation workspace uses four labeled sections, a key/value summary, compact history, and
 attempt/evidence tabs instead of nested attempt accordions. The final attempt is
 selected initially. Use Left/Right or Home/End within either tab row; Tab moves
 into the selected evidence panel. Technical context stays in the footer.
 
-History uses compact dated entries and full run IDs. Overview counters show every
-actual recorded status, including zero counts and Total. Expected failures,
+History uses compact dated entries and full run IDs. Overview counters show Total, Passed, Failed and Skipped, including zero counts.
+Timeouts and interruptions count as Failed; missing statuses remain explicitly
+unknown in a note and are included only in Total. Expected failures,
 unexpected passes and retry recovery retain short qualifiers; colors retain
 Logbook outcome semantics. Green step markers mean no step error was recorded,
 not measured code coverage.

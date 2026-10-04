@@ -151,7 +151,15 @@ it('keeps full run identities, zero-count statuses and semantic qualifiers in th
   expect(overview).toContain('<strong>2</strong><span>Total</span>');
   expect(overview).toContain('<strong>1</strong><span>Passed</span>');
   expect(overview).toContain('<strong>1</strong><span>Failed</span>');
-  for (const label of ['Skipped', 'Timed out', 'Interrupted', 'Unknown']) expect(overview).toContain(`<strong>0</strong><span>${label}</span>`);
+  expect(overview).toContain('<strong>0</strong><span>Skipped</span>');
+  expect(overview.match(/class="run-metric /g)).toHaveLength(4);
+  const exceptional = renderRunOverview({ ...record, tests: [{ ...result, status: 'timedOut' }, { ...result, status: 'interrupted' }, { ...result, status: null }] }, resources);
+  expect(exceptional).toContain('<strong>2</strong><span>Failed</span>');
+  expect(exceptional).toContain('<strong>3</strong><span>Total</span>');
+  expect(exceptional).toContain('1 recorded result with unknown status included in Total.');
+  expect(html).toContain('aria-label="Summary"');
+  expect(html).toContain('<dt>Status</dt>');
+  expect(html).toContain('<dt>Recorded</dt>');
   const workspace = renderAttemptWorkspace([{ retry: 0, status: 'passed', durationMs: 1, errors: [], steps: [{ title: 'done', category: 'test.step', durationMs: 1, depth: 0, failed: false }] }]);
   expect(workspace).toContain('completed-step'); expect(workspace).toContain('Completed without a recorded error');
   expect(workspace).not.toContain('>Final<'); expect(workspace).not.toContain('Recorded attempt 1 of');
