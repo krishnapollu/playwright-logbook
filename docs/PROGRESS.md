@@ -504,3 +504,17 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   and maxOutputLength. Framework/browser/file logger adapters remain follow-up
   design work, pending identification of the user's loggers; no universal logger
   capture is claimed.
+
+### VS Code end-user README
+
+- [x] Replaced the accumulated internal-slice notes with an end-user guide covering
+  VSIX installation, reporter setup, first run, investigation sections, statuses,
+  history/comparison, logs/screenshots, copied CI records, source mapping, settings,
+  troubleshooting and current limits. Contributor build/test commands remain at
+  the end. Added a discovery link from the main README.
+- Verified documented settings against the extension manifest, version/VSIX names
+  against 0.2.7, evidence/action labels against the UI and reporter capture defaults
+  against source. Removed stale Other results and internal-slice instructions.
+- Done when output: `npm run check` exited 0; `Test Files 32 passed (32)` and
+  `Tests 161 passed (161)`. `git diff --check` passed. Documentation-only task;
+  extension behavior/version are unchanged.

@@ -59,6 +59,10 @@ npx playwright test
 
 Then open `.logbook/report/index.html`. The report is a single local HTML file and works without a server.
 
+Prefer investigating in your editor? The independently installed [Logbook VS Code
+extension](packages/vscode/README.md) shows run overviews, test evidence and history
+with source navigation. Its README covers preview installation, setup and usage.
+
 ## Use it in CI
 
 Each shard writes its own record. Give all shards the same run ID and upload their shard files as CI artifacts:
