@@ -571,3 +571,24 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   and mixed valid/invalid archives. Golden remains unchanged. `git diff --check`
   passed. Root package remains unreleased; guide explicitly distinguishes the
   repository build from an installed version containing this feature.
+
+### Portable bundles B4 — VS Code import
+
+- [x] B4 implementation and automated acceptance: Recent Runs import action,
+  trusted local target selection, explicit project binding, bounded shared batch
+  inspection, validation review, cancellation, duplicate/conflict diagnostics,
+  preserved selection and explicit Open Imported Run. Updated end-user README,
+  empty-workspace guidance and spec implementation status. Preview is 0.2.8.
+- Done when output: `npm run check` exited 0; `Test Files 36 passed (36)` and
+  `Tests 176 passed (176)`. `npm run test:vscode -- --vsix` exited 0 using the final
+  installed 0.2.8 VSIX. Editor journey imports a CI failure into local history,
+  navigates two matching local executions and mapped source; verifies dry review,
+  cancellation, duplicates/conflicts, project mismatch and multi-root isolation.
+- Native review checked in pw-test: project prompt, duplicate count, evidence
+  availability and target are readable in accessibility state. Compact native
+  dialog wraps the full target path and summary. Import uses native dialogs,
+  notifications and theme icons; no custom webview styles changed. Exhaustive
+  native all-theme/screen-reader and Windows/Linux review remains release work.
+- Final VSIX installed into the existing normal VS Code installation. No package
+  published. Guide documents 100-file/aggregate batch limits, omitted/missing
+  evidence, catalog recovery and raw external files retained without playback.

@@ -111,3 +111,7 @@ until export finishes; a later cleanup cannot be reversed by Logbook.
 Limits: 100 MiB ZIP, 500 MiB expanded data, 1000 runs, 10000 entries, 32 MiB per run,
 50 MiB per attachment and 100:1 inflation ratio. Limits fail explicitly without
 silently dropping evidence; export fewer runs or omit external artifacts.
+
+Import batches accept at most 100 ZIPs and share the 500 MiB expanded-data, 1000-run
+and 10000-entry limits. Bundles exceeding the remaining batch allowance are
+reported as rejected; earlier valid bundles can still be imported.

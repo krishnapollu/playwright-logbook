@@ -1,6 +1,6 @@
 # Portable run bundles and shared history ingestion
 
-Version: 0.1.0 · Status: implementation specification draft
+Version: 0.1.0 · Status: implemented in repository; package release pending
 
 ## 1. Product baseline
 
@@ -20,7 +20,7 @@ import` adds distinct runs to history; it must not change shard-merge semantics.
 Shard assembly precedes bundle export. Incomplete merged runs may be exported, but
 their recorded completeness and unknown shard state must remain unchanged.
 
-## 2. Repository capabilities and gaps
+## 2. Repository discovery baseline
 
 | Capability | Current support | Required work |
 | --- | --- | --- |
@@ -38,7 +38,9 @@ but before index append can leave a run undiscoverable while the index still exi
 
 ## 3. Public workflows
 
-The following commands are proposed, not available in the current release.
+The following commands are implemented in the repository build. The published
+package must include this feature before using these commands through npx. See
+`docs/RUN-BUNDLES.md` for local-build usage and generated-file coverage.
 
 ```sh
 # Export one CI run, without historical runs or external artifacts.
@@ -141,7 +143,9 @@ Initial shared limits: 100 MiB compressed archive, 500 MiB total uncompressed da
 10000 entries, 1000 runs, 32 MiB per run, 50 MiB per artifact and a 100:1 maximum
 compression ratio. Enforce declared and actual streamed sizes; stop inflation at
 limits. Explicitly report limit failures; never silently truncate a bundle.
-Check reader compatibility at these limits and make catalog paging discover all
+Import batches additionally accept at most 100 ZIPs and share the expanded-data,
+run and entry limits; excess bundles are explicitly rejected. Check reader
+compatibility at these limits and make catalog paging discover all
 accepted runs. Keep the ZIP processor cancellable and resource-bounded.
 
 The extension and CLI use the same version/schema/digest/path validation. Record
@@ -243,6 +247,6 @@ import a CI bundle into local history, open that CI failure, show matching local
 executions and navigate mapped source. Done when full check, packaged journey and
 narrow/wide theme/accessibility review pass; update extension README.
 
-No task is marked complete by this specification. Server hosting, automatic CI
+Implementation and acceptance results are tracked in `docs/PROGRESS.md`. Server hosting, automatic CI
 fetching, video/trace playback, fuzzy identity reconciliation and arbitrary schema
 migration are outside v1.

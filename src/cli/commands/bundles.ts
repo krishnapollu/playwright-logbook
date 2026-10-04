@@ -1,9 +1,7 @@
 import path from 'node:path';
 import type { CliContext } from '../format.js';
 import { exportBundle, writeExport } from '../../bundles/export.js';
-import { ingestBundles, readBundleFile } from '../../bundles/ingest.js';
-import { BundleError } from '../../bundles/archive.js';
-import type { InspectedBundle } from '../../bundles/archive.js';
+import { ingestBundles, readBundleBatch } from '../../bundles/ingest.js';
 
 export async function exportCommand(context: CliContext, options: { run?: string[]; out: string; history?: string; artifacts?: boolean; projectId?: string }): Promise<number> {
   const result = await exportBundle(context.root, context.outputDir, { runIds: options.run, history: options.history === undefined ? 0 : Number(options.history), artifacts: options.artifacts, projectId: options.projectId });
@@ -12,11 +10,9 @@ export async function exportCommand(context: CliContext, options: { run?: string
   return 0;
 }
 export async function importCommand(context: CliContext, options: { from: string[]; dryRun?: boolean; projectId?: string }): Promise<number> {
-  const bundles: InspectedBundle[] = []; let invalidArchives = 0;
-  for (const file of options.from) {
-    try { bundles.push(await readBundleFile(path.resolve(context.root, file))); }
-    catch (error) { invalidArchives++; context.stderr(`bundle ${path.basename(file)}: ${error instanceof BundleError ? error.message : 'Cannot read bundle.'}\n`); }
-  }
+  const { bundles, rejected } = await readBundleBatch(options.from.map(file => path.resolve(context.root, file)));
+  const invalidArchives = rejected.length;
+  for (const item of rejected) context.stderr(`bundle ${item.name}: ${item.message}\n`);
   if (!bundles.length) return 4;
   const result = await ingestBundles(context.outputDir, bundles, { dryRun: options.dryRun, projectId: options.projectId });
   context.stdout(`${options.dryRun ? 'preview' : 'import'}: ${result.added.length} added, ${result.skipped.length} identical/skipped, ${result.conflicts.length} conflicting, ${result.invalid.length} invalid runs; ${result.missingArtifacts} missing/omitted artifact references\n`);

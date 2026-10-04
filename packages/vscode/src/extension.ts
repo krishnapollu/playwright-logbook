@@ -1,3 +1,8 @@
+import { prepareImport } from './bundleimport.js';
+import type { PreparedImport } from './bundleimport.js';
+import { ingestBundles, readImportCatalog } from '../../../src/bundles/ingest.js';
+import type { ImportResult } from '../../../src/bundles/ingest.js';
+import { projectIdSchema } from '../../../src/bundles/archive.js';
 import { overviewAction } from './insights.js';
 import * as vscode from 'vscode';
 import path from 'node:path';
@@ -66,6 +71,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       vscode.commands.registerCommand('logbook.diffComparedSource', () => this.handleComparison({ type: 'diff' })),
       vscode.commands.registerCommand('logbook.runOverview', (id: unknown) => this.runOverview(id)),
       vscode.commands.registerCommand('logbook.findTest', () => this.findTest()),
+      vscode.commands.registerCommand('logbook.importBundle', () => this.importBundle()),
       vscode.commands.registerCommand('logbook.refresh', () => this.refresh()),
       vscode.commands.registerCommand('logbook.selectStore', () => this.selectFolder('historyPath')),
       vscode.commands.registerCommand('logbook.configureSource', () => this.selectFolder('sourceRoot')),
@@ -452,6 +458,61 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       const choice = await vscode.window.showWarningMessage(`${message} Historical lines may have moved.`, 'Configure Source Mapping');
       if (choice) await this.selectFolder('sourceRoot');
     }
+  }
+  async prepareBundleImport(folderKey: string, files: readonly string[], projectId: string, signal?: AbortSignal): Promise<PreparedImport> {
+    const store = this.stores.get(folderKey);
+    if (!store) throw new Error('Import target workspace is no longer open.');
+    const { storeRoot } = await this.roots(store.folder);
+    return prepareImport(folderKey, storeRoot, files, projectId, vscode.workspace.isTrusted, signal);
+  }
+  async commitBundleImport(prepared: PreparedImport, signal?: AbortSignal): Promise<ImportResult> {
+    const store = this.stores.get(prepared.folderKey);
+    if (!store || !vscode.workspace.isTrusted) throw new Error('A trusted import target workspace is required.');
+    const { storeRoot } = await this.roots(store.folder);
+    if (storeRoot !== prepared.storeRoot) throw new Error('History folder changed. Review the import again.');
+    const result = await ingestBundles(storeRoot, prepared.bundles, { projectId: prepared.projectId, signal });
+    await this.refresh(prepared.folderKey);
+    return result;
+  }
+  private async importBundle(): Promise<void> {
+    if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage('Trust this local workspace before importing run bundles.'); return; }
+    const stores = [...this.stores.values()];
+    if (!stores.length) { await vscode.window.showInformationMessage('Open a local workspace folder before importing a run bundle.'); return; }
+    let store = stores.length === 1 ? stores[0] : undefined;
+    if (!store) store = (await vscode.window.showQuickPick(stores.map(item => ({ label: item.folder.name, description: item.storeRoot, store: item })), { title: 'Import into which workspace history?' }))?.store;
+    if (!store) return;
+    const target = store;
+    const files = await vscode.window.showOpenDialog({ canSelectFiles: true, canSelectFolders: false, canSelectMany: true, filters: { 'Logbook ZIP bundles': ['zip'] }, openLabel: 'Review Run Bundles' });
+    if (!files?.length || files.some(file => file.scheme !== 'file')) return;
+    try {
+      const { storeRoot } = await this.roots(target.folder);
+      const catalog = await readImportCatalog(storeRoot);
+      const projectId = catalog?.projectId ?? await vscode.window.showInputBox({ title: 'Bind this history store to a project', prompt: 'Use the same stable project ID as your CI exports (for example my-project).', validateInput: value => projectIdSchema.safeParse(value).success ? null : 'Use 1–128 letters, digits, dots, underscores or hyphens; start with a letter or digit.' });
+      if (!projectId) return;
+      await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Import Logbook runs', cancellable: true }, async (progress, token) => {
+        const abort = new AbortController(), subscription = token.onCancellationRequested(() => abort.abort());
+        try {
+          progress.report({ message: 'Validating bundles…' });
+          const prepared = await this.prepareBundleImport(this.folderKey(target.folder), files.map(file => file.fsPath), projectId, abort.signal);
+          const preview = prepared.preview;
+          const details = `${target.folder.name} → ${prepared.storeRoot}\nProject: ${projectId}\n${preview.added.length} new · ${preview.skipped.length} identical · ${preview.conflicts.length} conflicting · ${preview.invalid.length} invalid runs\n${prepared.includedArtifacts} included · ${preview.missingArtifacts} missing/omitted artifact references` +
+            (preview.conflicts.length ? `\nConflicts retained: ${preview.conflicts.slice(0, 10).join(', ') + (preview.conflicts.length > 10 ? ' …' : '')}` : '') +
+            (preview.invalid.length ? `\nInvalid runs: ${preview.invalid.slice(0, 10).map(item => item.runId).join(', ') + (preview.invalid.length > 10 ? ' …' : '')}` : '') +
+            (prepared.rejected.length ? `\nRejected bundles:\n${prepared.rejected.slice(0, 5).map(item => `${item.name}: ${item.message}`).join('\n') + (prepared.rejected.length > 5 ? `\n${prepared.rejected.length - 5} more rejected bundles` : '')}` : '');
+          const confirmed = await vscode.window.showInformationMessage('Import these runs into your history?', { modal: true, detail: details }, 'Import');
+          if (confirmed !== 'Import' || abort.signal.aborted) return;
+          progress.report({ message: 'Adding validated runs…' });
+          const result = await this.commitBundleImport(prepared, abort.signal);
+          const message = `${result.cancelled ? 'Import cancelled. Completed: ' : 'Imported: '}${result.added.length} added · ${result.skipped.length} identical · ${result.conflicts.length} conflicting · ${result.invalid.length} invalid runs`;
+          const choice = await vscode.window.showInformationMessage(message, ...(result.added.length ? ['Open Imported Run'] : []));
+          if (choice) {
+            const nodes = await this.runNodes(prepared.folderKey), node = nodes.find(item => item.runId === result.added[0]);
+            if (node) { const children = await this.getChildren(node), overview = children.find(item => item.kind === 'overview'); if (overview) await this.runOverview(overview.id); }
+          }
+        } catch (error) { if (!abort.signal.aborted) throw error; }
+        finally { subscription.dispose(); }
+      });
+    } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'Bundle import failed. Retry the same bundle to repair interrupted writes.'); }
   }
   private async selectFolder(setting: 'historyPath' | 'sourceRoot'): Promise<void> {
     const stores = [...this.stores.values()];

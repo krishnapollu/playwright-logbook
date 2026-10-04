@@ -22,6 +22,22 @@ export async function readBundleFile(file: string, signal?: AbortSignal): Promis
   finally { await handle.close(); }
 }
 
+export async function readBundleBatch(files: readonly string[], signal?: AbortSignal): Promise<{ bundles: InspectedBundle[]; rejected: { name: string; message: string }[] }> {
+  if (!files.length || files.length > 100) throw new BundleError('Choose 1–100 bundle files per import.');
+  const bundles: InspectedBundle[] = [], rejected: { name: string; message: string }[] = [];
+  let bytes = 0, entries = 0, runs = 0;
+  for (const file of [...new Set(files)]) {
+    signal?.throwIfAborted();
+    try {
+      const bundle = await readBundleFile(file, signal);
+      const size = [...bundle.files.values()].reduce((sum, value) => sum + value.length, 0);
+      if (bytes + size > BUNDLE_LIMITS.total || entries + bundle.files.size > BUNDLE_LIMITS.entries || runs + bundle.manifest.runs.length > BUNDLE_LIMITS.runs) throw new BundleError('Import batch limit exceeded. Import fewer bundles at a time.');
+      bundles.push(bundle); bytes += size; entries += bundle.files.size; runs += bundle.manifest.runs.length;
+    } catch (error) { signal?.throwIfAborted(); rejected.push({ name: path.basename(file), message: error instanceof BundleError ? error.message : 'Cannot read bundle.' }); }
+  }
+  return { bundles, rejected };
+}
+
 /** Pure record candidate selection: contradictory batch IDs never pick an arbitrary winner. */
 function candidates(bundles: readonly InspectedBundle[]): { runs: Map<string, RunRecord>; conflicts: Set<string> } {
   const runs = new Map<string, RunRecord>(), conflicts = new Set<string>();
@@ -33,6 +49,7 @@ function candidates(bundles: readonly InspectedBundle[]): { runs: Map<string, Ru
 /** Shared CLI/extension ingestion. Validation review and dry-run do not create a target store. */
 export async function ingestBundles(root: string, bundles: readonly InspectedBundle[], options: ImportOptions = {}): Promise<ImportResult> {
   options.signal?.throwIfAborted();
+  if (bundles.length > 100 || bundles.reduce((sum, bundle) => sum + bundle.manifest.runs.length, 0) > BUNDLE_LIMITS.runs || bundles.reduce((sum, bundle) => sum + bundle.files.size, 0) > BUNDLE_LIMITS.entries || bundles.reduce((sum, bundle) => sum + [...bundle.files.values()].reduce((size, bytes) => size + bytes.length, 0), 0) > BUNDLE_LIMITS.total) throw new BundleError('Import batch limit exceeded.');
   const previous = await readImportCatalog(root);
   const projectId = options.projectId ?? previous?.projectId;
   if (!projectId || !projectIdSchema.safeParse(projectId).success) throw new BundleError('Choose a stable target project ID before importing.');
@@ -50,7 +67,8 @@ export async function ingestBundles(root: string, bundles: readonly InspectedBun
       try { const target = path.join(root, 'runs', `${id}.json`); const info = await fs.lstat(target); if (!info.isFile() || info.isSymbolicLink() || info.size > BUNDLE_LIMITS.record) throw new BundleError('Unsafe existing run.'); existing = await store.loadRun(id); }
       catch (error) { if (!isMissing(error)) { result.conflicts.push(id); continue; } }
       if (existing && canonicalJson(existing) !== canonicalJson(run)) { result.conflicts.push(id); continue; }
-      const entry = Object.hasOwn(catalog.runs, id) ? catalog.runs[id]! : { bundles: [], artifacts: {} };
+      const priorEntry = Object.hasOwn(catalog.runs, id) ? catalog.runs[id] : undefined;
+      const entry = { bundles: [...(priorEntry?.bundles ?? [])], artifacts: { ...(priorEntry?.artifacts ?? {}) } };
       const pending = new Map<string, Buffer>(), mappings = { ...entry.artifacts };
       let artifactConflict = false;
       for (const bundle of bundles.filter(bundle => bundle.runs.has(id))) {
@@ -68,13 +86,15 @@ export async function ingestBundles(root: string, bundles: readonly InspectedBun
         }
       }
       if (artifactConflict) { result.conflicts.push(id); continue; }
+      entry.artifacts = mappings;
+      for (const bundle of bundles.filter(bundle => bundle.runs.has(id))) if (!entry.bundles.includes(bundle.digest)) entry.bundles.push(bundle.digest);
+      entry.bundles.sort(compare);
+      if (Buffer.byteLength(canonicalJson({ projectId, runs: { ...catalog.runs, [id]: entry } })) > BUNDLE_LIMITS.manifest) throw new BundleError('Import catalog exceeds its 8 MiB read limit. Select a smaller history store.');
       if (!options.dryRun) {
         // A started per-run commit completes without cancellation; retry repairs later phases.
         await atomicStoreFile(root, `pending-imports/${id}.json`, canonicalJson({ runId: id, bundles: bundles.filter(bundle => bundle.runs.has(id)).map(bundle => bundle.digest).sort(compare) }));
         await store.saveRunUnlocked(run, { canonical: true }); await options.afterPhase?.('record', id);
         for (const [relative, bytes] of pending) await atomicStoreFile(root, relative, bytes);
-        entry.artifacts = mappings;
-        for (const bundle of bundles.filter(bundle => bundle.runs.has(id))) if (!entry.bundles.includes(bundle.digest)) entry.bundles.push(bundle.digest);
         await options.afterPhase?.('artifacts', id); entry.bundles.sort(compare); Object.defineProperty(catalog.runs, id, { value: entry, enumerable: true, configurable: true, writable: true });
         await atomicStoreFile(root, 'imports.json', canonicalJson(catalog)); await options.afterPhase?.('catalog', id);
         await fs.unlink(path.join(root, 'pending-imports', `${id}.json`));

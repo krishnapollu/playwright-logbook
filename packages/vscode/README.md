@@ -9,7 +9,7 @@ both: the reporter collects results when Playwright runs; the extension displays
 those saved results. They share the Logbook brand but are installed and versioned
 independently.
 
-This is a **local desktop preview**, currently version **0.2.7**. Installation uses
+This is a **local desktop preview**, currently version **0.2.8**. Installation uses
 a VSIX file; the preview publisher is not a registered Marketplace identity.
 
 ## What you can do
@@ -43,7 +43,7 @@ If you have a Logbook `.vsix` file:
 Alternatively, use the VS Code CLI:
 
 ```sh
-code --install-extension path/to/playwright-logbook-vscode-0.2.7.vsix
+code --install-extension path/to/playwright-logbook-vscode-0.2.8.vsix
 ```
 
 If you are working from this repository, see [Build a local VSIX](#build-a-local-vsix).
@@ -214,6 +214,28 @@ metadata and an unavailable-preview explanation. Video playback, trace viewing a
 opening local artifact files from the extension are not implemented. Enabling
 Playwright video recording alone does not enable playback here.
 
+## Import a CI run into local history
+
+Use **Import Run Bundle…** (cloud-download icon in Recent Runs) or its command
+palette entry. Choose one or more exported Logbook ZIP files, then choose the
+workspace history in a multi-root window. Import requires a trusted local desktop
+workspace. The first import asks for the same stable project ID used by CI exports.
+
+Review the target, new/identical/conflicting runs and included/missing evidence.
+Confirm **Import**. Existing different records are retained; identical runs are
+skipped and can gain additional artifacts. Valid runs can still be imported when
+other bundles or runs are rejected. Cancellation keeps completed runs. Refresh
+preserves your current selection; **Open Imported Run** opens a new run explicitly.
+
+Matching imported and local executions blend in the normal History section.
+Branch scope still applies. Configure Source Mapping if the target checkout root
+differs; importing never checks out a commit or proves exact source alignment.
+Captured logs and embedded screenshots are available in Evidence. External video,
+trace and attachment files are retained for re-export; file preview/playback is
+not part of this import feature.
+
+See [bundle export, generated-file coverage and CI setup](https://github.com/krishnapollu/playwright-logbook/blob/main/docs/RUN-BUNDLES.md).
+
 ## Custom folders and copied CI records
 
 The extension checks `.logbook` directly beneath each workspace folder. For a
@@ -221,7 +243,7 @@ custom location, run **Logbook: Select History Folder** from the Command Palette
 or use the folder action in the Logbook sidebar. Select the store folder containing
 `index.jsonl` and `runs/`, not an individual JSON file or the report folder.
 
-For copied CI history:
+For a CI ZIP, use **Import Run Bundle…** above. For manually copied JSON history:
 
 1. Download or copy `index.jsonl` and its corresponding `runs/` records into a store.
 2. Select that history folder in Logbook.
@@ -305,13 +327,13 @@ Then package from `packages/vscode`:
 
 ```sh
 cd packages/vscode
-npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.7.vsix
+npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --out dist/playwright-logbook-vscode-0.2.8.vsix
 ```
 
 Install the resulting file with **Install from VSIX…** or, from the repository root:
 
 ```sh
-code --install-extension packages/vscode/dist/playwright-logbook-vscode-0.2.7.vsix
+code --install-extension packages/vscode/dist/playwright-logbook-vscode-0.2.8.vsix
 ```
 
 For development, open the repository and launch **Logbook extension development
