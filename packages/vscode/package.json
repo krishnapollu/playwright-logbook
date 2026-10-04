@@ -2,7 +2,7 @@
   "name": "playwright-logbook-vscode",
   "displayName": "Playwright Logbook",
   "description": "See a Playwright failure's recorded history and open its recorded source location.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "logbook-local-preview",
   "private": true,
   "preview": true,

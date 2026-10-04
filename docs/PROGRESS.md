@@ -334,6 +334,24 @@ milestone. Users can review and manually share a `logbook debug` packet later.
   build. Comparison renders also had no overflow at 360/1100 px in four token sets.
   Full theme/accessibility and cross-platform validation remain unchecked above;
   these implementation checks do not establish every NEXT acceptance criterion.
+- [x] Local preview 0.2.1 readability and sidebar status refinement
+
+  Status-colored native icons and outcome-first descriptions identify test results
+  without changing native row selection. The result panel uses filled badges,
+  card surfaces, readable dates, collapsed technical provenance and simpler history
+  copy. Errors show the first message line, assertion fields and source excerpt;
+  original logs remain in a disclosure, with repeated message prefixes removed from
+  stack display. Browser-launch output and retry details are collapsed by default.
+  Shared presentation also applies to execution comparisons.
+
+  Done when: `npm run check`: `Test Files 32 passed (32); Tests 155 passed (155)`.
+  `npm run test:vscode -- --vsix` exited 0 against packaged 0.2.1, including the
+  actual sidebar failure icon/color assertion and existing source/comparison/diff
+  journey. Headless renders of the real browser-launch record passed at 360/1100
+  px in light/dark/both high-contrast token sets; full launch logs were hidden by
+  default and no page overflow occurred. All nine packaged files were allow-listed;
+  built code/styles matched. Full actual-editor accessibility remains outstanding.
+
 - [ ] Stage A retained per-run HTML and embedded report (deferred; not a current gate)
 
 ## Blockers

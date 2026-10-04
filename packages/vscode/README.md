@@ -18,7 +18,7 @@ two-folder workspace. It does not use your normal editor profile.
 To package locally, run the following in `packages/vscode`:
 
 ```sh
-npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.0.vsix
+npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dist/playwright-logbook-vscode-0.2.1.vsix
 ```
 
 Then `npm run test:vscode -- --vsix` from the repository root installs the VSIX
@@ -29,6 +29,14 @@ Open the Logbook activity-bar entry, expand a recent run, select a recorded
 result, read the error and adjacent history, then explicitly choose **Open
 recorded source location**. Expected failures and skips are available under
 Other recorded results. Recorded run errors have their own group.
+
+Test rows have status-colored native icons and textual outcomes: red for unexpected
+failures, green for expected results, amber for retry recovery/interruption, neutral
+for skips/unknowns. VS Code controls native row text and selection colors.
+
+Errors show a headline, assertion fields and source excerpt first. The complete
+message and deduplicated stack remain under **Full diagnostic log**, including
+browser-launch output. Run identity and storage details stay in a disclosure.
 
 The result panel uses theme-aware outcome badges and places history alongside the
 error in wide panes, stacking it below attempts in narrow panes. Recorded identity

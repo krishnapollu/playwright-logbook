@@ -9,6 +9,7 @@ import { escapeHtml, panelAction, renderDetail } from './detail.js';
 import { comparisonRef, comparisonSide, matchingPair, renderComparison } from './comparison.js';
 import type { ExecutionRef, ComparisonSide } from './comparison.js';
 import { readHistoricalSource, GitSourceError } from './gitsource.js';
+import { statusIcon, toneIcon, displayTime } from './presentation.js';
 import type { HistoricalSource } from './gitsource.js';
 
 interface StoreContext {
@@ -17,7 +18,7 @@ interface StoreContext {
 }
 interface TreeNode {
   id: string; kind: 'folder' | 'run' | 'result' | 'runErrors' | 'runError' | 'other' | 'message' | 'more';
-  folderKey: string; label: string; description?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string;
+  folderKey: string; label: string; description?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string };
 }
 interface Selection {
   folderKey: string; runId: string; resultKey: string | null; errorIndex: number | null; errorKey: string | null;
@@ -147,7 +148,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const collapsible = ['folder', 'run', 'runErrors', 'other'].includes(node.kind);
     const item = new vscode.TreeItem(node.label, collapsible ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
     item.id = node.id; item.description = node.description; item.tooltip = node.label;
-    item.iconPath = new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
+    item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
     if (node.kind === 'result' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
     if (node.kind === 'more') item.command = { command: 'logbook.loadMoreRuns', title: 'Load more runs', arguments: [node.id] };
     return item;
@@ -164,11 +165,11 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const store = this.stores.get(node.folderKey); if (!store) return [];
     try {
       const run = await store.reader.getRun(node.runId, signal);
-      if (node.kind === 'runErrors') return (run.globalErrors ?? []).map((error, index) => this.register({ id: JSON.stringify([node.folderKey, run.runId, 'error', recordedErrorKey(error)]), kind: 'runError', folderKey: node.folderKey, runId: run.runId, errorIndex: index, errorKey: recordedErrorKey(error), label: error.message.slice(0, 180) || 'Recorded run error', description: 'Phase unknown' }));
+      if (node.kind === 'runErrors') return (run.globalErrors ?? []).map((error, index) => this.register({ id: JSON.stringify([node.folderKey, run.runId, 'error', recordedErrorKey(error)]), kind: 'runError', folderKey: node.folderKey, runId: run.runId, errorIndex: index, errorKey: recordedErrorKey(error), label: error.message.slice(0, 180) || 'Recorded run error', description: 'Run error · phase unknown', statusIcon: toneIcon('failure') }));
       const results = run.tests.filter((test) => node.kind === 'other' ? !isRunIssue(test) : isRunIssue(test));
       const children = results.map((test) => this.register({ id: JSON.stringify([node.folderKey, executionIdentity(run.runId, test)]), kind: 'result', folderKey: node.folderKey,
-        runId: run.runId, resultKey: executionIdentity(run.runId, test), label: test.title,
-        description: `${test.project || 'Project unknown'} · ${outcomeLabel(test)} · Repeat ${test.repeatEachIndex ?? 'unknown'}` }));
+        runId: run.runId, resultKey: executionIdentity(run.runId, test), label: test.title, statusIcon: statusIcon(test),
+        description: `${outcomeLabel(test)} · ${test.project || 'Project unknown'}${test.repeatEachIndex === 0 ? '' : ` · Repeat ${test.repeatEachIndex ?? 'unknown'}`}` }));
       if (node.kind === 'run') {
         if (run.globalErrors?.length) children.push(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'errors']), kind: 'runErrors', folderKey: node.folderKey, runId: run.runId, label: `Recorded run errors (${run.globalErrors.length})` }));
         if (run.globalErrors === null) children.push(this.message(node.folderKey, 'Run error metadata unavailable.', `${run.runId}-errors`));
@@ -186,7 +187,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     try {
       const page = await collectPages((offset, limit) => store.reader.listRuns(offset, limit, signal), store.runLimit);
       const nodes = page.items.map((run) => this.register({ id: JSON.stringify([key, run.runId]), kind: 'run', folderKey: key, runId: run.runId,
-        label: `${run.startedAt} · ${run.title ?? run.runId}`,
+        label: `${displayTime(run.startedAt)} · ${run.title ?? run.runId}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'),
         description: `${run.status ?? 'Status unknown'} · ${run.summary ? `${run.summary.failed} unexpected, ${run.summary.flaky} retry-flaky` : 'Counts unknown'} · ${completionLabel(run.complete)}` }));
       if (page.nextOffset !== null) nodes.push(this.register({ id: JSON.stringify([key, 'more', store.runLimit]), kind: 'more', folderKey: key, label: 'Load more runs' }));
       nodes.push(...page.diagnostics.map((entry) => this.message(key, `${entry.record}: ${entry.message}`)));

@@ -1,18 +1,13 @@
 import { completionLabel, executionIdentity, outcomeLabel } from '../../../src/historyreader.js';
+import { escapeHtml, outcomeTone } from './format.js';
+export { escapeHtml, outcomeTone } from './format.js';
+import { renderError, displayTime } from './presentation.js';
 import type { HistoryScope, Page, ReaderResult, ReaderRun, RecordedExecution } from '../../../src/historyreader.js';
 
-export const escapeHtml = (value: unknown): string => String(value ?? 'Unknown').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
 export interface DetailInput {
   run: ReaderRun; result: ReaderResult | null; runError: number | null; runErrorKey?: string | null;
   history: Page<RecordedExecution>; scope: HistoryScope; anchorRunId: string;
   storeLabel: string; sourceLabel: string; newHistory: boolean;
-}
-export function outcomeTone(result: ReaderResult): 'failure' | 'success' | 'warning' | 'neutral' {
-  if (result.status === 'interrupted') return 'warning';
-  if (result.outcome === 'skipped' || result.status === 'skipped' || outcomeLabel(result) === 'Unknown outcome') return 'neutral';
-  if (result.outcome === 'unexpected') return 'failure';
-  if (result.outcome === 'flaky') return 'warning';
-  return result.outcome === 'expected' ? 'success' : 'neutral';
 }
 const outcomeBadge = (result: ReaderResult): string => {
   const tone = outcomeTone(result);
@@ -25,42 +20,42 @@ export function renderDetail(input: DetailInput, resources: { css: string; scrip
   const selectedKey = result ? executionIdentity(run.runId, result) : JSON.stringify([run.runId, 'run-error', input.runErrorKey ?? input.runError]);
   const errors = result ? result.firstError : error;
   const attempts = result?.attempts;
-  let failing = -1;
-  attempts?.forEach((attempt, index) => { if (attempt.status !== null && attempt.status !== 'passed' && attempt.status !== 'skipped') failing = index; });
   const scopeLabel = scope.kind === 'branch' ? `Selected run's branch: ${scope.branch}` : 'All recorded branches';
   const noEarlier = result && !history.items.some((entry) => entry.runId !== input.anchorRunId && entry.startedAt <= run.startedAt);
-  const textError = (value: typeof errors) => value ? `<pre tabindex="0" aria-label="Recorded diagnostic text">${escapeHtml([value.message, value.snippet, value.stack].filter(Boolean).join('\n'))}</pre>` : '<p>Error text unavailable.</p>';
-  const source = result ? `<section class="source"><h2>Recorded source</h2><p><code>${escapeHtml(result.file ?? 'Source path unavailable')}${result.file ? `:${escapeHtml(result.line)}` : ''}</code></p><p class="note">The current mapped file opens at a historical line that may have moved. Exact historical source alignment is unknown.</p><div class="actions">${result.file ? '<button data-action="openSource">Open recorded source location</button>' : ''}<button class="secondary" data-action="configureSource">Configure Source Mapping</button></div></section>` : '';
+  const textError = renderError;
+  const attemptCount = attempts === null || attempts === undefined ? 'Attempts unknown' : `${attempts.length} recorded attempt${attempts.length === 1 ? '' : 's'}`;
+  const noRecordedError = !errors && attempts?.length && attempts.every((attempt) => attempt.errors !== null && attempt.errors.length === 0);
+  const failureTitle = !result ? 'Run error' : result.outcome === 'flaky' ? 'Earlier attempt error' : result.outcome === 'expected' && result.status === 'failed' ? 'Expected failure' : 'Failure';
+  const source = result ? `<div class="source-actions"><p class="source-location"><code>${escapeHtml(result.file ?? 'Source path unavailable')}${result.file && result.line !== null ? `:${escapeHtml(result.line)}` : ''}</code></p><div class="actions">${result.file ? '<button data-action="openSource">Open recorded source location</button>' : ''}<button class="secondary" data-action="configureSource">Configure Source Mapping</button></div><p class="source-hint">Opens the current checkout at the saved location. The file may have changed since this run.</p></div>` : '';
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${escapeHtml(resources.cspSource)}; script-src ${escapeHtml(resources.cspSource)}; img-src 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="${escapeHtml(resources.css)}"></head>
 <body data-selection="${escapeHtml(selectedKey)}"><main>
 <p role="status" class="refresh-notice" ${input.newHistory ? '' : 'hidden'}>${input.newHistory ? 'New history available. Selected execution preserved.' : ''}</p>
-<header><p class="eyebrow">Logbook / recorded result</p>
+<header><p class="eyebrow">LOGBOOK / TEST RESULT</p>
 <h1>${escapeHtml(result?.title ?? 'Recorded run error')}</h1>
 ${result ? outcomeBadge(result) : '<span class="badge failure">Recorded run error; phase unknown</span>'}
-<p class="metadata"><time>${escapeHtml(run.startedAt)}</time> · Run <code>${escapeHtml(run.runId)}</code>${result ? ` · ${escapeHtml(result.project || 'Project unknown')}` : ''}</p>
-<p class="metadata">Branch: ${escapeHtml(run.env?.git?.branch ?? 'Unknown')} · Commit: <code>${escapeHtml(run.env?.git?.commit ?? 'Unknown')}</code> · Working tree at execution: unknown</p>
-<p class="note">${escapeHtml(completionLabel(run.complete))} · Shard completeness unknown</p>
+<p class="metadata"><time>${escapeHtml(displayTime(run.startedAt))}</time> · ${escapeHtml(run.title ?? run.runId)}${result ? ` · ${escapeHtml(result.project || 'Project unknown')}` : ''}</p>
+<p class="metadata">${escapeHtml(run.env?.git?.branch ?? 'Branch not recorded')}${run.env?.git?.commit ? ` · <code title="${escapeHtml(run.env.git.commit)}">${escapeHtml(run.env.git.commit.slice(0, 8))}</code>` : ' · Commit not recorded'} · ${escapeHtml(attemptCount)}</p>
+${run.complete !== true ? `<p class="note">${escapeHtml(completionLabel(run.complete))}. Some results may be missing.</p>` : ''}
 ${source}
-<details class="provenance"><summary>Recorded identity and source mapping</summary>
+<details class="provenance"><summary>Run information and source mapping</summary><p>Run ID: <code>${escapeHtml(run.runId)}</code> · ${escapeHtml(completionLabel(run.complete))} · Shard completeness unknown</p><p>Working tree at execution: unknown. Exact historical source alignment is unknown.</p>
 <p>History store: ${escapeHtml(input.storeLabel)} → mapped checkout: ${escapeHtml(input.sourceLabel)}</p>
 <p>Origin: ${escapeHtml(run.env?.git?.repository ?? 'Unknown')} · Revision: ${escapeHtml(run.env?.git?.commit ?? 'Unknown')}</p>
 <p>A source mapping does not prove the checkout matches the recorded revision.</p>
 ${result ? `<p>Project: ${escapeHtml(result.project || 'Unknown')} · Test ID: <code>${escapeHtml(result.testId)}</code> · Repeat index: ${escapeHtml(result.repeatEachIndex)}</p>
 <p>Actual status: ${escapeHtml(result.status)} · Expected status: ${escapeHtml(result.expectedStatus)} · Recorded outcome: ${escapeHtml(result.outcome)}</p>` : ''}</details></header>
 <div class="detail-grid"><div class="diagnostics">
-<section aria-label="Recorded error" class="error-card"><h2>Recorded error</h2>${textError(errors)}</section>
-${result ? `<section><h2>Attempts</h2>${attempts === null ? '<p>Attempt details unavailable.</p>' : attempts?.length ? attempts.map((attempt, index) => `<details ${index === failing ? 'open' : ''}><summary>Attempt ${escapeHtml(attempt.retry === null ? 'unknown' : attempt.retry + 1)}: ${escapeHtml(attempt.status)} · ${escapeHtml(attempt.durationMs)} ms</summary>${attempt.errors === null ? '<p>Attempt errors unavailable.</p>' : attempt.errors.map(textError).join('') || '<p>No recorded attempt errors.</p>'}</details>`).join('') : '<p>No attempts recorded.</p>'}</section>
-</div><section class="history"><h2>History alongside this error</h2><p>Scope: ${escapeHtml(scopeLabel)} · Anchor: ${escapeHtml(input.anchorRunId)}</p>
-${run.env?.git?.branch ? '' : '<p>Selected execution branch metadata unavailable.</p>'}
+<section aria-label="Recorded error" class="error-card"><h2>${failureTitle}</h2>${noRecordedError ? '<p>No error recorded for this execution.</p>' : textError(errors)}</section>
+${result ? `<section class="attempts-card"><h2>Attempts <span class="section-count">${attempts?.length ?? '?'}</span></h2><p class="section-intro">The initial execution and any retries saved for this result.</p>${attempts === null ? '<p>Attempt details unavailable.</p>' : attempts?.length ? attempts.map((attempt, index) => `<details><summary>${escapeHtml(attempt.retry === null ? 'Attempt unknown' : attempt.retry === 0 ? 'Initial attempt' : `Retry ${attempt.retry}`)} · ${escapeHtml(attempt.status)} · ${attempt.durationMs === null ? 'Duration unknown' : `${escapeHtml(attempt.durationMs)} ms`}${index === attempts.length - 1 ? ' · Final attempt' : ''}</summary>${attempt.errors === null ? '<p>Attempt errors unavailable.</p>' : attempt.errors.map(textError).join('') || '<p>No recorded attempt errors.</p>'}</details>`).join('') : '<p>No attempts recorded.</p>'}</section>
+</div><section class="history" aria-label="History alongside this error"><h2>Execution history <span class="section-count">${history.items.length}</span></h2><p class="section-intro">Earlier saved outcomes for this test and project.</p><p class="history-scope">${escapeHtml(scope.kind === 'branch' ? `Branch: ${scope.branch}` : 'All recorded branches')}</p>
+${run.env?.git?.branch ? '' : '<p class="source-hint">The branch was not saved for this result.</p>'}
 <button class="secondary" data-action="scope">Change history scope</button>
-<p>${history.items.length} available matching recorded executions shown; newest first. Project and canonical test ID are fixed. Retries are nested within an execution.</p>
-${history.items.length ? `<p>Shown date window: ${escapeHtml(history.items.at(-1)?.startedAt)} → ${escapeHtml(history.items[0]?.startedAt)}</p>` : ''}
-${noEarlier ? '<p>No earlier recorded results match this test identity in the selected scope. This does not establish a first-ever failure.</p>' : ''}
-<ol class="history-list">${history.items.map((entry) => `<li ${entry.key === selectedKey ? 'class="selected"' : ''}>${outcomeBadge(entry.result)}<button class="history-entry" data-action="history" data-key="${escapeHtml(entry.key)}" ${entry.key === selectedKey ? 'aria-current="true"' : ''}><time>${escapeHtml(entry.startedAt)}</time><span>Run ${escapeHtml(entry.runId)} · Repeat ${escapeHtml(entry.result.repeatEachIndex)}${entry.key === selectedKey ? ' · Selected' : ''}</span></button>${entry.key !== selectedKey && result.project.trim() ? `<button class="secondary" data-action="compare" data-key="${escapeHtml(entry.key)}">Compare with selected</button>` : ''}</li>`).join('')}</ol>
+<details class="history-evidence"><summary>About this history</summary><p>Scope: ${escapeHtml(scopeLabel)} · Anchor: ${escapeHtml(input.anchorRunId)}</p><p>${history.items.length} available matching recorded executions shown; newest first. Project and canonical test ID are fixed. Retries are nested within an execution.</p>${history.items.length ? `<p>Shown date window: ${escapeHtml(history.items.at(-1)?.startedAt)} → ${escapeHtml(history.items[0]?.startedAt)}</p>` : ''}${noEarlier ? '<p>No earlier recorded results match this test identity in the selected scope. This does not establish a first-ever failure.</p>' : ''}<p>Gaps and omitted records mean unknown execution, not a pass. Similar errors do not establish a common root cause.</p></details>
+${noEarlier ? '<p class="empty-message">No earlier saved results for this test in this view.</p>' : ''}
+<ol class="history-list">${history.items.map((entry) => `<li class="history-card ${outcomeTone(entry.result)} ${entry.key === selectedKey ? 'selected' : ''}">${outcomeBadge(entry.result)}<button class="history-entry" data-action="history" data-key="${escapeHtml(entry.key)}" ${entry.key === selectedKey ? 'aria-current="true"' : ''}><time>${escapeHtml(displayTime(entry.startedAt))}</time><span>${escapeHtml(entry.runId)}${entry.result.repeatEachIndex === 0 ? '' : ` · Repeat ${escapeHtml(entry.result.repeatEachIndex)}`}${entry.key === selectedKey ? ' · Viewing this result' : ''}</span></button>${entry.key !== selectedKey && result.project.trim() ? `<button class="secondary" data-action="compare" data-key="${escapeHtml(entry.key)}">Compare with selected</button>` : ''}</li>`).join('')}</ol>
 ${history.nextOffset !== null ? '<button data-action="more">Load more history</button>' : ''}
-<p>Gaps and omitted records mean unknown execution, not a pass. Similar errors do not establish a common root cause.</p></section>` : '</div>'}</div>
+<p class="source-hint">Only saved executions are shown. Missing runs are not treated as passes.</p></section>` : '</div>'}</div>
 ${run.globalErrors === null ? '<p>Run error metadata unavailable.</p>' : ''}
 ${history.diagnostics.length ? `<section><h2>History diagnostics</h2><ul>${history.diagnostics.map((item) => `<li>${escapeHtml(item.record)}: ${escapeHtml(item.message)}</li>`).join('')}</ul></section>` : ''}
 </main><script src="${escapeHtml(resources.script)}"></script></body></html>`;

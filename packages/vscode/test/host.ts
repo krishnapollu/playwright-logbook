@@ -48,6 +48,9 @@ async function journey(): Promise<void> {
   console.log('Host journey: watcher refresh and stable recorded run errors verified');
   const failure = results.find((item) => item.kind === 'result' && item.description?.includes('Failed unexpectedly'))!;
   assert.ok(failure);
+  const statusIcon = logbook.getTreeItem(failure).iconPath;
+  assert.ok(statusIcon instanceof vscode.ThemeIcon);
+  assert.equal(statusIcon.id, 'error'); assert.equal(statusIcon.color?.id, 'testing.iconFailed');
   const command = logbook.getTreeItem(failure).command!;
   await vscode.commands.executeCommand(command.command, ...(command.arguments ?? []));
   console.log('Host journey: result and history opened');

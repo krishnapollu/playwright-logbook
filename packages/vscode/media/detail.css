@@ -54,3 +54,43 @@ dl { margin: 18px 0; } dt { margin-top: 12px; font-weight: 600; } dd { margin: 4
 
 button:disabled { cursor: default; color: var(--vscode-disabledForeground, var(--vscode-editor-foreground)); background: var(--vscode-editor-background); border-color: var(--border); }
 .actions > div { flex: 1 1 240px; min-width: 0; }
+/* Rich editor surfaces use native theme colors; the tree keeps native selection. */
+body { padding: 28px; }
+header { padding-bottom: 24px; }
+h1 { font-size: 1.9em; font-weight: 650; letter-spacing: -.02em; }
+.eyebrow { letter-spacing: .08em; font-size: .82em; margin-bottom: 12px; }
+.metadata { color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground)); }
+.badge { font-weight: 600; padding: 6px 10px; border-radius: 6px; }
+.badge.failure { background: color-mix(in srgb, var(--failure) 14%, var(--vscode-editor-background)); }
+.badge.success { background: color-mix(in srgb, var(--success) 14%, var(--vscode-editor-background)); }
+.badge.warning { background: color-mix(in srgb, var(--warning) 14%, var(--vscode-editor-background)); }
+.source-actions { margin: 18px 0 8px; }
+.source-location { font-size: .95em; }
+.source-hint { font-size: .9em; color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground)); }
+.provenance { border: 0; font-size: .9em; }
+.detail-grid { gap: 24px; padding-top: 28px; }
+.error-card, .attempts-card, .history { border: 1px solid var(--border); border-radius: 8px; padding: 18px; }
+.error-card { border-top: 3px solid var(--failure); }
+.error-summary { border-radius: 6px; padding: 14px; background: color-mix(in srgb, var(--failure) 10%, var(--vscode-editor-background)); }
+.error-headline { font-size: 1.1em; font-weight: 600; margin-top: 0; }
+.error-summary pre { border: 0; padding: 0; background: transparent; max-height: none; }
+h3 { font-size: 1em; margin: 18px 0 8px; }
+.source-snippet pre { border-left: 2px solid var(--border); max-height: 240px; }
+.full-diagnostic { margin-top: 12px; border-bottom: 0; }
+.full-diagnostic summary { color: var(--vscode-textLink-foreground); }
+.full-diagnostic pre { border-left-color: var(--border); }
+.section-count { display: inline-block; font-size: .8em; padding: 2px 7px; border: 1px solid var(--border); border-radius: 12px; margin-left: 5px; }
+.section-intro, .history-scope { color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground)); font-size: .95em; }
+.history-evidence { font-size: .9em; border: 0; }
+.history-list li.history-card { padding: 14px; margin: 10px 0; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 6px; background: var(--vscode-sideBar-background, var(--vscode-editor-background)); }
+.history-list li.failure { border-left-color: var(--failure); }
+.history-list li.success { border-left-color: var(--success); }
+.history-list li.warning { border-left-color: var(--warning); }
+.history-list li.selected { outline: 1px solid var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder) 8%, var(--vscode-editor-background)); }
+.history-entry { color: var(--vscode-editor-foreground); font-weight: 600; }
+.history-entry span { font-weight: 400; font-size: .9em; }
+.history-card button.secondary { font-size: .9em; }
+body.vscode-high-contrast .error-summary, body.vscode-high-contrast-light .error-summary,
+body.vscode-high-contrast .badge, body.vscode-high-contrast-light .badge,
+body.vscode-high-contrast .history-card, body.vscode-high-contrast-light .history-card { background: var(--vscode-editor-background); border: 1px solid var(--vscode-contrastBorder, var(--vscode-editor-foreground)); }
+@media (max-width: 400px) { body { padding: 14px; } .error-card, .attempts-card, .history { padding: 12px; } h1 { font-size: 1.6em; } }

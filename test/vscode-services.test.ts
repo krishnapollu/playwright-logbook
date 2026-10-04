@@ -7,6 +7,7 @@ import { renderDetail, panelAction, outcomeTone } from '../packages/vscode/src/d
 import { HistoryReader } from '../src/historyreader.js';
 import { LocalHistoryFiles } from '../src/historyfiles.js';
 import { FileHistoryStore } from '../src/store.js';
+import { errorPresentation, renderError, statusIcon } from '../packages/vscode/src/presentation.js';
 import { run, testRecord } from './factories.js';
 
 const temporary: string[] = [];
@@ -69,4 +70,28 @@ it('keeps badge emphasis consistent with expected outcomes, retry recovery and u
   expect(outcomeTone({ ...test, status: 'interrupted' })).toBe('warning');
   expect(outcomeTone({ ...test, status: 'skipped' })).toBe('neutral');
   expect(outcomeTone({ ...test, expectedStatus: null })).toBe('neutral');
+});
+
+it('shows a readable error headline and assertion context, deduplicating the full stack without discarding logs', () => {
+  const message = '\u001b[31mError: expected checkout total\u001b[0m\n\nExpected: 20\nReceived: 10\nCall log:\n  waiting for locator';
+  const view = errorPresentation({ message, stack: 'Error: expected checkout total\n\nExpected: 20\nReceived: 10\nCall log:\n  waiting for locator\n    at tests/checkout.spec.ts:42', snippet: '<unsafe source>', location: null });
+  expect(view.headline).toBe('Error: expected checkout total');
+  expect(view.context).toBe('Expected: 20\nReceived: 10');
+  expect(view.stack).toBe('at tests/checkout.spec.ts:42');
+  expect(view.message).toContain('waiting for locator');
+  const html = renderError({ message, stack: view.message, snippet: '<unsafe source>', location: null });
+  expect(html).toContain('<summary>Full diagnostic log</summary>');
+  expect(html).toContain('&lt;unsafe source&gt;'); expect(html).not.toContain('<unsafe source>');
+  expect(html).not.toContain('<h3>Stack trace</h3>');
+});
+it('keeps browser launch output in the full log and gives every result a semantic sidebar icon', () => {
+  const error = { message: 'Error: browserType.launch: browser closed\nBrowser logs:\n<launching> browser --many-flags', stack: null, snippet: null, location: null };
+  const view = errorPresentation(error);
+  expect(view.browserLaunch).toBe(true); expect(view.headline).not.toContain('--many-flags');
+  expect(view.message).toContain('--many-flags'); expect(view.context).toBe('');
+  const result = testRecord('opaque', 'unexpected');
+  expect(statusIcon(result)).toEqual({ id: 'error', color: 'testing.iconFailed' });
+  expect(statusIcon({ ...result, outcome: 'expected' })).toEqual({ id: 'pass', color: 'testing.iconPassed' });
+  expect(statusIcon({ ...result, outcome: 'flaky' }).color).toBe('testing.iconQueued');
+  expect(statusIcon({ ...result, status: 'skipped' }).id).toBe('circle-slash');
 });

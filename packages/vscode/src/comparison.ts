@@ -1,6 +1,7 @@
 import { completionLabel, executionIdentity, outcomeLabel } from '../../../src/historyreader.js';
 import type { ReaderResult, ReaderRun } from '../../../src/historyreader.js';
-import { escapeHtml, outcomeTone } from './detail.js';
+import { renderError } from './presentation.js';
+import { escapeHtml, outcomeTone } from './format.js';
 
 export interface ExecutionRef { runId: string; key: string; project: string; testId: string; title: string; startedAt: string; branch: string | null; commit: string | null }
 export interface ComparisonSide { ref: ExecutionRef; run: ReaderRun | null; result: ReaderResult | null; unavailable: string | null }
@@ -32,7 +33,7 @@ function renderSide(side: ComparisonSide, label: string): string {
 <dt>Recorded source</dt><dd><code>${escapeHtml(result.file)}:${escapeHtml(result.line)}</code></dd>
 <dt>Execution identity</dt><dd><code>${escapeHtml(ref.key)}</code></dd></dl>
 <p class="note">${escapeHtml(completionLabel(run.complete))} · Shard completeness unknown</p>
-<h3>Recorded error</h3>${error ? `<pre tabindex="0" aria-label="${label} recorded diagnostic text">${escapeHtml([error.message, error.snippet, error.stack].filter(Boolean).join('\n'))}</pre>` : `<p>${knownNoError ? 'No error recorded.' : 'Error metadata unavailable.'}</p>`}
+<h3>Recorded error</h3>${error ? renderError(error) : `<p>${knownNoError ? 'No error recorded.' : 'Error metadata unavailable.'}</p>`}
 <details><summary>Recorded attempt summaries</summary>${attempts === null ? '<p>Attempt details unavailable.</p>' : attempts.map((attempt) => `<p>Attempt ${escapeHtml(attempt.retry === null ? null : attempt.retry + 1)} · ${escapeHtml(attempt.status)} · ${attempt.durationMs === null ? 'Duration unknown' : `${escapeHtml(attempt.durationMs)} ms`} · ${attempt.errors === null ? 'Errors unknown' : `${attempt.errors.length} recorded errors`}</p>`).join('') || '<p>No attempts recorded.</p>'}</details></section>`;
 }
 export function renderComparison(baseline: ComparisonSide, selected: ComparisonSide, resources: { css: string; script: string; cspSource: string }, gitActions = ''): string {
