@@ -694,3 +694,18 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   1.140.0 missing cli.js); the minimum-version cache was preserved and replaced.
   Current-stable host revalidation remains pending. `git diff --check` passed.
   No publication occurred; Marketplace upload of the new VSIX remains required.
+
+### Analyze CLI preparation
+
+- [x] Implemented local `logbook analyze` before changing the extension workflow.
+  Shared bounded prompt builder; exact test/project/repeat selection, branch/all
+  history, optional current-source excerpt, verified local/imported attachment
+  paths, deterministic JSON/Markdown, and a configurable agent response-word
+  instruction. No model request, response stub, run mutation or attachment-body
+  embedding. CLI errors reject ambiguous executions rather than selecting one.
+- Listed tests: `test/analyze-cli.test.ts` covers deterministic/no-network output,
+  scope and identity, source/secret bounds, attachment mapping/containment,
+  missing/corrupt records and invalid options. Existing prompt budget tests pass.
+- Done when output: `npm run check` exited 0; `Test Files 39 passed (39)` and
+  `Tests 192 passed (192)`. Built `node dist/cli/bin.js analyze --help` lists
+  run/test/project/repeat/scope/max-words/source/format options. Golden unchanged.

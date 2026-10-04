@@ -11,8 +11,10 @@ import { historyCommand } from './commands/history.js';
 import { flakyCommand } from './commands/flaky.js';
 import { summaryCommand } from './commands/summary.js';
 import { debugCommand } from './commands/debug.js';
+import { analyzeCommand } from './commands/analyze.js';
 
 export interface CliDeps {
+  env?: Record<string, string | undefined>;
   stdout?: (text: string) => void;
   stderr?: (text: string) => void;
   cwd?: () => string;
@@ -28,7 +30,7 @@ export function createProgram(deps: CliDeps = {}): Command {
   const context = (): CliContext => {
     const options = program.opts<{ root?: string; outputDir?: string; quiet?: boolean }>();
     const root = path.resolve((deps.cwd ?? process.cwd)(), options.root ?? '.');
-    return { root, outputDir: path.resolve(root, options.outputDir ?? '.logbook'), quiet: options.quiet ?? false, stdout, stderr, clock: deps.clock ?? (() => new Date()) };
+    return { root, outputDir: path.resolve(root, options.outputDir ?? '.logbook'), quiet: options.quiet ?? false, stdout, stderr, clock: deps.clock ?? (() => new Date()), env: deps.env ?? process.env };
   };
   const done = (code: number): void => deps.setExitCode?.(code);
   program.name('logbook').description('Playwright run history and reports')
@@ -64,6 +66,14 @@ export function createProgram(deps: CliDeps = {}): Command {
     .option('--run <id>').requiredOption('--test <test-id>')
     .addOption(new Option('--format <format>').choices(['json', 'markdown']).default('markdown'))
     .action(async (options) => done(await debugCommand(context(), options)));
+  program.command('analyze').description('Prepare a concise investigation task for a coding agent (no model call)')
+    .option('--run <id>', 'recorded run ID or latest', 'latest').requiredOption('--test <test-id>')
+    .option('--project <name>', 'disambiguate Playwright project').option('--repeat <index>', 'disambiguate repeat index')
+    .addOption(new Option('--scope <scope>', 'history scope').choices(['branch', 'all']).default('branch'))
+    .option('--max-words <n>', 'requested agent response length, 50–1000 words', '200')
+    .option('--source', 'include a bounded excerpt from the current test file')
+    .addOption(new Option('--format <format>').choices(['markdown', 'json']).default('markdown'))
+    .action(async (options) => done(await analyzeCommand(context(), options)));
   return program;
 }
 

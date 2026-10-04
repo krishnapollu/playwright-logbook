@@ -10,6 +10,7 @@ import { toRel } from '../paths.js';
 import { resolveArtifactAvailability } from '../artifacts.js';
 
 export interface CliContext {
+  env?: Record<string, string | undefined>;
   root: string;
   outputDir: string;
   quiet: boolean;
