@@ -531,3 +531,15 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Four implementation tasks (B1–B4) have acceptance gates and remain unstarted.
 - Done when output for this documentation task: `npm run check` exited 0;
   `Test Files 32 passed (32)` and `Tests 161 passed (161)`.
+
+### Portable bundles B1 — format and archive adapter
+
+- [x] B1: versioned manifest, canonical records/digests, deterministic ZIP writing,
+  bounded lazy ZIP inspection, portable path checks and cancellation. Uses yauzl/
+  yazl with the dependency decision recorded in DECISIONS. No generic extraction.
+- Done when: `npm run check` exited 0; `Test Files 33 passed (33)` and
+  `Tests 166 passed (166)`. Bundle tests cover deterministic round trips, malformed
+  manifests/versions/digests, traversal, duplicate/case collisions, symlinks,
+  encryption/false sizes, inflation limits, invalid run diagnostics and cancellation.
+- Runtime dependency audit reported zero vulnerabilities. Existing golden test
+  remained read-only and passed.

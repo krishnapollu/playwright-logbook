@@ -60,6 +60,8 @@
   },
   "dependencies": {
     "commander": "^14.0.0",
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1",
     "zod": "^4.1.0"
   },
   "peerDependencies": {
@@ -69,6 +71,8 @@
     "@playwright/test": "^1.55.0",
     "@types/node": "^24.0.0",
     "@types/vscode": "1.95.0",
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
     "@vscode/test-electron": "3.1.0",
     "esbuild": "^0.28.2",
     "eslint": "^9.0.0",
