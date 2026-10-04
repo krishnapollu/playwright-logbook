@@ -1,3 +1,4 @@
+import { atomicStoreFile, withStoreLock } from '../../storelock.js';
 import fs from 'node:fs/promises';
 import type { Dirent } from 'node:fs';
 import path from 'node:path';
@@ -61,10 +62,7 @@ export async function mergeCommand(context: CliContext, options: MergeOptions): 
   const store = new FileHistoryStore(context.outputDir);
   if (options.history !== false) await store.saveRun(run, { replace: true });
   else {
-    const target = path.join(context.outputDir, 'runs', `${run.runId}.json`);
-    await fs.mkdir(path.dirname(target), { recursive: true });
-    await fs.writeFile(`${target}.tmp`, `${JSON.stringify(run, null, 2)}\n`, 'utf8');
-    await fs.rename(`${target}.tmp`, target);
+    await withStoreLock(context.outputDir, () => atomicStoreFile(context.outputDir, `runs/${run.runId}.json`, `${JSON.stringify(run, null, 2)}\n`));
   }
   for (const warning of warnings) context.stderr(`logbook: ${warning}\n`);
   const missing: number[] = [];

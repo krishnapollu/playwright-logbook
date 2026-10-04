@@ -543,3 +543,17 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   encryption/false sizes, inflation limits, invalid run diagnostics and cancellation.
 - Runtime dependency audit reported zero vulnerabilities. Existing golden test
   remained read-only and passed.
+
+### Portable bundles B2 — ingestion and repair
+
+- [x] B2: shared writer lock, canonical duplicate/conflict checks, explicit project
+  binding, imported artifact/provenance catalog, pending per-run commit markers,
+  index repair and cancellable ingestion. Dry-run creates no files. Retry of the
+  same bundle completes interrupted record/index/artifact/catalog phases.
+- Done when: `npm run check` exited 0; `Test Files 34 passed (34)` and
+  `Tests 172 passed (172)`. Tests cover blended CI/local history, batch conflicts,
+  missing binding, dry-run, concurrent writers, cancellation, symlinks, recovery,
+  artifact enrichment and contradictory bytes without mutation. Golden unchanged.
+- Readers may see a complete record before optional artifacts finish; pending
+  markers retain incomplete import association until replay. Stale locks require
+  explicit removal after verifying that no writer is active; never auto-stolen.

@@ -1,3 +1,5 @@
+import { canonicalJson } from './bundles/archive.js';
+import { storePath, withStoreLock } from './storelock.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { RunRecord, RunSummaryRecord, ShardFile } from './schema.js';
@@ -28,6 +30,7 @@ async function writeRecord(target: string, body: string, kind: 'run' | 'shard', 
       if (!exists(error)) throw error;
       const old = await files.readFile(target, 'utf8');
       if (old === body) return 'identical';
+      if (kind === 'run') { try { if (canonicalJson(JSON.parse(old) as unknown) === canonicalJson(JSON.parse(body) as unknown)) return 'identical'; } catch { /* Corrupt existing bytes remain a conflict. */ } }
       throw new LogbookError(kind === 'run' ? 'RUN_CONFLICT' : 'SHARD_CONFLICT', `${kind} ${path.basename(target)} already exists with different content`);
     }
   } finally {
@@ -68,10 +71,22 @@ export class FileHistoryStore implements HistoryStore {
   constructor(private readonly outputDir: string) {}
 
   async saveRun(run: RunRecord, options: { replace?: boolean } = {}): Promise<void> {
+    await withStoreLock(this.outputDir, () => this.saveRunUnlocked(run, options));
+  }
+
+  /** Caller must hold the shared store writer lock. */
+  async saveRunUnlocked(run: RunRecord, options: { replace?: boolean; canonical?: boolean } = {}): Promise<void> {
     if (!safeId(run.runId)) throw new LogbookError('INVALID_DATA', 'invalid run id');
-    const target = path.join(this.outputDir, 'runs', `${run.runId}.json`);
-    const outcome = await writeRecord(target, `${JSON.stringify(run, null, 2)}\n`, 'run', fs, options.replace);
-    if (outcome !== 'identical') await fs.appendFile(path.join(this.outputDir, 'index.jsonl'), `${JSON.stringify(summaryOf(run))}\n`, 'utf8');
+    const target = await storePath(this.outputDir, `runs/${run.runId}.json`);
+    const index = await storePath(this.outputDir, 'index.jsonl');
+    const outcome = await writeRecord(target, options.canonical ? canonicalJson(run) : `${JSON.stringify(run, null, 2)}\n`, 'run', fs, options.replace);
+    const expected = summaryOf(run);
+    let latest: RunSummaryRecord | undefined;
+    try {
+      const text = await fs.readFile(index, 'utf8');
+      for (const line of text.split('\n')) { try { const value = runSummaryRecordSchema.safeParse(JSON.parse(line) as unknown); if (value.success && value.data.runId === run.runId) latest = value.data; } catch { /* Existing malformed lines do not stop repair. */ } }
+    } catch (error) { if (!missing(error)) throw error; }
+    if (outcome !== 'identical' || !latest || canonicalJson(latest) !== canonicalJson(expected)) await fs.appendFile(index, `${JSON.stringify(expected)}\n`, 'utf8');
   }
 
   private async summariesFromFiles(): Promise<RunSummaryRecord[]> {
