@@ -60,6 +60,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   readonly onDidChangeTreeData = this.changed.event;
   private stores = new Map<string, StoreContext>();
   private readonly nodes = new Map<string, TreeNode>();
+  private treeView: vscode.TreeView<TreeNode> | undefined;
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private comparisonPanel: vscode.WebviewPanel | undefined;
@@ -136,6 +137,13 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   }
   private folderKey(folder: vscode.WorkspaceFolder): string { return folder.uri.toString(); }
   private register(node: TreeNode): TreeNode { this.nodes.set(node.id, node); return node; }
+  attachTreeView(view: vscode.TreeView<TreeNode>): void { this.treeView = view; }
+  getParent(node: TreeNode): TreeNode | undefined {
+    if (node.kind === 'folder') return undefined;
+    if (node.kind === 'run') return this.stores.size > 1 ? this.nodes.get(JSON.stringify([node.folderKey, 'folder'])) : undefined;
+    if (node.runId) return this.nodes.get(JSON.stringify([node.folderKey, node.runId]));
+    return this.stores.size > 1 ? this.nodes.get(JSON.stringify([node.folderKey, 'folder'])) : undefined;
+  }
   private message(folderKey: string, label: string, suffix = label): TreeNode {
     return this.register({ id: JSON.stringify([folderKey, 'message', suffix]), kind: 'message', folderKey, label });
   }
@@ -326,22 +334,22 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   }
   async expandAll(): Promise<void> {
     const operation = this.operation;
-    const expanded = new Set<string>();
+    const view = this.treeView;
+    if (!view) return;
+    const runs: TreeNode[] = [];
     for (const top of await this.getChildren()) {
       if (top.kind === 'folder') {
-        expanded.add(top.id);
-        for (const run of await this.getChildren(top)) if (run.kind === 'run') {
-          expanded.add(run.id);
-          for (const child of await this.getChildren(run)) if (child.kind === 'runErrors') expanded.add(child.id);
-        }
+        if (operation !== this.operation || this.disposed) return;
+        await view.reveal(top, { expand: 1, select: false, focus: false });
+        runs.push(...(await this.getChildren(top)).filter(child => child.kind === 'run'));
       } else if (top.kind === 'run') {
-        expanded.add(top.id);
-        for (const child of await this.getChildren(top)) if (child.kind === 'runErrors') expanded.add(child.id);
+        runs.push(top);
       }
     }
-    if (operation !== this.operation || this.disposed) return;
-    this.expandedIds = expanded;
-    this.changed.fire(undefined);
+    for (const run of runs) {
+      if (operation !== this.operation || this.disposed) return;
+      await view.reveal(run, { expand: 2, select: false, focus: false });
+    }
   }
   private async moreRuns(id: unknown): Promise<void> {
     const node = typeof id === 'string' ? this.nodes.get(id) : undefined;
@@ -712,6 +720,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
 export async function activate(context: vscode.ExtensionContext): Promise<Logbook> {
   const logbook = new Logbook(context);
   const view = vscode.window.createTreeView('logbook.recentRuns', { treeDataProvider: logbook, showCollapseAll: true });
+  logbook.attachTreeView(view);
   context.subscriptions.push(logbook, view,
     view.onDidExpandElement(({ element }) => logbook.noteTreeExpansion(element, true)),
     view.onDidCollapseElement(({ element }) => logbook.noteTreeExpansion(element, false)));

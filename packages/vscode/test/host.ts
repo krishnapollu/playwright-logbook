@@ -38,7 +38,12 @@ async function journey(): Promise<void> {
   const runs = await logbook.getChildren(first);
   const current = runs.find((item) => item.runId === 'current')!;
   assert.ok(current, 'Real compatible store should load');
+  const view = (logbook as unknown as { treeView: vscode.TreeView<{ id: string }> }).treeView;
+  const expanded = new Set<string>();
+  const expansion = view.onDidExpandElement(({ element }) => expanded.add(element.id));
   await vscode.commands.executeCommand('logbook.expandAll');
+  expansion.dispose();
+  assert.ok(expanded.has(first.id) && expanded.has(current.id), 'Expand All visibly expands the folder and recorded run');
   assert.equal(logbook.getTreeItem(first).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens workspace folders');
   assert.equal(logbook.getTreeItem(current).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens recorded runs');
   await vscode.commands.executeCommand('logbook.filterSpecFile', vscode.Uri.file(path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, 'tests/ui.spec.ts')));

@@ -934,3 +934,12 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   `Test Files 44 passed (44)`; `Tests 217 passed (217)`.
   The disposable installed-editor host journey exited 0. Golden unchanged;
   no new dependencies or publication.
+
+### VS Code Expand All visible-tree correction
+
+- [x] Expand All now calls the TreeView reveal API for visible folders and runs,
+  expanding each run through its recorded-error group. The provider supplies
+  parent nodes so VS Code can reveal nested runs. The host journey asserts real
+  tree expansion events, rather than only checking `TreeItem` metadata.
+- Done when output: `npm run check` exited 0: `Test Files 44 passed (44)`;
+  `Tests 217 passed (217)`. The disposable VS Code host journey exited 0.
