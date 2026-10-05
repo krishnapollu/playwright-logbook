@@ -37,6 +37,10 @@ Keep `.logbook/index.jsonl` and `.logbook/runs/` to retain history. Open the fol
 - **Expand All:** Open visible runs and their recorded-error groups; VS Code's Collapse All closes them.
 - **Run overview:** Select a run's overview to see counts, project breakdown, and clickable cases. Run overviews and results open as ordinary tabs in the active editor group.
 
+<img src="media/pw-test-live-filter.png" alt="Live filter for pw-test runs and tests" width="880">
+
+<img src="media/pw-test-context-menu.png" alt="Filter This Test action in a pw-test spec editor context menu" width="1000">
+
 <img src="media/pw-test-runs.png" alt="Cropped Logbook sidebar showing an expanded pw-test run and recorded cases" width="360">
 
 <img src="media/pw-test-overview.png" alt="Cropped pw-test run overview showing result distribution and project breakdown" width="820">
@@ -44,7 +48,6 @@ Keep `.logbook/index.jsonl` and `.logbook/runs/` to retain history. Open the fol
 ## Investigate a failure
 
 - **Result detail:** Read the recorded error, retries, source excerpt, steps, and logs. **Open failure location** and **Open test definition** jump to the current checkout.
-- **Attachments:** Click a file path or image preview in the **Attachments** tab to open the recorded file in an adjacent IDE tab. Missing or unsafe files show an availability message.
 - **Screenshots:** Playwright creates screenshot files; Logbook records their metadata. `captureDetails: true` adds eligible failed/flaky PNG or JPEG previews and captured steps/output to new runs.
 - **History and comparison:** Select an earlier execution or choose **Compare**. The explicit committed-source diff needs Workspace Trust, local Git, and locally available recorded revisions.
 
@@ -52,11 +55,20 @@ Keep `.logbook/index.jsonl` and `.logbook/runs/` to retain history. Open the fol
 
 <img src="media/pw-test-comparison.png" alt="Cropped comparison of two pw-test executions" width="820">
 
+### Test evidence
+
+- Switch between attempts, then open **Steps**, **Logs**, **Errors**, or **Attachments**.
+- Click an attachment path or image preview to open the recorded file in an IDE tab. Missing or unsafe files show an availability message.
+
+<img src="media/pw-test-evidence.png" alt="pw-test retry evidence with attachment links" width="694">
+
 ## Analyze with AI
 
 - **Start:** Select a test and choose **✧ Analyze with AI ▾**. Pick an installed assistant or native VS Code Chat once per workspace; the arrow changes that choice.
 - **Evidence:** Logbook saves a bounded context file at `.logbook/analysis/<content-hash>.json` and gives the assistant a short task with a file reference. Accessible attachments are referenced by project-relative paths.
 - **Review first:** The task is inserted as an unsent draft in supported assistants. Choose the model and submit it yourself. Logbook does not read the answer or automatically upload evidence.
+
+<img src="media/pw-test-analyze-ai.png" alt="Analyze with AI action on a pw-test result" width="207">
 
 Analysis requires Workspace Trust. Supported handoffs and evidence limits are described in [Advanced usage](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/ADVANCED.md).
 
@@ -65,6 +77,8 @@ Analysis requires Workspace Trust. Supported handoffs and evidence limits are de
 - Export a portable ZIP using the [bundle guide](https://github.com/krishnapollu/playwright-logbook/blob/main/docs/RUN-BUNDLES.md) (reporter 0.3.0+).
 - Choose **Logbook: Import Run Bundle…**, select ZIPs, enter the matching project ID, review the preview, and import.
 - Imported runs join local history. Logbook does not fetch artifacts or check out commits.
+
+<img src="media/pw-test-import-review.png" alt="pw-test CI bundle preview with run and artifact counts before import" width="490">
 
 ## Custom project folder
 
