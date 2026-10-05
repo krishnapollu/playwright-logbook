@@ -566,7 +566,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (this.pair !== pair || this.comparisonPanel !== panel || this.generation !== generation || this.disposed) return;
     const sourceAction = (side: 'baseline' | 'selected', available: typeof baselineGit) => `<div><button class="secondary" data-action="${side}Source" ${available.source ? '' : 'disabled'}>View ${side} source${available.source ? ` · ${escapeHtml(available.source.commit.slice(0, 12))}` : ''}</button>${available.reason ? `<p class="note">${side === 'baseline' ? 'Baseline' : 'Selected'}: ${escapeHtml(available.reason)}</p>` : ''}</div>`;
     const sameCommit = baselineGit.source && selectedGit.source && baselineGit.source.commit === selectedGit.source.commit;
-    const gitActions = `<details class="git-context"><summary>Committed source</summary><h2>Committed source</h2><p class="note">Committed content may differ from executed source; working-tree state at execution is unknown. Repository mapping does not prove recorded provenance.</p><div class="actions">${sourceAction('baseline', baselineGit)}${sourceAction('selected', selectedGit)}</div><div class="actions"><button data-action="diff" ${baselineGit.source && selectedGit.source ? '' : 'disabled'}>Compare test file between runs</button><button class="secondary" data-action="configureSource">Configure Source Mapping</button></div>${sameCommit ? '<p class="note">Same recorded commit: no committed revision change. Dirty or untracked changes at execution remain unknown.</p>' : ''}${baselineGit.source && selectedGit.source ? '' : '<p class="note">The file diff requires both historical files; an available side can still be opened independently.</p>'}<p>Git actions use local objects only; no fetch or checkout occurs.</p></details>`;
+    const gitActions = `<div class="source-diff-actions"><div class="actions"><button data-action="diff" ${baselineGit.source && selectedGit.source ? '' : 'disabled'}>View full file diff</button>${sourceAction('baseline', baselineGit)}${sourceAction('selected', selectedGit)}${baselineGit.source && selectedGit.source ? '' : '<button class="secondary" data-action="configureSource">Configure Source Mapping</button>'}</div>${sameCommit ? '<p class="note">Same recorded commit. Uncommitted changes at execution cannot be reconstructed from Git.</p>' : ''}${baselineGit.source && selectedGit.source ? '' : '<p class="note">The full file diff requires both historical files. Available sides can still be opened independently.</p>'}</div>`;
     panel.webview.html = renderComparison(baseline, selected, this.resources(panel), gitActions, baselineGit.source && selectedGit.source ? { baseline: baselineGit.source, selected: selectedGit.source } : undefined);
   }
   private historicalUri(source: HistoricalSource): vscode.Uri {
@@ -616,7 +616,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       const panel = this.comparisonPanel;
       if (panel) {
         // Explain unavailability alongside the still-usable actions, without replacing the pair.
-        panel.webview.html = panel.webview.html.replace('<h2>Committed source</h2>', `<h2>Committed source</h2><p role="status" class="note">${escapeHtml(reason)}</p>`);
+        panel.webview.html = panel.webview.html.replace('<h2>Committed test file diff</h2>', `<h2>Committed test file diff</h2><p role="status" class="note">${escapeHtml(reason)}</p>`);
         panel.reveal(panel.viewColumn ?? vscode.ViewColumn.Active);
       }
     }

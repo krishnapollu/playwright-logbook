@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { attachmentRecordSchema, errorRecordSchema, outcomeSchema, runStatusSchema, statusSchema, summarySchema, stepRecordSchema } from './schema.js';
+import { annotationSchema, attachmentRecordSchema, errorRecordSchema, outcomeSchema, runStatusSchema, statusSchema, summarySchema, stepRecordSchema } from './schema.js';
 
 /** Read-only, import-safe reader contract. The extension supplies filesystem access. */
 export interface HistoryFiles {
@@ -27,6 +27,7 @@ const resultSchema = z.object({
   repeatEachIndex: z.number().int().nonnegative().nullable().optional().transform((value) => value ?? null),
   durationMs: numberOrUnknown,
   firstError: errorRecordSchema.nullable().optional().transform((value) => value ?? null),
+  annotations: z.array(annotationSchema).nullable().optional().transform((value) => value ?? null),
   attempts: z.array(attemptSchema).nullable().optional().transform((value) => value ?? null),
 });
 const summaryFields = {

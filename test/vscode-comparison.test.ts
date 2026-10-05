@@ -28,6 +28,9 @@ it('shows metric definitions, unknown historical metadata and safely escaped dia
   const html = renderComparison(baseline, selected, { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' });
   expect(html).toContain('&lt;script&gt;bad()&lt;/script&gt;'); expect(html).not.toContain('<img src=x>');
   expect(html).toContain('Final-attempt duration'); expect(html).toContain('Error metadata unavailable');
+  expect(html).toContain('class="badge failure"');
+  expect(html).toContain('Committed test file diff');
+  expect(html).not.toContain('class="git-context"');
   expect(html).toContain('Working tree at execution</dt><dd>Unknown'); expect(html).toContain('not a performance-regression claim');
   expect(html).toContain('Baseline'); expect(html).toContain('Selected'); expect(html).toContain('default-src');
 });
@@ -46,15 +49,18 @@ it('summarizes known differences before errors and collapses execution metadata'
 
 it('shows a bounded, escaped committed spec diff with explicit revisions', async () => {
   const a = await fixture('baseline'), b = await fixture('selected');
+  b.tests[0]!.status = 'passed'; b.tests[0]!.outcome = 'expected';
   const sides = [comparisonSide(comparisonRef(a, a.tests[0]!), a), comparisonSide(comparisonRef(b, b.tests[0]!), b)] as const;
   const resources = { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' };
-  const html = renderComparison(...sides, resources, '', {
+  const html = renderComparison(...sides, resources, '<div class="source-diff-actions"><button data-action="diff">View full file diff</button></div>', {
     baseline: { commit: 'a'.repeat(40), file: 'tests/example.spec.ts', text: 'test("safe")\nexpect(false)\n' },
     selected: { commit: 'b'.repeat(40), file: 'tests/example.spec.ts', text: 'test("safe")\nexpect(<script>)\n' },
   });
   expect(html).toContain('Committed test file diff');
   expect(html).toContain('aaaaaaaaaaaa'); expect(html).toContain('bbbbbbbbbbbb');
   expect(html).toContain('diff-line removed'); expect(html).toContain('diff-line added');
+  expect(html).toContain('class="badge failure"'); expect(html).toContain('class="badge success"');
+  expect(html.indexOf('data-action="diff"')).toBeLessThan(html.indexOf('<div class="comparison-grid">'));
   expect(html).toContain('&lt;script&gt;'); expect(html).not.toContain('expect(<script>)');
   const large = renderComparison(...sides, resources, '', {
     baseline: { commit: 'a'.repeat(40), file: 'a.ts', text: Array(400).fill('a').join('\n') },

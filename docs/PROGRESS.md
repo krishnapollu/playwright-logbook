@@ -961,3 +961,20 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   passed across four themes and three widths, keyboard tabs, accessibility
   semantics and offline resources. The sandbox-only Chromium launch failed;
   the browser-enabled reruns passed. Golden unchanged; no new dependencies.
+
+### VS Code comparison and run overview cleanup
+
+- [x] Place View full file diff and historical source actions with the inline
+  committed diff, without a separate committed-source section. Show colored
+  status pills for baseline and selected results.
+- [x] Omit empty result diagnosis for passing tests. Preserve recorded skip
+  annotations in the extension reader and show a skip reason only when one was
+  captured. Keep actual errors and attempt evidence visible.
+- [x] Move run status and duration into the overview summary table, remove its
+  completion pill, and show Run errors only when actual global errors exist.
+- Listed tests: `test/vscode-comparison.test.ts` covers diff action placement and
+  status pills; `test/vscode-services.test.ts` covers skip reasons, empty diagnosis,
+  overview fields and conditional run errors.
+- Done when output: `npm run check` passed with `Test Files 44 passed (44)` and
+  `Tests 219 passed (219)`; `npm run test:release:views` passed across four themes
+  and three widths, with keyboard, accessibility and offline checks. Golden unchanged.

@@ -64,6 +64,25 @@ it('displays recorded run errors even with zero tests and discloses unknown phas
   expect(html).not.toContain('Open test definition');
 });
 
+it('shows recorded skip reasons and omits empty diagnosis and run-error sections', async () => {
+  const root = await fixture(), writer = new FileHistoryStore(root), reader = new HistoryReader(new LocalHistoryFiles(root));
+  const passed = { ...testRecord('passes', 'expected'), status: 'passed' as const };
+  const skipped = { ...testRecord('skips', 'skipped'), status: 'skipped' as const, expectedStatus: 'skipped' as const, annotations: [{ type: 'skip', description: '<environment unavailable>' }] };
+  await writer.saveRun({ ...run('diagnostics'), tests: [passed, skipped], globalErrors: [] });
+  const record = await reader.getRun('diagnostics');
+  const resources = { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' };
+  const detail = (index: number) => renderDetail({ run: record, result: record.tests[index]!, runError: null, history: { items: [], nextOffset: null, diagnostics: [] }, scope: { kind: 'all' }, anchorRunId: record.runId, storeLabel: '.', sourceLabel: '.', newHistory: false }, resources);
+  expect(detail(0)).not.toContain('Result diagnostics');
+  expect(detail(0)).not.toContain('class="error-card"');
+  expect(detail(1)).toContain('Recorded skip reason');
+  expect(detail(1)).toContain('&lt;environment unavailable&gt;');
+  expect(detail(1)).not.toContain('<environment unavailable>');
+  const overview = renderRunOverview(record, resources);
+  expect(overview).toContain('<dt>Status</dt>'); expect(overview).toContain('<dt>Duration</dt>');
+  expect(overview).not.toContain('Completion</span>'); expect(overview).not.toContain('<h2>Run errors</h2>');
+  expect(renderRunOverview({ ...record, globalErrors: [{ message: 'setup failed', stack: null, snippet: null, location: null }] }, resources)).toContain('<h2>Run errors</h2>');
+});
+
 it('keeps badge emphasis consistent with expected outcomes, retry recovery and unknown metadata', () => {
   const test = { ...testRecord('opaque', 'unexpected'), status: 'passed' as const, expectedStatus: 'failed' as const };
   expect(outcomeTone(test)).toBe('failure'); // An unexpected pass remains an issue.

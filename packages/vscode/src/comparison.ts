@@ -42,16 +42,16 @@ export function renderComparison(baseline: ComparisonSide, selected: ComparisonS
   const branchDifference = baseline.run && selected.run && baseline.run.env?.git?.branch !== selected.run.env?.git?.branch;
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${escapeHtml(resources.cspSource)}; script-src ${escapeHtml(resources.cspSource)}; img-src 'none';"><link rel="stylesheet" href="${escapeHtml(resources.css)}"></head>
 <body data-selection="${escapeHtml(JSON.stringify([baseline.ref.key, selected.ref.key]))}"><main><header><p class="eyebrow">Logbook / execution comparison</p><h1>${escapeHtml(selected.ref.title)}</h1><div class="context-bar">${contextPill('Project', selected.ref.project, 'project')}${contextPill('Pair', 'Same test identity')}</div>${branchDifference ? '<p class="note">Branch scope differs between these executions. Branch names do not establish equivalent environments.</p>' : ''}</header>
-${renderChanges(baseline, selected)}${committed ? renderCommittedDiff(committed.baseline, committed.selected) : ''}<div class="comparison-grid">${renderSide(baseline, 'Baseline')}${renderSide(selected, 'Selected')}</div>${gitActions}<div class="actions"><button data-action="back">Back to selected result</button></div><details class="comparison-evidence"><summary>Comparison context</summary><p class="note">Durations describe the same final-attempt metric, not a performance-regression claim. Similar errors and code changes do not establish a common cause. Recorded working-tree state is unknown.</p></details></main><script src="${escapeHtml(resources.script)}"></script></body></html>`;
+${renderChanges(baseline, selected)}${committed ? renderCommittedDiff(committed.baseline, committed.selected, gitActions) : `<section class="source-diff"><h2>Committed test file diff</h2><p>Historical source is unavailable for this pair.</p>${gitActions}</section>`}<div class="comparison-grid">${renderSide(baseline, 'Baseline')}${renderSide(selected, 'Selected')}</div><div class="actions"><button data-action="back">Back to selected result</button></div><details class="comparison-evidence"><summary>Comparison context</summary><p class="note">Durations describe the same final-attempt metric, not a performance-regression claim. Similar errors and code changes do not establish a common cause. Recorded working-tree state is unknown.</p></details></main><script src="${escapeHtml(resources.script)}"></script></body></html>`;
 }
 
-function renderCommittedDiff(baseline: CommittedFile, selected: CommittedFile): string {
+function renderCommittedDiff(baseline: CommittedFile, selected: CommittedFile, actions: string): string {
   const a = baseline.text.replace(/\r\n/g, '\n').split('\n');
   const b = selected.text.replace(/\r\n/g, '\n').split('\n');
   if (a.at(-1) === '') a.pop();
   if (b.at(-1) === '') b.pop();
   const label = `<p class="diff-revisions"><span>Baseline <code>${escapeHtml(baseline.commit.slice(0, 12))}</code> · <code>${escapeHtml(baseline.file)}</code></span><span>Selected <code>${escapeHtml(selected.commit.slice(0, 12))}</code> · <code>${escapeHtml(selected.file)}</code></span></p>`;
-  if (a.length * b.length > 90000 || a.length + b.length > 600) return `<section class="source-diff"><h2>Committed test file diff</h2>${label}<p>The file is too large for the inline view. Use Compare test file between runs to inspect the full diff.</p></section>`;
+  if (a.length * b.length > 90000 || a.length + b.length > 600) return `<section class="source-diff"><h2>Committed test file diff</h2>${label}<p>The file is too large for the inline view. Open the full file diff to inspect it.</p>${actions}</section>`;
   const table = Array.from({ length: a.length + 1 }, () => new Uint16Array(b.length + 1));
   for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--) table[i]![j] = a[i] === b[j] ? table[i + 1]![j + 1]! + 1 : Math.max(table[i + 1]![j]!, table[i]![j + 1]!);
   const lines: { kind: 'same' | 'removed' | 'added'; text: string; oldLine: number | null; newLine: number | null }[] = [];
@@ -62,7 +62,7 @@ function renderCommittedDiff(baseline: CommittedFile, selected: CommittedFile): 
     else lines.push({ kind: 'added', text: b[j++]!, oldLine: null, newLine: j });
   }
   const changed = lines.flatMap((line, index) => line.kind === 'same' ? [] : [index]);
-  if (!changed.length) return `<section class="source-diff"><h2>Committed test file diff</h2>${label}<p>No committed file changes between these recorded revisions.</p></section>`;
+  if (!changed.length) return `<section class="source-diff"><h2>Committed test file diff</h2>${label}<p>No committed file changes between these recorded revisions.</p>${actions}</section>`;
   const visible = new Set<number>();
   for (const index of changed) for (let n = Math.max(0, index - 3); n <= Math.min(lines.length - 1, index + 3); n++) visible.add(n);
   const rows: string[] = []; let skipped = false;
@@ -71,7 +71,7 @@ function renderCommittedDiff(baseline: CommittedFile, selected: CommittedFile): 
     skipped = false; const line = lines[index]!;
     rows.push(`<div class="diff-line ${line.kind}"><span class="diff-number">${line.oldLine ?? ''}</span><span class="diff-number">${line.newLine ?? ''}</span><span class="diff-mark">${line.kind === 'added' ? '+' : line.kind === 'removed' ? '−' : ' '}</span><code>${escapeHtml(line.text) || ' '}</code></div>`);
   }
-  return `<section class="source-diff"><h2>Committed test file diff</h2>${label}<p class="section-intro">${changed.length} changed lines shown with three context lines. This compares committed files; uncommitted changes at execution are unknown.</p><div class="diff-lines" role="region" aria-label="Committed source changes">${rows.join('')}</div></section>`;
+  return `<section class="source-diff"><h2>Committed test file diff</h2>${label}<p class="section-intro">${changed.length} changed lines shown with three context lines. This compares committed files; uncommitted changes at execution are unknown.</p><div class="diff-lines" role="region" aria-label="Committed source changes">${rows.join('')}</div>${actions}</section>`;
 }
 
 function renderChanges(baseline: ComparisonSide, selected: ComparisonSide): string {
@@ -89,5 +89,5 @@ function renderChanges(baseline: ComparisonSide, selected: ComparisonSide): stri
     ['Attempts', count(a), count(b)],
     ['Final-attempt duration', metric(a), metric(b)],
   ];
-  return `<section class="change-summary"><h2>What changed</h2><dl>${rows.map(([label, left, right]) => `<dt>${label}</dt><dd>${escapeHtml(left)}${right ? ` → ${escapeHtml(right)}` : ''}</dd>`).join('')}</dl></section>`;
+  return `<section class="change-summary"><h2>What changed</h2><dl>${rows.map(([label, left, right]) => `<dt>${label}</dt><dd>${label === 'Status' ? `<span class="badge ${outcomeTone(a)}">${escapeHtml(left)}</span><span class="change-arrow" aria-label="changed to">→</span><span class="badge ${outcomeTone(b)}">${escapeHtml(right)}</span>` : `${escapeHtml(left)}${right ? ` → ${escapeHtml(right)}` : ''}`}</dd>`).join('')}</dl></section>`;
 }
