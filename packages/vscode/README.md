@@ -6,7 +6,6 @@
 
 Browse recorded Playwright runs, inspect failures, compare history, and open evidence in your editor.
 
-[Watch the short `pw-test` feature tour](https://github.com/krishnapollu/playwright-logbook/blob/main/docs/video/playwright-logbook-pw-test-tour.webm). It walks through filtering, run overview, failure evidence, comparison, AI handoff, and CI bundle import using recorded `pw-test` views.
 
 [![Install Playwright Logbook for VS Code](https://img.shields.io/badge/VS_Code-Install_Logbook-007ACC)](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode)
 
@@ -57,6 +56,8 @@ Keep `.logbook/index.jsonl` and `.logbook/runs/` to retain history. Open the fol
 
 <img src="media/pw-test-comparison.png" alt="Current pw-test comparison showing a pass-to-fail change and the shared recorded commit" width="820">
 
+<img src="media/logbook-diff-view.png" alt="Diff in comparison view" width="820">
+
 ### Test evidence
 
 - Switch between attempts, then open **Steps**, **Logs**, **Errors**, or **Attachments**.
@@ -80,7 +81,7 @@ Analysis requires Workspace Trust. Supported handoffs and evidence limits are de
 - Choose **Logbook: Import Run Bundle…**, select ZIPs, enter the matching project ID, review the preview, and import.
 - Imported runs join local history. Logbook does not fetch artifacts or check out commits.
 
-<img src="media/pw-test-import-review.png" alt="pw-test CI bundle preview with run and artifact counts before import" width="490">
+<img src="media/pw-test-import-review.png" alt="pw-test CI bundle preview with run and artifact counts before import" width="290">
 
 ## Custom project folder
 
