@@ -564,14 +564,17 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     };
     const [baselineGit, selectedGit] = await Promise.all([inspectSource(pair.baseline), inspectSource(pair.selected)]);
     if (this.pair !== pair || this.comparisonPanel !== panel || this.generation !== generation || this.disposed) return;
-    const sourceAction = (side: 'baseline' | 'selected', available: typeof baselineGit) => `<div><button class="secondary" data-action="${side}Source" ${available.source ? '' : 'disabled'}>View ${side} source at recorded commit</button>${available.reason ? `<p class="note">${side === 'baseline' ? 'Baseline' : 'Selected'}: ${escapeHtml(available.reason)}</p>` : ''}</div>`;
+    const sourceAction = (side: 'baseline' | 'selected', available: typeof baselineGit) => `<div><button class="secondary" data-action="${side}Source" ${available.source ? '' : 'disabled'}>View ${side} source${available.source ? ` · ${escapeHtml(available.source.commit.slice(0, 12))}` : ''}</button>${available.reason ? `<p class="note">${side === 'baseline' ? 'Baseline' : 'Selected'}: ${escapeHtml(available.reason)}</p>` : ''}</div>`;
     const sameCommit = baselineGit.source && selectedGit.source && baselineGit.source.commit === selectedGit.source.commit;
     const gitActions = `<details class="git-context"><summary>Committed source</summary><h2>Committed source</h2><p class="note">Committed content may differ from executed source; working-tree state at execution is unknown. Repository mapping does not prove recorded provenance.</p><div class="actions">${sourceAction('baseline', baselineGit)}${sourceAction('selected', selectedGit)}</div><div class="actions"><button data-action="diff" ${baselineGit.source && selectedGit.source ? '' : 'disabled'}>Compare test file between runs</button><button class="secondary" data-action="configureSource">Configure Source Mapping</button></div>${sameCommit ? '<p class="note">Same recorded commit: no committed revision change. Dirty or untracked changes at execution remain unknown.</p>' : ''}${baselineGit.source && selectedGit.source ? '' : '<p class="note">The file diff requires both historical files; an available side can still be opened independently.</p>'}<p>Git actions use local objects only; no fetch or checkout occurs.</p></details>`;
-    panel.webview.html = renderComparison(baseline, selected, this.resources(panel), gitActions);
+    panel.webview.html = renderComparison(baseline, selected, this.resources(panel), gitActions, baselineGit.source && selectedGit.source ? { baseline: baselineGit.source, selected: selectedGit.source } : undefined);
   }
   private historicalUri(source: HistoricalSource): vscode.Uri {
     // URIs expose a repository digest, never a machine path. Content is session-only.
-    const uri = vscode.Uri.from({ scheme: 'logbook-history', authority: source.repositoryKey, path: `/${source.commit}/${source.file}` });
+    const extension = path.posix.extname(source.file);
+    const name = path.posix.basename(source.file, extension);
+    const parent = path.posix.dirname(source.file);
+    const uri = vscode.Uri.from({ scheme: 'logbook-history', authority: source.repositoryKey, path: `/${source.commit}/${parent === '.' ? '' : `${parent}/`}${name}@${source.commit.slice(0, 12)}${extension}` });
     if (!this.historicalDocuments.has(uri.toString()) && this.historicalDocuments.size >= 16) throw new GitSourceError('Historical document limit reached. Close a historical source tab and try again.');
     this.historicalDocuments.set(uri.toString(), source.text);
     return uri;
@@ -599,7 +602,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       if (message.type === 'diff') {
         const baseline = await this.historicalSide(pair.baseline), selected = await this.historicalSide(pair.selected);
         if (this.pair !== pair) return;
-        await vscode.commands.executeCommand('vscode.diff', this.historicalUri(baseline), this.historicalUri(selected), `Committed test source: ${pair.baseline.runId} ↔ ${pair.selected.runId}${baseline.commit === selected.commit ? ' (same commit)' : ''}`, { preview: false });
+        await vscode.commands.executeCommand('vscode.diff', this.historicalUri(baseline), this.historicalUri(selected), `Committed test source: ${baseline.commit.slice(0, 12)} ↔ ${selected.commit.slice(0, 12)}${baseline.commit === selected.commit ? ' (same commit)' : ''}`, { preview: false });
       } else {
         const ref = message.type === 'baselineSource' ? pair.baseline : pair.selected;
         const source = await this.historicalSide(ref);

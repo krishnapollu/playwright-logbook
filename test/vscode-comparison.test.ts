@@ -43,3 +43,22 @@ it('summarizes known differences before errors and collapses execution metadata'
   const unknown = renderComparison(comparisonSide(comparisonRef(a, a.tests[0]!), a), comparisonSide(comparisonRef(b, b.tests[0]!), b), { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' });
   expect(unknown).toContain('<dt>Recorded error</dt><dd>Unknown</dd>');
 });
+
+it('shows a bounded, escaped committed spec diff with explicit revisions', async () => {
+  const a = await fixture('baseline'), b = await fixture('selected');
+  const sides = [comparisonSide(comparisonRef(a, a.tests[0]!), a), comparisonSide(comparisonRef(b, b.tests[0]!), b)] as const;
+  const resources = { css: 'safe:css', script: 'safe:js', cspSource: 'safe:' };
+  const html = renderComparison(...sides, resources, '', {
+    baseline: { commit: 'a'.repeat(40), file: 'tests/example.spec.ts', text: 'test("safe")\nexpect(false)\n' },
+    selected: { commit: 'b'.repeat(40), file: 'tests/example.spec.ts', text: 'test("safe")\nexpect(<script>)\n' },
+  });
+  expect(html).toContain('Committed test file diff');
+  expect(html).toContain('aaaaaaaaaaaa'); expect(html).toContain('bbbbbbbbbbbb');
+  expect(html).toContain('diff-line removed'); expect(html).toContain('diff-line added');
+  expect(html).toContain('&lt;script&gt;'); expect(html).not.toContain('expect(<script>)');
+  const large = renderComparison(...sides, resources, '', {
+    baseline: { commit: 'a'.repeat(40), file: 'a.ts', text: Array(400).fill('a').join('\n') },
+    selected: { commit: 'b'.repeat(40), file: 'a.ts', text: Array(400).fill('b').join('\n') },
+  });
+  expect(large).toContain('too large for the inline view');
+});

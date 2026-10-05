@@ -943,3 +943,21 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   tree expansion events, rather than only checking `TreeItem` metadata.
 - Done when output: `npm run check` exited 0: `Test Files 44 passed (44)`;
   `Tests 217 passed (217)`. The disposable VS Code host journey exited 0.
+
+### VS Code committed spec diff and investigation view clarity
+
+- [x] The comparison now shows a bounded inline line diff of the two committed
+  test files when both recorded Git objects are available. Revision IDs appear
+  beside both executions, in the source controls, in historical source tab names,
+  and in the VS Code diff title. The source remains explicitly labeled as
+  committed content; execution working-tree state is unknown.
+- [x] Refined card separation, heading scale, metadata rows, history entries and
+  diff colors using VS Code theme tokens across light, dark and high contrast.
+- Listed tests: `test/vscode-comparison.test.ts` covers inline changes, escaping
+  and large-file fallback; `test/vscode-gitsource.test.ts` covers immutable local
+  Git reads and unchanged dirty checkout.
+- Done when output: `npm run check` exited 0 with `Test Files 44 passed (44)`
+  and `Tests 218 passed (218)` with browser access. `npm run test:release:views`
+  passed across four themes and three widths, keyboard tabs, accessibility
+  semantics and offline resources. The sandbox-only Chromium launch failed;
+  the browser-enabled reruns passed. Golden unchanged; no new dependencies.
