@@ -131,8 +131,8 @@ it('initializes run overview messaging without saved webview state', async () =>
     document: { body: { dataset: {} }, addEventListener: (_name: string, handler: (event: unknown) => void) => { if (_name === 'click') clicks.push(handler); } },
   });
   expect(clicks[0]).toBeTypeOf('function');
-  clicks[0]!({ target: { closest: () => ({ dataset: { action: 'find' } }) } });
-  expect(messages).toEqual([{ type: 'find' }]);
+  clicks[0]!({ target: { closest: () => ({ dataset: { action: 'openResult', key: 'recorded-case' } }) } });
+  expect(messages).toEqual([{ type: 'openResult', key: 'recorded-case' }]);
 });
 
 it('keeps full run identities, zero-count statuses and semantic qualifiers in the compact finish', async () => {
@@ -184,7 +184,7 @@ it('keeps chart counts truthful, bounds overview cases and validates recorded ca
   expect(bounded).toContain('First 100 results'); expect(bounded).not.toContain('<script>bad');
   expect(bounded).toContain('&lt;img onerror=bad()&gt;');
   expect(overviewAction({ type: 'openResult', key: 'known' }, ['known'])).toEqual({ type: 'openResult', key: 'known' });
-  for (const value of [{ type: 'openResult', key: 'foreign' }, { type: 'openResult', key: 1 }, { type: 'execute' }, null]) expect(overviewAction(value, ['known'])).toBeNull();
+  for (const value of [{ type: 'openResult', key: 'foreign' }, { type: 'openResult', key: 1 }, { type: 'find' }, { type: 'execute' }, null]) expect(overviewAction(value, ['known'])).toBeNull();
   const insights = renderTestInsights({ ...test, durationMs: null, attempts: null }, []);
   expect(insights).toContain('Attempt durations unavailable'); expect(insights).toContain('No history available');
   expect(insights).not.toMatch(/NaN|Infinity/);

@@ -1,6 +1,7 @@
 import { AgentChoices } from './agentchoice.js';
-import { emptyTestFilter, hasTestFilter, isSpecFile, matchesTestFilter } from './testfilter.js';
+import { emptyTestFilter, hasTestFilter, isSpecFile, matchesRunFilter, matchesTestFilter } from './testfilter.js';
 import type { TestTreeFilter } from './testfilter.js';
+import { testTitleAtCursor } from './speccontext.js';
 import { withinRoot } from '../../../src/historyfiles.js';
 import fs from 'node:fs/promises';
 import { attachmentAction, recordedAttachment } from './attachments.js';
@@ -14,7 +15,7 @@ import { overviewAction } from './insights.js';
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { HistoryReader, completionLabel, diagnosticMessage, executionIdentity, isRunIssue, outcomeLabel } from '../../../src/historyreader.js';
+import { HistoryReader, completionLabel, diagnosticMessage, executionIdentity } from '../../../src/historyreader.js';
 import type { HistoryScope, Page, ReaderRun, RecordedExecution } from '../../../src/historyreader.js';
 import { LocalHistoryFiles } from '../../../src/historyfiles.js';
 import { permittedRoot, recordedSource, sourcePosition } from './workspace.js';
@@ -66,6 +67,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   private pair: { storeRoot: string; folderKey: string; baseline: ExecutionRef; selected: ExecutionRef; selection: Selection } | undefined;
   private selection: Selection | undefined;
   private testFilter: TestTreeFilter = emptyTestFilter();
+  private expandedIds = new Set<string>();
   private filterInput: vscode.InputBox | undefined;
   private history: Page<RecordedExecution> = { items: [], nextOffset: null, diagnostics: [] };
   private generation = 0;
@@ -77,7 +79,11 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
 
   private postAnalysis(): void {
     if (this.disposed) return;
-    void this.panel?.webview.postMessage({ type: 'analysis', identity: this.analysis.identity, html: renderAnalysis(this.analysis.state) });
+    const panel = this.panel;
+    if (panel) {
+      try { void panel.webview.postMessage({ type: 'analysis', identity: this.analysis.identity, html: renderAnalysis(this.analysis.state) }).then(undefined, () => { /* The panel may close while a status message is in flight. */ }); }
+      catch { /* A closing panel may reject a synchronous webview write too. */ }
+    }
     if (this.analysis.state.status === 'complete') void vscode.window.showInformationMessage(this.analysis.state.message);
     if (this.analysis.state.status === 'error') void vscode.window.showWarningMessage(this.analysis.state.message);
   }
@@ -89,10 +95,11 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       vscode.commands.registerCommand('logbook.viewComparedSource', (side: unknown) => this.handleComparison({ type: side === 'baseline' ? 'baselineSource' : side === 'selected' ? 'selectedSource' : 'invalid' })),
       vscode.commands.registerCommand('logbook.diffComparedSource', () => this.handleComparison({ type: 'diff' })),
       vscode.commands.registerCommand('logbook.runOverview', (id: unknown) => this.runOverview(id)),
-      vscode.commands.registerCommand('logbook.findTest', () => this.findTest()),
       vscode.commands.registerCommand('logbook.filterTests', () => this.showTestFilter()),
-      vscode.commands.registerCommand('logbook.filterSpecFile', (uri: unknown) => this.filterSpecFile(uri)),
+      vscode.commands.registerCommand('logbook.filterSpecFile', (uri: unknown) => this.filterSpecFile(uri, false)),
+      vscode.commands.registerCommand('logbook.filterCurrentTest', (uri: unknown) => this.filterSpecFile(uri, true)),
       vscode.commands.registerCommand('logbook.clearTestFilter', () => { this.filterInput?.hide(); this.setTestFilter(emptyTestFilter()); }),
+      vscode.commands.registerCommand('logbook.expandAll', () => this.expandAll()),
       vscode.commands.registerCommand('logbook.importBundle', () => this.importBundle()),
       vscode.commands.registerCommand('logbook.refresh', () => this.refresh()),
       vscode.commands.registerCommand('logbook.selectStore', () => this.selectFolder('historyPath')),
@@ -170,7 +177,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (setupGeneration !== this.setupGeneration || this.disposed) { stores.forEach((store) => store.watchers.forEach((watcher) => watcher.dispose())); return; }
     this.stores.forEach((store) => store.watchers.forEach((watcher) => watcher.dispose()));
     for (const timer of this.timers.values()) clearTimeout(timer);
-    this.timers.clear(); this.stores = stores; this.nodes.clear();
+    this.timers.clear(); this.stores = stores; this.nodes.clear(); this.expandedIds.clear();
     if (this.testFilter.folderKey && !stores.has(this.testFilter.folderKey)) this.setTestFilter(emptyTestFilter());
     await this.refresh();
   }
@@ -184,7 +191,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   }
   getTreeItem(node: TreeNode): vscode.TreeItem {
     const collapsible = ['folder', 'run', 'runErrors'].includes(node.kind);
-    const item = new vscode.TreeItem(node.label, collapsible ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+    const item = new vscode.TreeItem(node.label, collapsible ? this.expandedIds.has(node.id) ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
     item.id = node.id; item.description = node.description; item.tooltip = `${node.label}${node.runId ? `\nRun: ${node.runId}` : ''}${node.description ? `\n${node.description}` : ''}`;
     item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
     if (node.kind === 'result' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
@@ -206,12 +213,13 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     try {
       const run = await store.reader.getRun(node.runId, signal);
       if (node.kind === 'runErrors') return (run.globalErrors ?? []).map((error, index) => this.register({ id: JSON.stringify([node.folderKey, run.runId, 'error', recordedErrorKey(error)]), kind: 'runError', folderKey: node.folderKey, runId: run.runId, errorIndex: index, errorKey: recordedErrorKey(error), label: error.message.slice(0, 180) || 'Recorded run error', description: 'Run error · phase unknown', statusIcon: toneIcon('failure') }));
-      const results = hasTestFilter(filter) ? run.tests.filter(test => matchesTestFilter(test, filter)) : run.tests;
+      const showRun = matchesRunFilter(run, filter);
+      const results = hasTestFilter(filter) && !showRun ? run.tests.filter(test => matchesTestFilter(test, filter, run)) : run.tests;
       if (filter !== this.testFilter) return [];
       const children = results.map((test) => this.register({ id: JSON.stringify([node.folderKey, executionIdentity(run.runId, test)]), kind: 'result', folderKey: node.folderKey,
         runId: run.runId, resultKey: executionIdentity(run.runId, test), label: test.title, statusIcon: statusIcon(test),
         description: `${statusText(test.status)}${outcomeQualifier(test) ? ` · ${outcomeQualifier(test)}` : ''} · ${test.project || 'Project unknown'}${test.repeatEachIndex === 0 ? '' : ` · Repeat ${test.repeatEachIndex ?? 'unknown'}`}` }));
-      if (node.kind === 'run' && !hasTestFilter(filter)) {
+      if (node.kind === 'run' && (!hasTestFilter(filter) || showRun)) {
         children.unshift(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'overview']), kind: 'overview', folderKey: node.folderKey, runId: run.runId, label: 'Run overview', description: `${run.tests.length} recorded results`, statusIcon: { id: 'graph', color: 'textLink.foreground' } }));
         if (run.globalErrors?.length) children.push(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'errors']), kind: 'runErrors', folderKey: node.folderKey, runId: run.runId, label: `Recorded run errors (${run.globalErrors.length})` }));
         if (run.globalErrors === null) children.push(this.message(node.folderKey, 'Run error metadata unavailable.', `${run.runId}-errors`));
@@ -231,8 +239,8 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       const page = await collectPages((offset, limit) => store.reader.listRuns(offset, limit, signal), store.runLimit);
       const visible = [];
       for (const run of page.items) {
-        if (hasTestFilter(filter)) {
-          try { if (!(await store.reader.getRun(run.runId, signal)).tests.some(test => matchesTestFilter(test, filter))) continue; }
+        if (hasTestFilter(filter) && !matchesRunFilter(run, filter)) {
+          try { if (!(await store.reader.getRun(run.runId, signal)).tests.some(test => matchesTestFilter(test, filter, run))) continue; }
           catch { if (signal.aborted) return []; continue; }
         }
         visible.push(run);
@@ -243,7 +251,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         description: `${run.status ?? 'Status unknown'} · ${run.summary ? `${run.summary.failed} unexpected, ${run.summary.flaky} retry-flaky` : 'Counts unknown'} · ${completionLabel(run.complete)}` }));
       if (page.nextOffset !== null) nodes.push(this.register({ id: JSON.stringify([key, 'more', store.runLimit]), kind: 'more', folderKey: key, label: hasTestFilter(filter) ? 'Search older runs' : 'Load more runs' }));
       nodes.push(...page.diagnostics.map((entry) => this.message(key, `${entry.record}: ${entry.message}`)));
-      if (hasTestFilter(filter) && !visible.length) nodes.unshift(this.message(key, page.nextOffset !== null ? 'No matches in loaded runs. Search older runs to continue.' : 'No recorded tests match this filter.', 'filter-empty'));
+      if (hasTestFilter(filter) && !visible.length) nodes.unshift(this.message(key, page.nextOffset !== null ? 'No matches in loaded runs. Search older runs to continue.' : 'No recorded runs or tests match this filter.', 'filter-empty'));
       else if (!page.items.length && !page.diagnostics.length) nodes.push(this.message(key, 'No recorded runs yet. Logbook reads history collected by its reporter. Select History Folder to view copied records.'));
       return nodes;
     } catch (error) {
@@ -263,7 +271,6 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       panel.webview.html = renderRunOverview(run, { css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(), script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource });
       const listener = panel.webview.onDidReceiveMessage((message: unknown) => {
         const action = overviewAction(message, run.tests.map(test => executionIdentity(run.runId, test)));
-        if (action?.type === 'find') void this.findTest(node);
         if (action?.type === 'openResult') {
           const test = run.tests.find(test => executionIdentity(run.runId, test) === action.key);
           if (!test) return;
@@ -280,20 +287,24 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     void vscode.commands.executeCommand('setContext', 'logbook.hasTestFilter', hasTestFilter(filter));
     this.changed.fire(undefined);
   }
+  noteTreeExpansion(node: TreeNode, expanded: boolean): void {
+    if (expanded) this.expandedIds.add(node.id);
+    else this.expandedIds.delete(node.id);
+  }
   private async showTestFilter(): Promise<void> {
     await vscode.commands.executeCommand('workbench.view.extension.logbook');
     this.filterInput?.dispose();
     const input = vscode.window.createInputBox();
     this.filterInput = input;
-    input.title = this.testFilter.file ? `Filter recorded tests in ${this.testFilter.file}` : 'Filter recorded tests';
-    input.placeholder = 'Test name, spec path, project or test ID';
+    input.title = this.testFilter.title ? `Filter recorded test: ${this.testFilter.title}` : this.testFilter.file ? `Filter recorded tests in ${this.testFilter.file}` : 'Filter recorded runs and tests';
+    input.placeholder = 'Run ID, date, status, branch, test name, project or path';
     input.value = this.testFilter.query;
     input.onDidChangeValue(value => this.setTestFilter({ ...this.testFilter, query: value.slice(0, 256) }));
     input.onDidAccept(() => input.hide());
     input.onDidHide(() => { if (this.filterInput === input) this.filterInput = undefined; input.dispose(); });
     input.show();
   }
-  private async filterSpecFile(argument: unknown): Promise<void> {
+  private async filterSpecFile(argument: unknown, fromEditor: boolean): Promise<void> {
     const uri = argument instanceof vscode.Uri ? argument : vscode.window.activeTextEditor?.document.uri;
     if (!uri || uri.scheme !== 'file' || !isSpecFile(uri.fsPath)) return;
     let file: string;
@@ -303,34 +314,34 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         const roots = await this.roots(store.folder);
         if (!withinRoot(roots.sourceRoot, file)) continue;
         const relative = path.relative(roots.sourceRoot, file).split(path.sep).join('/');
-        this.setTestFilter({ query: '', file: relative, folderKey: key });
+        const editor = vscode.window.activeTextEditor;
+        const title = fromEditor && editor?.document.uri.toString() === uri.toString()
+          ? testTitleAtCursor(uri.fsPath, editor.document.getText(), editor.document.offsetAt(editor.selection.active)) : null;
+        this.setTestFilter({ query: '', file: relative, title, folderKey: key });
         await this.showTestFilter();
         return;
       } catch { /* Other workspace folders may have unavailable mappings. */ }
     }
     await vscode.window.showInformationMessage('This spec file is outside the mapped Logbook source folders. Configure Source Mapping to filter its recorded tests.');
   }
-  private async findTest(runNode?: TreeNode): Promise<void> {
-    try {
-      let folderKey = runNode?.folderKey ?? this.selection?.folderKey;
-      let runId = runNode?.runId ?? this.selection?.runId;
-      if (!folderKey || !runId) {
-        const candidates: { label: string; description: string; node: TreeNode }[] = [];
-        for (const key of this.stores.keys()) for (const node of await this.runNodes(key)) if (node.kind === 'run') candidates.push({ label: node.label, description: this.stores.get(key)!.folder.name, node });
-        const choice = await vscode.window.showQuickPick(candidates, { title: 'Choose a recorded run' });
-        if (!choice) return;
-        folderKey = choice.node.folderKey; runId = choice.node.runId;
+  async expandAll(): Promise<void> {
+    const operation = this.operation;
+    const expanded = new Set<string>();
+    for (const top of await this.getChildren()) {
+      if (top.kind === 'folder') {
+        expanded.add(top.id);
+        for (const run of await this.getChildren(top)) if (run.kind === 'run') {
+          expanded.add(run.id);
+          for (const child of await this.getChildren(run)) if (child.kind === 'runErrors') expanded.add(child.id);
+        }
+      } else if (top.kind === 'run') {
+        expanded.add(top.id);
+        for (const child of await this.getChildren(top)) if (child.kind === 'runErrors') expanded.add(child.id);
       }
-      const store = this.stores.get(folderKey); if (!store || !runId) return;
-      const run = await store.reader.getRun(runId);
-      const filter = await vscode.window.showQuickPick(['All results', 'Failures and retry-flaky', 'Expected outcomes', 'Skipped'], { title: 'Filter recorded tests' });
-      if (!filter) return;
-      const tests = run.tests.filter((test) => filter === 'All results' || (filter === 'Failures and retry-flaky' ? isRunIssue(test) : filter === 'Skipped' ? test.status === 'skipped' : test.outcome === 'expected'));
-      const choice = await vscode.window.showQuickPick(tests.map((test) => ({ label: test.title, description: `${outcomeLabel(test)} · ${test.project}`, detail: test.file ?? 'Source unknown', test })), { title: `Find test · ${shortRunId(run.runId)}`, matchOnDescription: true, matchOnDetail: true });
-      if (!choice) return;
-      const node = this.register({ id: JSON.stringify([folderKey, executionIdentity(run.runId, choice.test)]), kind: 'result', folderKey, runId: run.runId, resultKey: executionIdentity(run.runId, choice.test), label: choice.test.title });
-      await this.inspect(node.id);
-    } catch (error) { await vscode.window.showWarningMessage(diagnosticMessage(error)); }
+    }
+    if (operation !== this.operation || this.disposed) return;
+    this.expandedIds = expanded;
+    this.changed.fire(undefined);
   }
   private async moreRuns(id: unknown): Promise<void> {
     const node = typeof id === 'string' ? this.nodes.get(id) : undefined;
@@ -350,16 +361,16 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         anchorRunId: run.runId, anchorBranch: branch, scope: branch ? { kind: 'branch', branch } : { kind: 'all' }, historyLimit: store.pageSize };
       this.generation += 1;
       await this.updatePanel();
-      // Pin the details tab: opening a source preview must not replace it in an empty editor group.
-      this.panel?.reveal(vscode.ViewColumn.Two, false);
+      // Pin the normal editor tab so source navigation cannot replace it.
+      this.panel?.reveal(vscode.ViewColumn.Active, false);
       await vscode.commands.executeCommand('workbench.action.keepEditor');
     } catch (error) { await vscode.window.showWarningMessage(diagnosticMessage(error)); }
   }
   private ensurePanel(): vscode.WebviewPanel {
     if (!this.panel) {
       const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
-      const panel = vscode.window.createWebviewPanel('logbook.detail', 'Logbook recorded result', { viewColumn: vscode.ViewColumn.Two, preserveFocus: true }, { enableScripts: true, localResourceRoots: [media] });
-      panel.onDidDispose(() => { if (this.panel === panel) { this.analysis.reset(''); this.panel = undefined; this.selection = undefined; this.history = { items: [], nextOffset: null, diagnostics: [] }; this.generation += 1; } });
+      const panel = vscode.window.createWebviewPanel('logbook.detail', 'Logbook recorded result', vscode.ViewColumn.Active, { enableScripts: true, localResourceRoots: [media] });
+      panel.onDidDispose(() => { if (this.panel === panel) { this.panel = undefined; this.selection = undefined; this.history = { items: [], nextOffset: null, diagnostics: [] }; this.generation += 1; this.analysis.reset(''); } });
       panel.webview.onDidReceiveMessage((message: unknown) => { void this.handlePanel(message); });
       this.panel = panel;
     }
@@ -370,7 +381,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const generation = this.generation;
     const panel = this.ensurePanel();
     const store = this.stores.get(selected.folderKey);
-    if (!store) { this.analysis.reset(''); panel.webview.html = '<p>Selected workspace folder is no longer available. Return to Recent Runs.</p>'; return; }
+    if (!store) { this.analysis.reset(''); if (this.panel === panel) panel.webview.html = '<p>Selected workspace folder is no longer available. Return to Recent Runs.</p>'; return; }
     try {
       if (store.error) throw new Error(store.error);
       const run = await store.reader.getRun(selected.runId, this.operation.signal);
@@ -378,7 +389,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       const errorIndex = selected.errorKey ? run.globalErrors?.findIndex((error) => recordedErrorKey(error) === selected.errorKey) ?? -1 : selected.errorIndex;
       if (selected.resultKey && !result || errorIndex === -1 || errorIndex !== null && !run.globalErrors?.[errorIndex]) throw new Error('Selected record is no longer available. Return to Recent Runs.');
       const history = result ? await collectPages((offset, limit) => store.reader.getTestHistory(result, selected.scope, offset, limit, this.operation.signal), selected.historyLimit) : { items: [], nextOffset: null, diagnostics: [] };
-      if (generation !== this.generation || this.selection !== selected || this.disposed) return;
+      if (generation !== this.generation || this.selection !== selected || this.panel !== panel || this.disposed) return;
       this.history = history;
       this.analysis.reset(result ? createHash('sha256').update(JSON.stringify([selected.folderKey, store.storeRoot, store.sourceRoot, run.runId, run.startedAt, run.complete, run.env, result, selected.scope])).digest('hex') : '');
       const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
@@ -390,7 +401,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource,
       });
     } catch (error) {
-      if (generation !== this.generation || this.operation.signal.aborted) return;
+      if (generation !== this.generation || this.operation.signal.aborted || this.panel !== panel || this.disposed) return;
       this.analysis.reset('');
       this.history = { items: [], nextOffset: null, diagnostics: [] };
       const message = error instanceof Error && error.message.startsWith('Selected record') ? error.message : diagnosticMessage(error);
@@ -525,7 +536,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         this.comparisonPanel = panel;
       }
       await this.updateComparison();
-      this.comparisonPanel.reveal(this.panel?.viewColumn ?? vscode.ViewColumn.Active);
+      this.comparisonPanel?.reveal(this.panel?.viewColumn ?? vscode.ViewColumn.Active);
       await vscode.commands.executeCommand('workbench.action.keepEditor');
     } catch (error) { await vscode.window.showWarningMessage(diagnosticMessage(error)); }
   }
@@ -570,7 +581,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const pair = this.pair;
     if (message.type === 'back') {
       this.selection = { ...pair.selection }; this.generation += 1;
-      await this.updatePanel(); this.panel?.reveal(vscode.ViewColumn.Two); return;
+      await this.updatePanel(); this.panel?.reveal(vscode.ViewColumn.Active); return;
     }
     if (message.type === 'configureSource') {
       this.selection = { ...pair.selection }; await this.selectFolder('sourceRoot'); return;
@@ -595,7 +606,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       if (panel) {
         // Explain unavailability alongside the still-usable actions, without replacing the pair.
         panel.webview.html = panel.webview.html.replace('<h2>Committed source</h2>', `<h2>Committed source</h2><p role="status" class="note">${escapeHtml(reason)}</p>`);
-        panel.reveal(vscode.ViewColumn.Two);
+        panel.reveal(panel.viewColumn ?? vscode.ViewColumn.Active);
       }
     }
   }
@@ -701,7 +712,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
 export async function activate(context: vscode.ExtensionContext): Promise<Logbook> {
   const logbook = new Logbook(context);
   const view = vscode.window.createTreeView('logbook.recentRuns', { treeDataProvider: logbook, showCollapseAll: true });
-  context.subscriptions.push(logbook, view);
+  context.subscriptions.push(logbook, view,
+    view.onDidExpandElement(({ element }) => logbook.noteTreeExpansion(element, true)),
+    view.onDidCollapseElement(({ element }) => logbook.noteTreeExpansion(element, false)));
   await logbook.setup();
   return logbook;
 }

@@ -32,7 +32,8 @@ try {
   };
   git('init', '-q'); git('add', 'tests'); git('commit', '-qm', 'baseline');
   const baselineCommit = git('rev-parse', 'HEAD');
-  for (const file of new Set(fixture.tests.map((test) => test.file))) await fs.writeFile(path.join(first, file), '// changed committed source\n// earlier recorded line\n// current recorded line\n');
+  for (const file of new Set(fixture.tests.map((test) => test.file))) await fs.writeFile(path.join(first, file), '// changed committed source\n// earlier recorded line\n// current recorded line\n' +
+    (file === 'tests/ui.spec.ts' ? "test('renders receipt @critical', async () => {\n  await page.click('receipt');\n});\ntest('another recorded case', () => {});\n" : ''));
   git('add', 'tests'); git('commit', '-qm', 'selected'); const selectedCommit = git('rev-parse', 'HEAD');
   const index = [];
   for (const [id, date, line, branch] of [['current', '2026-01-03', 3, 'main'], ['previous', '2026-01-02', 2, 'main'], ['feature', '2026-01-01', 1, 'feature']]) {

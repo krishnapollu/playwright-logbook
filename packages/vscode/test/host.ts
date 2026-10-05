@@ -16,6 +16,14 @@ export async function run(): Promise<void> {
   finally { if (timer) clearTimeout(timer); }
 }
 
+async function waitForActiveTab(label: string): Promise<void> {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    if (vscode.window.tabGroups.activeTabGroup.tabs.some(tab => tab.label === label && tab.isActive)) return;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  assert.fail(`Expected active tab ${label}; found ${JSON.stringify(vscode.window.tabGroups.all.map(group => ({ active: group.isActive, tabs: group.tabs.map(tab => tab.label) })) )}`);
+}
+
 async function journey(): Promise<void> {
   const extension = vscode.extensions.getExtension<Awaited<ReturnType<typeof activate>>>('krishnapollu.playwright-logbook-vscode');
   assert.ok(extension, 'Development extension must be discoverable');
@@ -30,6 +38,9 @@ async function journey(): Promise<void> {
   const runs = await logbook.getChildren(first);
   const current = runs.find((item) => item.runId === 'current')!;
   assert.ok(current, 'Real compatible store should load');
+  await vscode.commands.executeCommand('logbook.expandAll');
+  assert.equal(logbook.getTreeItem(first).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens workspace folders');
+  assert.equal(logbook.getTreeItem(current).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens recorded runs');
   await vscode.commands.executeCommand('logbook.filterSpecFile', vscode.Uri.file(path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, 'tests/ui.spec.ts')));
   const filteredFolders = await logbook.getChildren();
   assert.equal(filteredFolders.length, 1, 'Spec context menu scopes the left tree to its mapped workspace');
@@ -39,8 +50,15 @@ async function journey(): Promise<void> {
   assert.ok(filteredResults.some(item => item.label === 'renders receipt @critical'));
   assert.ok(!filteredResults.some(item => item.label === 'validates an API payload without a browser @contract'));
   assert.ok(!filteredResults.some(item => item.kind === 'overview'), 'Filtered run shows matching tests only');
-  const filterControl = logbook as unknown as { setTestFilter(filter: { query: string; file: string | null; folderKey: string | null }): void };
-  filterControl.setTestFilter({ query: 'receipt', file: 'tests/ui.spec.ts', folderKey: first.folderKey });
+  const source = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, 'tests/ui.spec.ts')));
+  const sourceEditor = await vscode.window.showTextDocument(source);
+  const cursor = source.getText().indexOf("page.click('receipt')");
+  sourceEditor.selection = new vscode.Selection(source.positionAt(cursor), source.positionAt(cursor));
+  await vscode.commands.executeCommand('logbook.filterCurrentTest', source.uri);
+  const exactResults = await logbook.getChildren(current);
+  assert.deepEqual(exactResults.map(item => item.label), ['renders receipt @critical'], 'Editor context filters the enclosing test exactly');
+  const filterControl = logbook as unknown as { setTestFilter(filter: { query: string; file: string | null; title: string | null; folderKey: string | null }): void };
+  filterControl.setTestFilter({ query: 'receipt', file: 'tests/ui.spec.ts', title: null, folderKey: first.folderKey });
   const searchedResults = await logbook.getChildren(current);
   assert.deepEqual(searchedResults.map(item => item.label), ['renders receipt @critical'], 'Live text narrows matching cases in the left tree');
   await vscode.commands.executeCommand('logbook.clearTestFilter');
@@ -51,6 +69,9 @@ async function journey(): Promise<void> {
   assert.ok(brokenChildren.some((item) => item.label.includes('schema 2')), 'Incompatible second root must have its own diagnostic');
   const results = await logbook.getChildren(current);
   assert.ok(results.some((item) => item.kind === 'overview'), 'Run overview is discoverable before tests');
+  await vscode.commands.executeCommand('logbook.runOverview', results.find(item => item.kind === 'overview')!.id);
+  await waitForActiveTab('Logbook run overview');
+  assert.equal(vscode.window.tabGroups.activeTabGroup.tabs.find(tab => tab.label === 'Logbook run overview')?.isActive, true, 'Run overview opens in the active editor group');
   assert.ok(!results.some(item => item.label.startsWith('Other results')), 'All tests appear directly under the run');
   // Native watchers start asynchronously, especially on a fresh Windows host.
   // Observe a real automatic refresh before testing a one-shot record mutation.
@@ -97,6 +118,8 @@ async function journey(): Promise<void> {
   assert.equal(statusIcon.id, 'error'); assert.equal(statusIcon.color?.id, 'testing.iconFailed');
   const command = logbook.getTreeItem(failure).command!;
   await vscode.commands.executeCommand(command.command, ...(command.arguments ?? []));
+  await waitForActiveTab('Logbook recorded result');
+  assert.equal(vscode.window.tabGroups.activeTabGroup.tabs.find(tab => tab.label === 'Logbook recorded result')?.isActive, true, 'Result opens in the active editor group');
   console.log('Host journey: result and history opened');
   const panelActions = logbook as unknown as { handlePanel(message: unknown): Promise<void> };
   await panelActions.handlePanel({ type: 'openAttachment', identity: failure.resultKey, attempt: 0, attachment: 0 });

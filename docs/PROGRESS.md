@@ -914,3 +914,23 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   `Tests 214 passed (214)`. Installed VS Code disposable-host journey exited 0:
   `Host journey: spec context action filters left tree and clear restores it`.
   Golden unchanged; no new dependencies or publication.
+
+### VS Code unified run/test filter and editor navigation
+
+- [x] Replaced Find Test in Run with one live tree filter across run ID, date,
+  title, status, branch, commit, recorded test name, ID, project and path.
+  Explorer context scopes to the spec; editor context resolves the enclosing
+  Playwright test. Both actions appear with testing-related context actions.
+- [x] Added Expand All beside VS Code's Collapse All and retained expansion
+  state as the visible tree refreshes. Result and run-overview tabs now open in
+  the active editor group; explicit committed-source comparison still uses a diff.
+  Closing a result panel clears it before analysis callbacks and late updates
+  check the panel identity, preventing writes to disposed webviews.
+- Listed tests: `test/vscode-testfilter.test.ts` and
+  `test/vscode-speccontext.test.ts` cover run and exact-test matching;
+  `packages/vscode/test/host.ts` exercises the editor context action, expansion,
+  and ordinary run/result tabs.
+- Done when output: `npm run check` exited 0 outside the macOS GUI sandbox:
+  `Test Files 44 passed (44)`; `Tests 217 passed (217)`.
+  The disposable installed-editor host journey exited 0. Golden unchanged;
+  no new dependencies or publication.

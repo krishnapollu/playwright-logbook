@@ -60,11 +60,13 @@ Open the folder containing your Playwright configuration in VS Code.
 
 Expand a run in **Recent Runs** and choose **Run overview**. Review totals,
 project breakdowns and the cases list; click a test to inspect it. Use the sidebar
-search action to find a test in the selected run. Use **Filter Recorded Tests**
-to narrow the left tree by test name, ID, project or spec path across loaded runs;
+**Filter Runs and Tests** to narrow the left tree by run ID, date, status, branch,
+test name, ID, project or spec path across loaded runs;
 **Search older runs** extends the search. Clear the filter with the toolbar action.
-Right-click a `.spec.*` or `.test.*` file in Explorer or its editor and choose
-**Logbook: Filter Tests in This Spec File** to show cases recorded from it.
+Right-click a `.spec.*` or `.test.*` file in Explorer and choose
+**Logbook: Filter Tests in This Spec File**. Right-click inside a test in the
+editor and choose **Logbook: Filter This Test** to show just that case.
+Use **Expand All** beside the filter and collapse controls to open the visible tree.
 
 ![Run overview with result totals, project breakdowns and clickable tests](media/run-overview.png)
 

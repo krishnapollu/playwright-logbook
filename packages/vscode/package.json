@@ -84,18 +84,22 @@
         "icon": "$(cloud-download)"
       },
       {
-        "command": "logbook.findTest",
-        "title": "Logbook: Find Test in Run",
-        "icon": "$(search)"
-      },
-      {
         "command": "logbook.filterTests",
-        "title": "Logbook: Filter Recorded Tests",
+        "title": "Logbook: Filter Runs and Tests",
         "icon": "$(filter)"
       },
       {
         "command": "logbook.filterSpecFile",
         "title": "Logbook: Filter Tests in This Spec File"
+      },
+      {
+        "command": "logbook.filterCurrentTest",
+        "title": "Logbook: Filter This Test"
+      },
+      {
+        "command": "logbook.expandAll",
+        "title": "Logbook: Expand All",
+        "icon": "$(expand-all)"
       },
       {
         "command": "logbook.clearTestFilter",
@@ -129,12 +133,12 @@
           "group": "navigation"
         },
         {
-          "command": "logbook.findTest",
+          "command": "logbook.filterTests",
           "when": "view == logbook.recentRuns",
           "group": "navigation"
         },
         {
-          "command": "logbook.filterTests",
+          "command": "logbook.expandAll",
           "when": "view == logbook.recentRuns",
           "group": "navigation"
         },
@@ -158,14 +162,14 @@
         {
           "command": "logbook.filterSpecFile",
           "when": "resourceScheme == file && resourceFilename =~ /\\.(spec|test)\\.[cm]?[jt]sx?$/",
-          "group": "navigation"
+          "group": "3_testing"
         }
       ],
       "editor/context": [
         {
-          "command": "logbook.filterSpecFile",
+          "command": "logbook.filterCurrentTest",
           "when": "resourceScheme == file && resourceFilename =~ /\\.(spec|test)\\.[cm]?[jt]sx?$/",
-          "group": "navigation"
+          "group": "2_testing"
         }
       ]
     },
