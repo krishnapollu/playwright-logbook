@@ -89,6 +89,20 @@
         "icon": "$(search)"
       },
       {
+        "command": "logbook.filterTests",
+        "title": "Logbook: Filter Recorded Tests",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "logbook.filterSpecFile",
+        "title": "Logbook: Filter Tests in This Spec File"
+      },
+      {
+        "command": "logbook.clearTestFilter",
+        "title": "Logbook: Clear Test Filter",
+        "icon": "$(clear-all)"
+      },
+      {
         "command": "logbook.refresh",
         "title": "Logbook: Refresh History",
         "icon": "$(refresh)"
@@ -120,6 +134,16 @@
           "group": "navigation"
         },
         {
+          "command": "logbook.filterTests",
+          "when": "view == logbook.recentRuns",
+          "group": "navigation"
+        },
+        {
+          "command": "logbook.clearTestFilter",
+          "when": "view == logbook.recentRuns && logbook.hasTestFilter",
+          "group": "navigation"
+        },
+        {
           "command": "logbook.refresh",
           "when": "view == logbook.recentRuns",
           "group": "navigation"
@@ -127,6 +151,20 @@
         {
           "command": "logbook.selectStore",
           "when": "view == logbook.recentRuns",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "logbook.filterSpecFile",
+          "when": "resourceScheme == file && resourceFilename =~ /\\.(spec|test)\\.[cm]?[jt]sx?$/",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "logbook.filterSpecFile",
+          "when": "resourceScheme == file && resourceFilename =~ /\\.(spec|test)\\.[cm]?[jt]sx?$/",
           "group": "navigation"
         }
       ]

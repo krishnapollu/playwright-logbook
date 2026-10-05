@@ -892,3 +892,25 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   source editor unchanged`. The cached editor binary was killed with SIGKILL;
   the runner now accepts `--vscode-executable` and passed with the installed binary.
   Golden unchanged; no new dependencies or publication.
+
+### VS Code recorded-test tree filter and spec-file shortcut
+
+- [x] Added a live filter for the Recent Runs tree. Search terms match recorded
+  test title, ID, project or spec path; matching runs show only matching cases.
+  The existing Find Test in Run action remains available. The filter searches the
+  loaded run window, with Search older runs to extend it, and a Clear action.
+- [x] Added Explorer and editor context menu actions for `.spec.*` and `.test.*`
+  files. They resolve the selected file within a configured source mapping, scope
+  the tree to that workspace/spec, and open the filter input. Unsupported paths
+  receive a mapping message. The menus use VS Code's file/resource context.
+- Screenshot ownership confirmed: Playwright's screenshot setting creates files;
+  Logbook records their attachment metadata and optionally embeds bounded PNG/JPEG
+  previews for failed or flaky tests when `captureDetails` is enabled. The IDE
+  displays those previews and opens retained attachment files.
+- Listed tests: `test/vscode-testfilter.test.ts` covers text, identity, exact path
+  and spec extensions. `packages/vscode/test/host.ts` exercises the spec-file
+  command, filtered run/test rows, text narrowing, multi-root scope and Clear.
+- Done when output: `npm run check` exited 0: `Test Files 43 passed (43)`;
+  `Tests 214 passed (214)`. Installed VS Code disposable-host journey exited 0:
+  `Host journey: spec context action filters left tree and clear restores it`.
+  Golden unchanged; no new dependencies or publication.
