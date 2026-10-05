@@ -61,12 +61,13 @@ Open the folder containing your Playwright configuration in VS Code.
 Expand a run in **Recent Runs** and choose **Run overview**. Review totals,
 project breakdowns and the cases list; click a test to inspect it. Use the sidebar
 **Filter Runs and Tests** to narrow the left tree by run ID, date, status, branch,
-test name, ID, project or spec path across loaded runs;
+commit, test name, ID, project or spec path across loaded runs;
 **Search older runs** extends the search. Clear the filter with the toolbar action.
 Right-click a `.spec.*` or `.test.*` file in Explorer and choose
 **Logbook: Filter Tests in This Spec File**. Right-click inside a test in the
 editor and choose **Logbook: Filter This Test** to show just that case.
 Use **Expand All** beside the filter and collapse controls to open the visible tree.
+Run overviews and test results open as ordinary tabs in the active editor group.
 
 ![Run overview with result totals, project breakdowns and clickable tests](media/run-overview.png)
 
@@ -82,9 +83,11 @@ Choose **Open failure location** or **Open test definition** to navigate to your
 current checkout. Recorded line numbers may have moved. Commit source and diffs
 require Workspace Trust, local Git and locally available recorded revisions.
 
-`captureDetails: true` enables steps, stdout/stderr and eligible failed/flaky-test
-PNG/JPEG previews. It applies to new runs. Videos, traces and other file attachments
-show metadata; playback and trace viewing are not available in the extension.
+Playwright creates screenshot files according to its screenshot setting; Logbook
+records their attachment metadata. `captureDetails: true` enables steps,
+stdout/stderr and eligible failed/flaky-test PNG/JPEG previews. It applies to new
+runs. Videos, traces and other file attachments show metadata; playback and
+trace viewing are not available in the extension.
 
 *Screenshots show the extension's panels with sample Playwright results.*
 

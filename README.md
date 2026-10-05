@@ -62,7 +62,7 @@ Then open `.logbook/report/index.html`. The report is a single local HTML file a
 
 ## VS Code extension
 
-Investigate results in your editor with [Playwright Logbook for VS Code](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode). Browse saved runs, inspect failures and retries, compare test history, and jump to source. Install it alongside the reporter; see the [extension README](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/README.md) for setup, screenshots and CI imports.
+Investigate results in your editor with [Playwright Logbook for VS Code](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode). Browse saved runs, filter runs or tests from the sidebar or a spec, expand the tree, open recorded attachments, analyze a selected test with your installed AI assistant, compare history, and jump to source. Install it alongside the reporter; see the [extension README](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/README.md) for setup, screenshots and CI imports.
 
 ## Use it in CI
 
