@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.19
+
+- Add one live filter for recorded runs and tests, plus spec-file and in-test
+  context-menu shortcuts. Add Expand All for the visible run tree.
+- Open run overviews and test results in ordinary editor tabs, and open
+  recorded attachment links and image previews in adjacent IDE tabs.
+- Make Analyze with AI attach a bounded context file and insert a short,
+  reviewable task reliably after the assistant panel starts.
+- Refresh the feature guide with cropped `pw-test` screenshots for filtering,
+  evidence, AI analysis and CI bundle import.
+
 ## 0.2.15
 
 - Add a compact Analyze with AI split button beside test source actions and
