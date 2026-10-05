@@ -986,9 +986,27 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   `packages/vscode/dist/playwright-logbook-vscode-0.2.20.vsix`.
 - Done when output: `npm run check` passed with `Test Files 44 passed (44)` and
   `Tests 219 passed (219)`. `npm run test:release:views` passed across four themes
-  and three widths. The 0.2.20 VSIX contains 22 ZIP entries (3,132,220 bytes,
-  SHA-256 `4d6343d3b8071a5e44417fa0e342ba4d1c73a9d642d5b8d51e06f8d9d53cfbe6`);
+  and three widths. The refreshed 0.2.20 VSIX contains 22 ZIP entries (2,930,373 bytes,
+  SHA-256 `e8bfcd31d8b41147091c498a961cc3866feba60258dc222f60a3cbfdce09556b`);
   packaged compiled code and view assets match the checked build. The clean-profile
   packaged journey exited 0 on VS Code 1.95.3. The cached VS Code 1.140.0 process
   was killed during CLI installation on two attempts, before extension activation;
   that host verification remains pending. No publication attempted.
+
+### VS Code pw-test media refresh
+
+- [x] Re-capture the current run overview, failure, evidence and comparison
+  webviews from the two recorded `pw-test` runs that change the product API
+  assertion from pass to fail. Existing filter, sidebar, context-menu, agent and
+  import images remain representative of their unchanged UI.
+- [x] Add a 26-second, nine-scene WebM feature tour combining the refreshed
+  views with the existing `pw-test` screenshots. Link it from the extension
+  README and clarify that it presents saved views rather than a live test or AI
+  submission. The capture script reads the local sibling `pw-test` project and
+  writes no data to that project.
+- Done when: `node scripts/capture-vscode-tour.mjs ../pw-test` completed; the
+  WebM decoded in Chromium at 1440×900 for 26.12 seconds, and representative
+  start, middle and end frames were visually reviewed. The four PNGs were
+  visually reviewed against current production renderers. The repackaged
+  0.2.20 VSIX contains the exact four new PNGs, checked extension bundle and
+  README tour link. `npm run check` passed: 44 files, 219 tests.

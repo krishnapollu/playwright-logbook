@@ -6,6 +6,8 @@
 
 Browse recorded Playwright runs, inspect failures, compare history, and open evidence in your editor.
 
+[Watch the short `pw-test` feature tour](https://github.com/krishnapollu/playwright-logbook/blob/main/docs/video/playwright-logbook-pw-test-tour.webm). It walks through filtering, run overview, failure evidence, comparison, AI handoff, and CI bundle import using recorded `pw-test` views.
+
 [![Install Playwright Logbook for VS Code](https://img.shields.io/badge/VS_Code-Install_Logbook-007ACC)](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode)
 
 ## Get started
@@ -43,7 +45,7 @@ Keep `.logbook/index.jsonl` and `.logbook/runs/` to retain history. Open the fol
 
 <img src="media/pw-test-runs.png" alt="Cropped Logbook sidebar showing an expanded pw-test run and recorded cases" width="360">
 
-<img src="media/pw-test-overview.png" alt="Cropped pw-test run overview showing result distribution and project breakdown" width="820">
+<img src="media/pw-test-overview.png" alt="Current pw-test run overview showing status, duration, result distribution, project breakdown, and case table" width="820">
 
 ## Investigate a failure
 
@@ -51,9 +53,9 @@ Keep `.logbook/index.jsonl` and `.logbook/runs/` to retain history. Open the fol
 - **Screenshots:** Playwright creates screenshot files; Logbook records their metadata. `captureDetails: true` adds eligible failed/flaky PNG or JPEG previews and captured steps/output to new runs.
 - **History and comparison:** Select an earlier execution or choose **Compare**. The explicit committed-source diff needs Workspace Trust, local Git, and locally available recorded revisions.
 
-<img src="media/pw-test-failure.png" alt="Cropped pw-test failure detail with error, retries, source action, and history" width="820">
+<img src="media/pw-test-failure.png" alt="Current pw-test failure detail with recorded assertion, retries, source action, and history" width="820">
 
-<img src="media/pw-test-comparison.png" alt="Cropped comparison of two pw-test executions" width="820">
+<img src="media/pw-test-comparison.png" alt="Current pw-test comparison showing a pass-to-fail change and the shared recorded commit" width="820">
 
 ### Test evidence
 
@@ -104,6 +106,6 @@ Select the history folder containing `index.jsonl` and `runs/`. History refreshe
 
 Desktop local workspaces are supported; Remote SSH, containers, and browser-based VS Code are not yet validated. Results stay in your project. Review logs and screenshots before sharing them. See [Advanced usage](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/ADVANCED.md) for logger setup, agent handoff details, attachment limits, and privacy notes.
 
-The cropped screenshots above come from the `pw-test` demo project. They show only test data and project-relative paths.
+The screenshots and video tour above use recorded results from the `pw-test` demo project. The tour presents saved views; it does not run tests or submit an AI request. Images show only test data and project-relative paths.
 
 [Reporter options](https://github.com/krishnapollu/playwright-logbook#reporter-options) · [Report an issue](https://github.com/krishnapollu/playwright-logbook/issues) · [Changelog](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/CHANGELOG.md)

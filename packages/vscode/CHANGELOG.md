@@ -8,6 +8,7 @@
   layout across light, dark and high contrast editor themes.
 - Show recorded skip reasons when available, omit empty diagnosis sections for
   passing results, and simplify run overview status, duration and error display.
+- Refresh `pw-test` screenshots and add a short feature tour video.
 
 ## 0.2.19
 
