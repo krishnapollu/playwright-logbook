@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.20
+
+- Show a bounded committed spec diff in the comparison view, with a full file
+  diff action and recorded commit IDs in source tabs and comparison controls.
+- Clarify status changes with colored pills and improve result and comparison
+  layout across light, dark and high contrast editor themes.
+- Show recorded skip reasons when available, omit empty diagnosis sections for
+  passing results, and simplify run overview status, duration and error display.
+
 ## 0.2.19
 
 - Add one live filter for recorded runs and tests, plus spec-file and in-test

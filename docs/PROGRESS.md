@@ -978,3 +978,17 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when output: `npm run check` passed with `Test Files 44 passed (44)` and
   `Tests 219 passed (219)`; `npm run test:release:views` passed across four themes
   and three widths, with keyboard, accessibility and offline checks. Golden unchanged.
+
+### VS Code 0.2.20 release VSIX preparation
+
+- [x] Bump only the extension manifest to 0.2.20, write release notes for the
+  comparison, diagnosis and overview changes, and build the regular-channel
+  `packages/vscode/dist/playwright-logbook-vscode-0.2.20.vsix`.
+- Done when output: `npm run check` passed with `Test Files 44 passed (44)` and
+  `Tests 219 passed (219)`. `npm run test:release:views` passed across four themes
+  and three widths. The 0.2.20 VSIX contains 22 ZIP entries (3,132,220 bytes,
+  SHA-256 `4d6343d3b8071a5e44417fa0e342ba4d1c73a9d642d5b8d51e06f8d9d53cfbe6`);
+  packaged compiled code and view assets match the checked build. The clean-profile
+  packaged journey exited 0 on VS Code 1.95.3. The cached VS Code 1.140.0 process
+  was killed during CLI installation on two attempts, before extension activation;
+  that host verification remains pending. No publication attempted.
