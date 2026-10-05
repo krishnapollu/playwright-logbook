@@ -81,6 +81,14 @@ async function journey(): Promise<void> {
   const command = logbook.getTreeItem(failure).command!;
   await vscode.commands.executeCommand(command.command, ...(command.arguments ?? []));
   console.log('Host journey: result and history opened');
+  const panelActions = logbook as unknown as { handlePanel(message: unknown): Promise<void> };
+  await panelActions.handlePanel({ type: 'openAttachment', identity: failure.resultKey, attempt: 0, attachment: 0 });
+  assert.equal(vscode.window.activeTextEditor?.document.getText(), 'Recorded attachment evidence');
+  assert.equal(vscode.window.tabGroups.activeTabGroup.activeTab?.isPreview, false, 'Attachment opens a retained editor tab');
+  assert.ok(vscode.window.tabGroups.all.flatMap(group => group.tabs).some(tab => tab.label === 'Logbook recorded result'), 'Attachment preserves the result panel');
+  await panelActions.handlePanel({ type: 'openAttachment', identity: 'stale', attempt: 0, attachment: 0 });
+  assert.equal(vscode.window.activeTextEditor?.document.getText(), 'Recorded attachment evidence', 'Stale attachment clicks have no effect');
+  console.log('Host journey: recorded attachment opened in IDE tab; stale message ignored');
   await vscode.commands.executeCommand('logbook.compareHistory', 1);
   assert.ok(vscode.window.tabGroups.all.flatMap((group) => group.tabs).some((tab) => tab.label === 'Logbook execution comparison'), 'Comparison opens a separate pinned panel');
   await vscode.commands.executeCommand('logbook.inspectHistory', 1);

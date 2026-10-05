@@ -42,13 +42,21 @@ try {
     index.push(JSON.stringify({ schemaVersion: 1, runId: id, startedAt: run.startedAt, complete: run.complete, status: run.status, summary: run.summary, branch }));
   }
   await fs.writeFile(path.join(first, '.logbook/index.jsonl'), `${index.join('\n')}\n`);
+  await fs.mkdir(path.join(first, 'test-results'), { recursive: true });
+  await fs.writeFile(path.join(first, 'test-results/evidence.txt'), 'Recorded attachment evidence');
+  const currentRecordPath = path.join(first, '.logbook/runs/current.json');
+  const currentRecord = JSON.parse(await fs.readFile(currentRecordPath, 'utf8'));
+  for (const test of currentRecord.tests.filter(test => test.status === 'failed')) {
+    test.attempts[0].attachments = [{ name: 'evidence', contentType: 'text/plain', path: 'test-results/evidence.txt', inline: false, sizeBytes: 28 }];
+  }
+  await fs.writeFile(currentRecordPath, JSON.stringify(currentRecord));
   await fs.writeFile(path.join(second, '.logbook/runs/newer.json'), JSON.stringify({ schemaVersion: 2 }));
   const workspace = path.join(directory, 'host.code-workspace');
   await fs.writeFile(workspace, JSON.stringify({ folders: [{ path: 'first' }, { path: 'second' }] }));
   const extensionTestsPath = path.join(extensionRoot, 'dist/test-host.cjs');
   await build({ entryPoints: [path.join(extensionRoot, 'test/host.ts')], outfile: extensionTestsPath, bundle: true, platform: 'node', format: 'cjs', external: ['vscode'] });
   let developmentPath = extensionRoot;
-  let executable;
+  let executable = process.argv.includes('--vscode-executable') ? option('--vscode-executable') : undefined;
   if (process.argv.includes('--vsix')) {
     executable = await downloadAndUnzipVSCode({ version: editorVersion, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries') });
     const [cli, ...args] = resolveCliArgsFromVSCodeExecutablePath(executable, { reuseMachineInstall: true });

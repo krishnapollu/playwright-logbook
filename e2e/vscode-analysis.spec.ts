@@ -3,11 +3,13 @@ import fs from 'node:fs/promises';
 import { renderDetail } from '../packages/vscode/src/detail.js';
 import { renderAnalysis } from '../packages/vscode/src/analysis.js';
 import type { AnalysisState } from '../packages/vscode/src/analysis.js';
+import { executionIdentity } from '../src/historyreader.js';
 import type { ReaderRun } from '../src/historyreader.js';
 import { run, testRecord } from '../test/factories.js';
 
 test('compact AI actions send picker and handoff messages and ignore stale updates', async ({ page }) => {
   const record: ReaderRun = { ...run('analysis-browser'), tests: [testRecord('test')], globalErrors: [] };
+  record.tests[0]!.attempts = [{ retry: 0, status: 'passed', durationMs: 1, startedAt: null, workerIndex: null, errors: [], steps: [], stdout: '', stderr: '', attachments: [{ name: 'Screenshot', contentType: 'image/png', path: 'test-results/failure.png', inline: false, sizeBytes: 8, dataUri: 'data:image/png;base64,iVBORw0KGgo=' }] }];
   const identity = 'selected-execution';
   const state: AnalysisState = { status: 'idle', agents: [], selected: null, message: '' };
   const resources = { css: 'https://logbook.preview/style.css', script: 'https://logbook.preview/detail.js', cspSource: 'https://logbook.preview' };
@@ -53,4 +55,11 @@ test('compact AI actions send picker and handoff messages and ignore stale updat
   await expect(actions.getByRole('status')).toHaveCount(0);
   await expect(actions.locator('pre')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); expect(failures).toEqual([]);
+  await page.getByRole('tab', { name: 'Attachments 1' }).click();
+  await page.getByRole('button', { name: 'test-results/failure.png', exact: true }).click();
+  const attachmentMessage = { type: 'openAttachment', identity: executionIdentity(record.runId, record.tests[0]!), attempt: 0, attachment: 0 };
+  await expect.poll(() => messages.at(-1)).toEqual(attachmentMessage);
+  await page.getByRole('button', { name: 'Open Screenshot in IDE' }).click();
+  await expect.poll(() => messages.filter(message => (message as { type: string }).type === 'openAttachment').length).toBe(2);
+  expect(messages.at(-1)).toEqual(attachmentMessage);
 });

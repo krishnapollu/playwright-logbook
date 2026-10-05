@@ -1,4 +1,5 @@
 import { AgentChoices } from './agentchoice.js';
+import { attachmentAction, recordedAttachment } from './attachments.js';
 import { analysisSource, analysisAttachments, writeAnalysisContext } from '../../../src/analysisfiles.js';
 import { prepareImport } from './bundleimport.js';
 import type { PreparedImport } from './bundleimport.js';
@@ -336,6 +337,24 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     }
   }
   private async handlePanel(message: unknown): Promise<void> {
+    const attachment = attachmentAction(message);
+    if (attachment) {
+      const selected = this.selection;
+      if (!selected?.resultKey || attachment.identity !== selected.resultKey) return;
+      const store = this.stores.get(selected.folderKey); if (!store) return;
+      try {
+        const roots = await this.roots(store.folder);
+        const run = await store.reader.getRun(selected.runId);
+        const result = run.tests.find(test => executionIdentity(run.runId, test) === selected.resultKey);
+        if (!result) return;
+        const file = await recordedAttachment(roots.sourceRoot, roots.storeRoot, run.runId, result, attachment.attempt, attachment.attachment);
+        if (this.selection !== selected) return;
+        await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(file), { viewColumn: vscode.ViewColumn.Beside, preview: false });
+      } catch {
+        if (this.selection === selected) await vscode.window.showWarningMessage('Attachment is missing or inaccessible. Check retained artifacts and source mapping.');
+      }
+      return;
+    }
     const analysis = analysisAction(message);
     if (analysis) {
       if (!this.analysis.identity || analysis.identity !== this.analysis.identity) return;

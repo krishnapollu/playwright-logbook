@@ -204,3 +204,8 @@ automatic AI-upload requests. Review captured logs and screenshots before sharin
 [Reporter options](https://github.com/krishnapollu/playwright-logbook#reporter-options)
 · [Report an issue](https://github.com/krishnapollu/playwright-logbook/issues)
 · [Changelog](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/CHANGELOG.md)
+
+In the Attachments tab, click a file path or screenshot preview to open the
+recorded file in an adjacent IDE tab. Imported artifacts use the import catalog
+mapping. Missing, expired or unsafe files produce an availability message;
+attachments without a recorded file path retain their embedded preview only.

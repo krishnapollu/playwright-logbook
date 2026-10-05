@@ -8,6 +8,10 @@ window.addEventListener('scroll', saveState, { passive: true });
 document.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
+  if (button.dataset.action === 'openAttachment') {
+    vscode.postMessage({ type: 'openAttachment', identity: selection, attempt: Number(button.dataset.attempt), attachment: Number(button.dataset.attachment) });
+    return;
+  }
   if (['analyze', 'chooseAnalysisAgent', 'cancelAnalysis'].includes(button.dataset.action)) {
     const section = button.closest('[data-analysis-identity]');
     if (!section) return;

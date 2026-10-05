@@ -867,3 +867,28 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when output: `npm run check` exited 0: `Test Files 41 passed (41)`;
   `Tests 208 passed (208)`. Golden unchanged. Initial sandboxed Chromium fixture
   failed to launch; the full check passed with browser access. No new dependencies.
+
+### Clickable IDE attachments
+
+- [x] File paths and embedded screenshot previews with recorded paths open in an
+  adjacent retained IDE tab. Clicks send execution identity and attempt/attachment
+  indices only; the extension selects the file path from the current recording.
+  Stale selections, traversal, URLs and symlink escapes are rejected. Missing files
+  show a controlled availability message. Pathless embedded images remain previews.
+- [x] Imported files resolve through the verified import catalog in the selected
+  store, including stores outside the mapped source project; missing imported files
+  cannot fall back to a similarly named checkout file.
+- Listed tests: `test/vscode-attachments.test.ts` covers message validation, local
+  containment, missing paths and imported mappings/fallback rejection.
+  `test/vscode-services.test.ts` covers clickable escaped rendering and preview
+  limits. `e2e/vscode-analysis.spec.ts` clicks both production path and screenshot
+  controls. `packages/vscode/test/host.ts` verifies the real retained IDE tab,
+  preserved Logbook panel and ignored stale action.
+- Done when output: `npm run check` exited 0: `Test Files 42 passed (42)`;
+  `Tests 212 passed (212)`. Browser click journey: `1 passed (746ms)`.
+  Installed VS Code disposable-host journey exited 0:
+  `Host journey: recorded attachment opened in IDE tab; stale message ignored`;
+  `Host journey: full analysis task pasted into webview composer, zero submissions,
+  source editor unchanged`. The cached editor binary was killed with SIGKILL;
+  the runner now accepts `--vscode-executable` and passed with the installed binary.
+  Golden unchanged; no new dependencies or publication.
