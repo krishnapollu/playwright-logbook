@@ -95,8 +95,8 @@ editor notification reports the handoff result.
 
 Native VS Code Chat receives an **unsent draft**, including a declared chat
 participant when available. Codex, Antigravity, Amazon Q and Cline use their
-input-focus commands and VS Code's native paste routing to insert the full
-prepared task into the chat composer. **Review the draft, choose the model in
+input-focus commands and VS Code's native paste routing to insert a short
+file-based task into the chat composer. **Review the draft, choose the model in
 your agent and submit.** No manual paste is required. For other installed agents,
 automatic insertion requires a supported input integration; unsupported inputs
 report an error so you can choose another agent.
@@ -110,7 +110,13 @@ errors, attempts, steps, attachment references and matching scoped history. A
 bounded excerpt from the mapped current test file is included when available;
 current source may differ from the recording. Artifact bodies are excluded, and
 safe project-relative references let the agent read accessible attachments.
-Known secret filtering applies to the task. Analysis requires Workspace Trust.
+The bounded, filtered evidence is saved as `.logbook/analysis/<content-hash>.json`
+in the mapped source project, separately from run records. The short draft points
+to that file; native VS Code Chat and Codex also receive a file context attachment when its file command
+is available. Other agents use the local file reference. Panels get a cancellable
+two-second startup grace period before refocus and a single paste. This is a timing
+mitigation; third-party extensions expose no shared composer-ready acknowledgement.
+Known secret filtering applies to the evidence. Analysis requires Workspace Trust.
 Answers are requested in **at most 200 words**, with cause, supporting references
 and next steps; the agent writes the concise answer, without client trimming.
 Cancel or change execution to discard an in-progress handoff.

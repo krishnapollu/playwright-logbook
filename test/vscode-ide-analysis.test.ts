@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 const api = vi.hoisted(() => ({ commands: vi.fn(), execute: vi.fn(), clipboard: vi.fn(), activate: vi.fn(), extensions: [] as { id: string; isActive: boolean; packageJSON: unknown }[] }));
 vi.mock('vscode', () => ({
   extensions: { get all() { return api.extensions; }, getExtension: (id: string) => api.extensions.some(item => item.id === id) ? { activate: api.activate } : undefined },
+  Uri: { file: (file: string) => ({ fsPath: file, scheme: 'file' }) },
   commands: { getCommands: api.commands, executeCommand: api.execute }, env: { clipboard: { writeText: api.clipboard } },
 }));
 import { ideAnalysisBackend, installedAgents, pasteIntoAgentInput } from '../packages/vscode/src/ideanalysis.js';
@@ -76,4 +77,46 @@ it('uses declared chat participants as unsent native drafts', async () => {
   const [agent] = await ideAnalysisBackend.discover();
   await ideAnalysisBackend.request(agent!, 'task', new AbortController().signal);
   expect(api.execute).toHaveBeenCalledWith('workbench.action.chat.open', { query: '@helper task', isPartialQuery: true });
+});
+
+it('attaches the generated evidence file to Codex without pasting its contents', async () => {
+  api.extensions = [extension('openai.chatgpt')];
+  api.commands.mockResolvedValue(['chatgpt.openSidebar', 'chatgpt.addFileToThread', 'editor.action.clipboardPasteAction']);
+  const [agent] = await ideAnalysisBackend.discover();
+  await ideAnalysisBackend.request(agent!, 'Read .logbook/analysis/context.json', new AbortController().signal, '/project/.logbook/analysis/context.json');
+  expect(api.execute).toHaveBeenCalledWith('chatgpt.addFileToThread', { fsPath: '/project/.logbook/analysis/context.json', scheme: 'file' });
+  expect(api.clipboard).toHaveBeenCalledExactlyOnceWith('Read .logbook/analysis/context.json');
+});
+it('cancels while a cold panel starts without pasting or attaching anything', async () => {
+  api.extensions = [extension('openai.chatgpt')];
+  api.commands.mockResolvedValue(['chatgpt.openSidebar', 'chatgpt.addFileToThread', 'editor.action.clipboardPasteAction']);
+  const [agent] = await ideAnalysisBackend.discover();
+  const abort = new AbortController();
+  api.execute.mockImplementation(async () => { abort.abort(); });
+  await expect(ideAnalysisBackend.request(agent!, 'task', abort.signal, '/project/context.json')).rejects.toThrow();
+  expect(api.clipboard).not.toHaveBeenCalled();
+  expect(api.execute).toHaveBeenCalledExactlyOnceWith('chatgpt.openSidebar');
+});
+it('passes a context file with the short unsent native chat draft', async () => {
+  api.commands.mockResolvedValue(['workbench.action.chat.open']);
+  const [agent] = await ideAnalysisBackend.discover();
+  await ideAnalysisBackend.request(agent!, 'Read the context file', new AbortController().signal, '/project/context.json');
+  expect(api.execute).toHaveBeenCalledExactlyOnceWith('workbench.action.chat.open', {
+    query: 'Read the context file', isPartialQuery: true, attachFiles: [{ scheme: 'file', fsPath: '/project/context.json' }],
+  });
+});
+it('waits for a cold panel before refocusing and pastes only once', async () => {
+  vi.useFakeTimers();
+  try {
+    api.extensions = [extension('amazonwebservices.amazon-q-vscode')];
+    api.commands.mockResolvedValue(['aws.amazonq.focusChat', 'editor.action.clipboardPasteAction']);
+    const [agent] = await ideAnalysisBackend.discover();
+    const pending = ideAnalysisBackend.request(agent!, 'Read the context file', new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(api.execute).toHaveBeenCalledExactlyOnceWith('aws.amazonq.focusChat');
+    expect(api.clipboard).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    await pending;
+    expect(api.execute.mock.calls.map(call => call[0])).toEqual(['aws.amazonq.focusChat', 'aws.amazonq.focusChat', 'editor.action.clipboardPasteAction']);
+  } finally { vi.useRealTimers(); }
 });

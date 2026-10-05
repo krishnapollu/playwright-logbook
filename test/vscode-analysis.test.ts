@@ -53,7 +53,7 @@ it('discovers only on action and refuses unknown agent selections', async () => 
   session.reset('execution'); await session.discover();
   await session.run('unavailable-agent', 'evidence'); expect(api.request).not.toHaveBeenCalled();
   await session.run(agentKey(model), 'bounded evidence');
-  expect(api.request).toHaveBeenCalledWith(model, 'bounded evidence', expect.any(AbortSignal));
+  expect(api.request).toHaveBeenCalledWith(model, 'bounded evidence', expect.any(AbortSignal), undefined);
   expect(session.state.status).toBe('complete'); expect(session.state.message).toContain('Review and submit');
 });
 

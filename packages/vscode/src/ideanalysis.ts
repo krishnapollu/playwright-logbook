@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { setTimeout as delay } from 'node:timers/promises';
 import { AnalysisHandoffError, agentKey } from './analysis.js';
 import type { AnalysisBackend, AnalysisAgent } from './analysis.js';
 
@@ -62,7 +63,7 @@ export async function pasteIntoAgentInput(focus: string, prompt: string, signal:
 /** Native draft API where available; known panel inputs receive the entire task via native paste. */
 export const ideAnalysisBackend: AnalysisBackend = {
   async discover() { return installedAgents(vscode.extensions.all, await vscode.commands.getCommands(true)); },
-  async request(selected, prompt, signal) {
+  async request(selected, prompt, signal, contextFile) {
     signal.throwIfAborted();
     let commands = await vscode.commands.getCommands(true);
     const agent = installedAgents(vscode.extensions.all, commands).find(item => agentKey(item) === agentKey(selected));
@@ -75,7 +76,8 @@ export const ideAnalysisBackend: AnalysisBackend = {
     }
     signal.throwIfAborted();
     if ((!agent.extensionId || agent.participant) && commands.includes('workbench.action.chat.open')) {
-      await vscode.commands.executeCommand('workbench.action.chat.open', { query: `${agent.participant ? `@${agent.participant} ` : ''}${prompt}`, isPartialQuery: true });
+      await vscode.commands.executeCommand('workbench.action.chat.open', { query: `${agent.participant ? `@${agent.participant} ` : ''}${prompt}`, isPartialQuery: true,
+        ...(contextFile ? { attachFiles: [vscode.Uri.file(contextFile)] } : {}) });
       return 'Analysis draft ready in chat. Review and submit.';
     }
     const draft = agentDraftCommands(agent, commands);
@@ -84,6 +86,14 @@ export const ideAnalysisBackend: AnalysisBackend = {
     }
     await vscode.commands.executeCommand(draft.reveal);
     signal.throwIfAborted();
+    // Revealing a contributed view resolves before its webview/composer mounts.
+    // Give cold panels time to initialize, then focus again and paste exactly once.
+    // Never retry paste: a late first paste could otherwise duplicate the task.
+    await delay(2000, undefined, { signal });
+    if (contextFile && agent.extensionId === 'openai.chatgpt' && commands.includes('chatgpt.addFileToThread')) {
+      await vscode.commands.executeCommand('chatgpt.addFileToThread', vscode.Uri.file(contextFile));
+      signal.throwIfAborted();
+    }
     await pasteIntoAgentInput(draft.focus, prompt, signal);
     return 'Analysis task added to the agent input. Review and submit.';
   },

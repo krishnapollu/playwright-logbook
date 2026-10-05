@@ -11,7 +11,7 @@ export interface AnalysisState {
 export class AnalysisHandoffError extends Error {}
 export interface AnalysisBackend {
   discover(): Promise<AnalysisAgent[]>;
-  request(agent: AnalysisAgent, prompt: string, signal: AbortSignal): Promise<string>;
+  request(agent: AnalysisAgent, prompt: string, signal: AbortSignal, contextFile?: string): Promise<string>;
 }
 
 /** No disk persistence or automatic requests. Reset/cancel suppress late discovery and handoff results. */
@@ -51,7 +51,7 @@ export class AnalysisSession {
     } catch { if (revision !== this.revision) return; this.state = { ...this.state, status: 'error', agents: [], selected: null, message: 'Installed agents could not be loaded. Retry Analyze.' }; }
     this.changed();
   }
-  async run(key: string, prompt: string): Promise<void> {
+  async run(key: string, prompt: string, contextFile?: string): Promise<void> {
     if (this.state.status === 'running' || this.state.status === 'discovering') return;
     const agent = this.state.agents.find(item => agentKey(item) === key);
     if (!agent) return;
@@ -62,7 +62,7 @@ export class AnalysisSession {
       this.cancel(); this.state = { ...this.state, status: 'error', message: 'Agent chat did not open in time. Retry or open it manually.' }; this.changed();
     }, 30_000);
     try {
-      const message = await this.backend.request(agent, prompt, abort.signal);
+      const message = await this.backend.request(agent, prompt, abort.signal, contextFile);
       if (revision !== this.revision) return;
       this.state = { ...this.state, status: 'complete', message };
     } catch (error) {

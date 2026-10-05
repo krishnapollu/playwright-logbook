@@ -8,7 +8,7 @@ export function analysisText(text: string, limit: number, options: SanitizeOptio
   const clean = sanitize(text, { ...options, maxTextLength: Infinity })
     .replace(/\bBearer\s+[A-Za-z0-9._~-]{8,}/gi, 'Bearer [redacted]')
     .replace(/\b(password|token|api[_-]?key)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]')
-    .replace(/(?:\/Users\/|\/home\/|\/private\/var\/|\/tmp\/|[A-Za-z]:[\\/]Users[\\/])[^\s"'<>]*/g, '[local path]');
+    .replace(/(?:\/Users\/|\/home\/|\/private\/var\/|\/var\/folders\/|\/tmp\/|[A-Za-z]:[\\/]Users[\\/])[^\s"'<>]*/g, '[local path]');
   if (bytes(clean) <= limit) return clean;
   let clipped = '';
   for (const char of clean) { if (bytes(clipped + char) > limit - 48) break; clipped += char; }

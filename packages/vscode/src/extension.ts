@@ -1,5 +1,5 @@
 import { AgentChoices } from './agentchoice.js';
-import { analysisSource, analysisAttachments } from '../../../src/analysisfiles.js';
+import { analysisSource, analysisAttachments, writeAnalysisContext } from '../../../src/analysisfiles.js';
 import { prepareImport } from './bundleimport.js';
 import type { PreparedImport } from './bundleimport.js';
 import { ingestBundles, readImportCatalog } from '../../../src/bundles/ingest.js';
@@ -415,7 +415,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       if (this.selection !== selection || this.analysis.identity !== identity || generation !== this.analysis.generation || !vscode.workspace.isTrusted) return;
       const options = { projectRoot: store.sourceRoot, env: process.env };
       const prompt = analysisPrompt(run, result, this.history.items, selection.scope, options, source, { attachments: attachments.availability, attachmentPaths: attachments.paths });
-      await this.analysis.run(key, prompt);
+      const context = await writeAnalysisContext(store.sourceRoot, prompt, store.folder.uri.fsPath);
+      if (this.selection !== selection || this.analysis.identity !== identity || generation !== this.analysis.generation || !vscode.workspace.isTrusted) return;
+      await this.analysis.run(key, context.prompt, context.file);
     } catch {
       if (this.analysis.identity !== identity) return;
       this.analysis.state = { ...this.analysis.state, status: 'error', message: 'Recorded evidence could not be read. Refresh history and try again.' }; this.postAnalysis();

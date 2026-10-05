@@ -848,3 +848,22 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   match the checked build. README image URL rewriting is verified. SHA-256/size
   manifest stored at `dist/releases/artifacts.json`. No development VSIX is used
   for publication. GitHub CI and public registry verification follow this commit.
+
+### File-based IDE analysis and cold-panel handoff
+
+- [x] Reproduced the installed Amazon Q cold-panel bug manually: first Analyze
+  reported success with an empty composer; the second click inserted the task.
+  Added a cancellable two-second startup grace period before refocus and one paste.
+  This mitigates startup timing; external agents expose no common ready/insert ACK.
+- [x] Export the shared bounded, filtered evidence to a deterministic, private
+  `.logbook/analysis/<content-hash>.json` in the mapped source project. The draft
+  contains a short read-only analysis request and file reference. Native chat and
+  Codex accept file context; other supported agents use the reference. No submission.
+  Existing run records are unchanged; macOS temporary paths are also redacted.
+- Listed tests: `test/analysis-context-file.test.ts` covers exact evidence, short
+  prompt, deterministic reuse, changed-file rejection and symlink containment.
+  `test/vscode-ide-analysis.test.ts` covers cold-panel sequencing, cancellation,
+  native file context and Codex's URI attachment. Session tests cover optional context.
+- Done when output: `npm run check` exited 0: `Test Files 41 passed (41)`;
+  `Tests 208 passed (208)`. Golden unchanged. Initial sandboxed Chromium fixture
+  failed to launch; the full check passed with browser access. No new dependencies.
