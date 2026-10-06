@@ -18,6 +18,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm audit --audit-level=moderate
       - run: npm run build
       - name: Package extension
         working-directory: packages/vscode
@@ -40,6 +41,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm audit --audit-level=moderate
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:release
