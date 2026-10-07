@@ -35,3 +35,5 @@
 | 2026-10-04 | Which versions publish the agent analysis workflow? | Reporter 0.3.1 and regular extension 0.2.15. | Reporter 0.3.0 and Marketplace 0.2.10 are already published. Extension 0.2.15 exceeds the installed 0.2.14 development package. The maintainer explicitly authorized GitHub, npm and Marketplace publication for this release. |
 | 2026-10-05 | How should security vulnerabilities and CI audit enforcement be managed? | Add `npm audit --audit-level=moderate` to release workflows and update `vitest` to `^5.0.3`. | Automated security audits in CI block vulnerable release packages. Upgrading `vitest` resolves dev-dependency advisories while maintaining full compatibility across all 219 test cases. |
 
+
+| 2026-10-06 | Monorepo workspace package discovery | CLI `discover` + extension package-scan (runtime, no config write); hierarchy Workspace→Package→Runs→Projects→Tests | Avoids symlink/stale-config problems when tenants added/removed; extension uses file watcher; CLI stateless. See feature/monorepo-workspace-discovery.

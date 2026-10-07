@@ -12,6 +12,7 @@ import { flakyCommand } from './commands/flaky.js';
 import { summaryCommand } from './commands/summary.js';
 import { debugCommand } from './commands/debug.js';
 import { analyzeCommand } from './commands/analyze.js';
+import { discoverCommand } from './commands/discover.js';
 
 export interface CliDeps {
   env?: Record<string, string | undefined>;
@@ -66,6 +67,9 @@ export function createProgram(deps: CliDeps = {}): Command {
     .option('--run <id>').requiredOption('--test <test-id>')
     .addOption(new Option('--format <format>').choices(['json', 'markdown']).default('markdown'))
     .action(async (options) => done(await debugCommand(context(), options)));
+  program.command('discover').description('Discover workspace packages with .logbook stores')
+    .option('--json', 'output as JSON')
+    .action(async (options) => done(await discoverCommand(context(), options)));
   program.command('analyze').description('Prepare a concise investigation task for a coding agent (no model call)')
     .option('--run <id>', 'recorded run ID or latest', 'latest').requiredOption('--test <test-id>')
     .option('--project <name>', 'disambiguate Playwright project').option('--repeat <index>', 'disambiguate repeat index')

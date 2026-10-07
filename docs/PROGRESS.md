@@ -1010,3 +1010,4 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   visually reviewed against current production renderers. The repackaged
   0.2.20 VSIX contains the exact four new PNGs, checked extension bundle and
   README tour link. `npm run check` passed: 44 files, 219 tests.
+- [ ] T13 Monorepo workspace discovery (feature branch)

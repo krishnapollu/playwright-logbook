@@ -33,7 +33,7 @@ interface StoreContext {
   runLimit: number; pageSize: number; watchers: vscode.Disposable[]; error: string | null;
 }
 interface TreeNode {
-  id: string; kind: 'folder' | 'run' | 'result' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
+  id: string; kind: 'folder' | 'package' | 'run' | 'result' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
   folderKey: string; label: string; description?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string };
 }
 interface Selection {
@@ -182,6 +182,40 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         store.watchers.push(watcher, watcher.onDidCreate(update), watcher.onDidChange(update), watcher.onDidDelete(update));
       }
     }
+    // Monorepo package discovery: scan packages/*/ for .logbook stores
+    try {
+      const workspaceRoot = (vscode.workspace.workspaceFolders ?? [])[0]?.uri.fsPath ?? (this.extension.extensionPath ? path.dirname(this.extension.extensionPath) : '.');
+      const packagesDir = path.join(workspaceRoot, 'packages');
+      const pkgEntries = await fs.promises.readdir(packagesDir, { withFileTypes: true }).catch(() => [] as fs.Dirent[]);
+      for (const p of pkgEntries) {
+        if (!p.isDirectory() || p.name === 'node_modules') continue;
+        const pkgPath = path.join(packagesDir, p.name);
+        const logbookPath = path.join(pkgPath, '.logbook');
+        try {
+          await fs.promises.access(logbookPath);
+          const pkgFolderUri = vscode.Uri.file(pkgPath);
+          const pkgConfig = vscode.workspace.getConfiguration('logbook', pkgFolderUri);
+          const pkgStoreRoot = await permittedRoot(pkgPath, pkgConfig.get<string>('historyPath', '.logbook'), vscode.workspace.isTrusted);
+          const pkgSourceRoot = await permittedRoot(pkgPath, pkgConfig.get<string>('sourceRoot', '.'), vscode.workspace.isTrusted);
+          const pkgLocal = new LocalHistoryFiles(pkgStoreRoot);
+          const pkgReader = new HistoryReader({
+            read: async (...args: unknown[]) => { await permittedRoot(pkgPath, pkgStoreRoot, vscode.workspace.isTrusted); return pkgLocal.read(...args as [string]); },
+            listRunFiles: async (...args: unknown[]) => { await permittedRoot(pkgPath, pkgStoreRoot, vscode.workspace.isTrusted); return pkgLocal.listRunFiles(...args as [string, number]); },
+          });
+          const pkgKey = pkgPath; // synthetic folder key
+          if (!stores.has(pkgKey)) {
+            const pkgStore: StoreContext = { folder: { uri: pkgFolderUri, name: p.name, index: 0 } as vscode.WorkspaceFolder, reader: pkgReader, storeRoot: pkgStoreRoot, sourceRoot: pkgSourceRoot, error: null, runLimit: 20, pageSize: 10, watchers: [], folderKey: pkgKey };
+            stores.set(pkgKey, pkgStore);
+            // Watch package .logbook
+            if (!pkgConfig.get<boolean>('autoRefresh', true)) continue;
+            const pkgWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(pkgStoreRoot), '{index.jsonl,runs/*.json}'));
+            const pkgUpdate = () => { const prev = this.timers.get(pkgKey); if (prev) clearTimeout(prev); this.timers.set(pkgKey, setTimeout(() => { this.timers.delete(pkgKey); void this.refresh(pkgKey, true); }, 200)); };
+            pkgStore.watchers.push(pkgWatcher, pkgWatcher.onDidCreate(pkgUpdate), pkgWatcher.onDidChange(pkgUpdate), pkgWatcher.onDidDelete(pkgUpdate));
+          }
+        } catch { /* no .logbook or not trusted */ }
+      }
+    } catch { /* packages/ missing */ }
+
     if (setupGeneration !== this.setupGeneration || this.disposed) { stores.forEach((store) => store.watchers.forEach((watcher) => watcher.dispose())); return; }
     this.stores.forEach((store) => store.watchers.forEach((watcher) => watcher.dispose()));
     for (const timer of this.timers.values()) clearTimeout(timer);
