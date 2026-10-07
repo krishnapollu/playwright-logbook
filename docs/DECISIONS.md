@@ -36,4 +36,4 @@
 | 2026-10-05 | How should security vulnerabilities and CI audit enforcement be managed? | Add `npm audit --audit-level=moderate` to release workflows and update `vitest` to `^5.0.3`. | Automated security audits in CI block vulnerable release packages. Upgrading `vitest` resolves dev-dependency advisories while maintaining full compatibility across all 219 test cases. |
 
 
-| 2026-10-06 | Monorepo workspace package discovery | CLI `discover` + extension package-scan (runtime, no config write); hierarchy Workspace→Package→Runs→Projects→Tests | Avoids symlink/stale-config problems when tenants added/removed; extension uses file watcher; CLI stateless. See feature/monorepo-workspace-discovery.
+| 2026-10-06 | How should default monorepo stores be discovered? | Use one bounded direct-suite/`packages/*` discovery rule for CLI and VS Code; preserve configured workspace roots and VS Code 1.95 minimum. | Keeps per-suite history separate, avoids symlink stores, and permits explicit custom mappings when a suite is opened as a workspace folder. The revised delivery plan is in `SPEC-team-portal-v0.1.md`. |

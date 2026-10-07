@@ -59,7 +59,7 @@ try {
   let developmentPath = extensionRoot;
   let executable = process.argv.includes('--vscode-executable') ? option('--vscode-executable') : undefined;
   if (process.argv.includes('--vsix')) {
-    executable = await downloadAndUnzipVSCode({ version: editorVersion, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries') });
+    executable ??= await downloadAndUnzipVSCode({ version: editorVersion, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries') });
     const [cli, ...args] = resolveCliArgsFromVSCodeExecutablePath(executable, { reuseMachineInstall: true });
     const install = spawnSync(cli, [...args, '--install-extension', path.join(extensionRoot, `dist/playwright-logbook-vscode-${extensionManifest.version}.vsix`), '--user-data-dir', path.join(directory, 'profile'), '--extensions-dir', path.join(directory, 'extensions')], {
       encoding: 'utf8', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 60_000, shell: process.platform === 'win32',

@@ -184,6 +184,11 @@ export class HistoryReader {
     return { items: summaries.slice(start, end), nextOffset: end < summaries.length ? end : null, diagnostics };
   }
 
+  /** Count cataloged runs without depending on the current tree page size. */
+  async countRuns(signal?: AbortSignal): Promise<number> {
+    return (await this.getCatalog(signal)).summaries.length;
+  }
+
   async getTestHistory(test: Pick<ReaderResult, 'testId' | 'project'>, scope: HistoryScope, offset = 0, limit = 20, signal?: AbortSignal): Promise<Page<RecordedExecution>> {
     if (!test.project.trim()) return { items: [], nextOffset: null, diagnostics: [{ record: 'identity', message: 'Project identity unknown. Matching history is unavailable; records will not be merged speculatively.' }] };
     const { summaries, diagnostics: catalogDiagnostics } = await this.getCatalog(signal);

@@ -2,7 +2,7 @@
   "name": "playwright-logbook-vscode",
   "displayName": "Playwright Logbook",
   "description": "Browse Playwright runs, investigate failures and retries, compare test history, and import CI results.",
-  "version": "0.2.20",
+  "version": "0.2.21-monorepo.4",
   "publisher": "krishnapollu",
   "private": true,
   "license": "MIT",
@@ -24,7 +24,7 @@
   },
   "type": "module",
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.95.0"
   },
   "categories": [
     "Testing"

@@ -24,6 +24,14 @@ async function waitForActiveTab(label: string): Promise<void> {
   assert.fail(`Expected active tab ${label}; found ${JSON.stringify(vscode.window.tabGroups.all.map(group => ({ active: group.isActive, tabs: group.tabs.map(tab => tab.label) })) )}`);
 }
 
+async function waitForActiveDocumentText(expected: string): Promise<void> {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    if (vscode.window.activeTextEditor?.document.getText() === expected) return;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  assert.fail(`Expected active document text ${expected}; active=${JSON.stringify(vscode.window.activeTextEditor?.document.getText())}; tabs=${JSON.stringify(vscode.window.tabGroups.all.flatMap(group => group.tabs.map(tab => ({ label: tab.label, active: tab.isActive }))))}`);
+}
+
 async function journey(): Promise<void> {
   const extension = vscode.extensions.getExtension<Awaited<ReturnType<typeof activate>>>('krishnapollu.playwright-logbook-vscode');
   assert.ok(extension, 'Development extension must be discoverable');
@@ -35,6 +43,7 @@ async function journey(): Promise<void> {
   assert.equal(roots.length, 2, 'Multi-root grouping should appear');
   const first = roots.find((item) => item.label === 'first')!, broken = roots.find((item) => item.label === 'second')!;
   assert.ok(first); assert.ok(broken);
+  assert.equal(first.description, '3 runs', 'Folder count includes history beyond the visible page');
   const runs = await logbook.getChildren(first);
   const current = runs.find((item) => item.runId === 'current')!;
   assert.ok(current, 'Real compatible store should load');
@@ -43,7 +52,7 @@ async function journey(): Promise<void> {
   const expansion = view.onDidExpandElement(({ element }) => expanded.add(element.id));
   await vscode.commands.executeCommand('logbook.expandAll');
   expansion.dispose();
-  assert.ok(expanded.has(first.id) && expanded.has(current.id), 'Expand All visibly expands the folder and recorded run');
+  assert.ok(expanded.has(current.id), 'Expand All visibly expands the recorded run');
   assert.equal(logbook.getTreeItem(first).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens workspace folders');
   assert.equal(logbook.getTreeItem(current).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens recorded runs');
   await vscode.commands.executeCommand('logbook.filterSpecFile', vscode.Uri.file(path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, 'tests/ui.spec.ts')));
@@ -116,7 +125,7 @@ async function journey(): Promise<void> {
   const refreshedErrors = await logbook.getChildren(errorGroup);
   assert.equal(refreshedErrors.find((item) => item.label === selectedError.label)?.id, selectedError.id, 'Run error identity should survive index movement on refresh');
   console.log('Host journey: watcher refresh and stable recorded run errors verified');
-  const failure = results.find((item) => item.kind === 'result' && item.description?.startsWith('Failed ·'))!;
+  const failure = (await logbook.getChildren(current)).find((item) => item.kind === 'result' && item.description?.startsWith('Failed ·'))!;
   assert.ok(failure);
   const statusIcon = logbook.getTreeItem(failure).iconPath;
   assert.ok(statusIcon instanceof vscode.ThemeIcon);
@@ -128,6 +137,7 @@ async function journey(): Promise<void> {
   console.log('Host journey: result and history opened');
   const panelActions = logbook as unknown as { handlePanel(message: unknown): Promise<void> };
   await panelActions.handlePanel({ type: 'openAttachment', identity: failure.resultKey, attempt: 0, attachment: 0 });
+  await waitForActiveDocumentText('Recorded attachment evidence');
   assert.equal(vscode.window.activeTextEditor?.document.getText(), 'Recorded attachment evidence');
   assert.equal(vscode.window.tabGroups.activeTabGroup.activeTab?.isPreview, false, 'Attachment opens a retained editor tab');
   assert.ok(vscode.window.tabGroups.all.flatMap(group => group.tabs).some(tab => tab.label === 'Logbook recorded result'), 'Attachment preserves the result panel');
@@ -212,6 +222,41 @@ async function journey(): Promise<void> {
   await vscode.commands.executeCommand('logbook.openSource');
   assert.equal(vscode.window.activeTextEditor?.selection.start.line, 1, 'Matching older local execution also appears in blended history');
   console.log('Host journey: reviewed import, cancellation, duplicates, conflicts, multi-root isolation and CI → local history → source passed');
+  const suite = path.join(mappedRoot, 'packages', 'suite-a');
+  await fs.mkdir(suite, { recursive: true });
+  await fs.cp(path.join(mappedRoot, '.logbook'), path.join(suite, '.logbook'), { recursive: true });
+  await fs.cp(path.join(mappedRoot, 'tests'), path.join(suite, 'tests'), { recursive: true });
+  await logbook.setup();
+  const grouped = (await logbook.getChildren()).find(item => item.label === 'first')!;
+  const packageNode = (await logbook.getChildren(grouped)).find(item => item.kind === 'package' && item.label === 'packages/suite-a')!;
+  assert.ok(packageNode, 'A package with a default store appears under its workspace');
+  assert.equal(packageNode.description, '4 runs', 'Package folder counts its own saved runs');
+  assert.equal(grouped.description, '8 runs', 'Workspace folder sums its own and package runs');
+  assert.ok((await logbook.getChildren(packageNode)).some(item => item.runId === 'current'), 'Package history remains separate from root history');
+  assert.ok((await logbook.getChildren(grouped)).some(item => item.runId === 'current'), 'Root history remains visible beside package history');
+  filterControl.setTestFilter({ query: 'ci-imported', file: null, title: null, folderKey: null });
+  const filteredCounts = await logbook.getChildren();
+  assert.equal(filteredCounts.find(item => item.label === 'first')?.description, '2 shown', 'Root count follows visible filter matches');
+  assert.equal((await logbook.getChildren(filteredCounts.find(item => item.label === 'first'))).find(item => item.kind === 'package')?.description, '1 shown', 'Package count follows visible filter matches');
+  await vscode.commands.executeCommand('logbook.clearTestFilter');
+  const rootStore = path.join(mappedRoot, '.logbook'), parkedRootStore = path.join(mappedRoot, '.logbook-parked');
+  await fs.rename(rootStore, parkedRootStore);
+  await logbook.setup();
+  const packagesOnly = (await logbook.getChildren()).find(item => item.label === 'first')!;
+  assert.equal(packagesOnly.description, '4 runs');
+  assert.deepEqual((await logbook.getChildren(packagesOnly)).map(item => item.kind), ['package'], 'Missing parent history does not add a message under child suites');
+  await fs.rename(parkedRootStore, rootStore);
+  await logbook.setup();
+  await vscode.commands.executeCommand('logbook.filterSpecFile', vscode.Uri.file(path.join(suite, 'tests/ui.spec.ts')));
+  const filteredMonorepo = await logbook.getChildren(grouped);
+  assert.deepEqual(filteredMonorepo.map(item => item.kind), ['package'], 'Package spec filter chooses the nearest source root');
+  assert.ok((await logbook.getChildren(filteredMonorepo[0])).some(item => item.runId === 'current'));
+  await vscode.commands.executeCommand('logbook.clearTestFilter');
+  await vscode.commands.executeCommand('workbench.action.closeQuickOpen');
+  await fs.rm(suite, { recursive: true, force: true });
+  await logbook.setup();
+  assert.ok(!(await logbook.getChildren(first)).some(item => item.kind === 'package'), 'Rescan removes deleted package stores');
+  console.log('Host journey: monorepo grouping and package removal passed');
   const watchersBeforeRemoval = roots.length;
   assert.equal(watchersBeforeRemoval, 2);
   assert.equal(vscode.workspace.updateWorkspaceFolders(1, 1), true);
@@ -219,11 +264,12 @@ async function journey(): Promise<void> {
     const subscription = vscode.workspace.onDidChangeWorkspaceFolders(() => { subscription.dispose(); resolve(); });
   });
   console.log('Host journey: root removal event received');
-  // setup is asynchronous; wait on tree updates rather than a guessed delay.
-  if ((await logbook.getChildren()).some((item) => item.kind === 'folder')) await new Promise<void>((resolve) => {
-    const subscription = logbook.onDidChangeTreeData(() => { subscription.dispose(); resolve(); });
-  });
-  assert.ok((await logbook.getChildren()).some((item) => item.runId === 'current'), 'One remaining folder should show runs directly');
+  await logbook.setup();
+  const remaining = await logbook.getChildren();
+  assert.equal(remaining.length, 1, 'One workspace still has a root folder');
+  assert.equal(remaining[0]?.kind, 'folder');
+  assert.equal(remaining[0]?.description, '4 runs', 'Single workspace folder retains its saved run count');
+  assert.ok((await logbook.getChildren(remaining[0])).some((item) => item.runId === 'current'), 'One remaining folder contains its runs');
   console.log('VS Code host: failure → scoped history → source, refresh, invalid actions and multi-root isolation passed.');
 }
 

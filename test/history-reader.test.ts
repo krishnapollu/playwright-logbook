@@ -37,6 +37,7 @@ describe('read-only history reader', () => {
     const page = await reader.listRuns(0, 1);
     expect(page.items.map((item) => item.runId)).toEqual(['orphan']); expect(page.nextOffset).toBe(1);
     expect((await reader.listRuns(1, 1)).items.map((item) => item.runId)).toEqual(['indexed']);
+    expect(await reader.countRuns()).toBe(2);
     expect(await fs.readFile(path.join(root, 'index.jsonl'), 'utf8')).toBe(before);
   });
 
