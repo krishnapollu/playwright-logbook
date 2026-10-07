@@ -1086,3 +1086,19 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   labels in the actual tree. Same-ID conflict, concurrent writers, interrupted
   objects, partial success, project isolation and retained artifacts have
   focused passing tests. Permanent path spelling awaits user confirmation.
+
+### CI bundle handoff
+
+- [x] C1 Document the existing CI bundle path
+  The GitHub Actions shard/merge example now exports and uploads a project-bound
+  bundle, with steps to download and review it in the IDE. Existing bundle tests
+  cover project mismatch, conflicts, missing evidence and repeat import. A
+  disposable CI workspace ran two Playwright shards under simulated GitHub
+  metadata, merged `ci-github-4242-1`, exported one retained attachment, and
+  copied the ZIP to a separate IDE workspace. Dry-run preview and import each
+  added one run with no missing evidence; repeat import skipped it. The saved
+  run retained GitHub CI origin and both tests. GitHub artifact transfer itself
+  was represented by a local copy; no remote workflow was triggered.
+- Done when: `npx vitest run test/bundle-cli.test.ts test/bundle-ingest.test.ts`
+  passed (2 files, 9 tests). `npm run check` passed with browser access:
+  47 files, 230 tests, including the unchanged golden test.
