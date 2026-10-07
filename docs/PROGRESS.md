@@ -1102,3 +1102,20 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when: `npx vitest run test/bundle-cli.test.ts test/bundle-ingest.test.ts`
   passed (2 files, 9 tests). `npm run check` passed with browser access:
   47 files, 230 tests, including the unchanged golden test.
+
+### Persistent local team-store demo
+
+- [x] Set up the confirmed `~/Projects/logbook-store` path with three ignored
+  `pw-test` workspace copies under `.local/team-demo/`. The setup script and
+  local guide preserve source mapping, separate histories and selected push.
+  Alice and Bob each ran two offline smoke tests and pushed one local run. A
+  third workspace simulated GitHub run `ci-github-4243-1` across two populated
+  shards, merged and exported one retained attachment, then ingested the bundle.
+  Both workspaces pulled all three runs. A repeated pull skipped all three in
+  each workspace. Reader-side origin checks returned Local, Peer and CI for
+  each viewer, and both imported CI attachments matched their source bytes.
+  The original sibling `pw-test` project was untouched. No remote CI job ran.
+- Done when: `npm run check` passed with browser access: 47 files, 230 tests,
+  including the unchanged golden test. The generated `team.code-workspace`
+  points to both author workspaces; actual editor inspection remains a manual
+  step when opening it.
