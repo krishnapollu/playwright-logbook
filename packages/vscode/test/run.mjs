@@ -71,4 +71,4 @@ try {
   await runTests({ version: editorVersion, vscodeExecutablePath: executable, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries'), extensionDevelopmentPath: developmentPath, extensionTestsPath,
     extensionTestsEnv: { ELECTRON_RUN_AS_NODE: undefined },
     launchArgs: [workspace, '--disable-extensions', '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes', '--user-data-dir', path.join(directory, 'profile'), '--extensions-dir', path.join(directory, 'extensions')] });
-} finally { await fs.rm(directory, { recursive: true, force: true }); }
+} finally { await fs.rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }

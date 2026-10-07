@@ -258,7 +258,7 @@ async function journey(): Promise<void> {
   assert.ok((await logbook.getChildren(filteredMonorepo[0])).some(item => item.runId === 'current'));
   await vscode.commands.executeCommand('logbook.clearTestFilter');
   await vscode.commands.executeCommand('workbench.action.closeQuickOpen');
-  await fs.rm(suite, { recursive: true, force: true });
+  await fs.rm(suite, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   await logbook.setup();
   assert.ok(!(await logbook.getChildren(first)).some(item => item.kind === 'package'), 'Rescan removes deleted package stores');
   console.log('Host journey: monorepo grouping and package removal passed');
