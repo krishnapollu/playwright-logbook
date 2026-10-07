@@ -242,7 +242,12 @@ async function journey(): Promise<void> {
   const rootStore = path.join(mappedRoot, '.logbook'), parkedRootStore = path.join(mappedRoot, '.logbook-parked');
   await fs.rename(rootStore, parkedRootStore);
   await logbook.setup();
-  const packagesOnly = (await logbook.getChildren()).find(item => item.label === 'first')!;
+  // The rename also triggers a native watcher rescan, which may supersede the explicit setup.
+  let packagesOnly = (await logbook.getChildren()).find(item => item.label === 'first')!;
+  for (let attempt = 0; packagesOnly.description !== '4 runs' && attempt < 100; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    packagesOnly = (await logbook.getChildren()).find(item => item.label === 'first')!;
+  }
   assert.equal(packagesOnly.description, '4 runs');
   assert.deepEqual((await logbook.getChildren(packagesOnly)).map(item => item.kind), ['package'], 'Missing parent history does not add a message under child suites');
   await fs.rename(parkedRootStore, rootStore);
