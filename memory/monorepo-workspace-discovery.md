@@ -1,1 +1,0 @@
-Alternative (safer, no new adapter needed): keep single workspace folder, but scan its subfolder packages and present them as folder nodes via existing store mechanism — requires StoreContext to hold package info.
