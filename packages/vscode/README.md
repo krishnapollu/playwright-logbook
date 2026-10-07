@@ -49,6 +49,8 @@ window and updates the counts.
 - **Spec shortcut:** Right-click a `.spec.*` or `.test.*` file in Explorer to filter to that file. Right-click inside a test in the editor to filter to that test.
 - **Expand All:** Open visible runs and their recorded-error groups; VS Code's Collapse All closes them.
 - **Run overview:** Select a run's overview to see counts, project breakdown, and clickable cases. Run overviews and results open as ordinary tabs in the active editor group.
+- **Team origin:** Run rows lead with `[Local]`, `[Peer]`, or `[CI]`. The overview shows a colored origin pill and the recorded author or CI provider/build/attempt when available.
+- **Share runs:** Use **Sync Team Runs** in the Recent Runs toolbar (or on a workspace folder) to pull shared runs into that folder. Use **Push Selected Run** on a `[Local]` run to review and publish only that run. On first use, select the shared filesystem store folder; **Logbook: Select Team Store…** changes it later. These actions require a trusted local workspace and team-store reporter options that have recorded the workspace's project ID and author.
 
 <img src="media/pw-test-live-filter.png" alt="Live filter for pw-test runs and tests" width="880">
 

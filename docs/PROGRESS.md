@@ -1129,3 +1129,18 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   The installed VSIX host journey passed in a disposable profile using local
   VS Code 1.140.0. `.logbook-demo/` is older generated report demo data and
   remains separate from this team-store workflow.
+
+### Team-store actions in the local extension preview
+
+- [x] Highlight viewer-relative Local/Peer/CI on run rows while retaining status
+  icons. Run overviews show a colored origin pill and escaped author or CI
+  provider/build/attempt details. Recent Runs exposes explicit Sync (pull) on
+  the toolbar and workspace folders, and Push on selected local runs only. The
+  first transfer selects a shared filesystem folder; a command can change it.
+  Push reviews run, project, author, target and artifact counts before upload.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  `npm run test:vscode -- --vscode-version 1.140.0` exited 0; packaged
+  `npm run test:vscode -- --vsix --vscode-version 1.140.0` exited 0. The local
+  `0.2.21-monorepo.6` VSIX was packaged and installed in the user's VS Code.
+  Host checks cover prominent origin labels, command registration and scoped
+  Push/Sync contexts; existing team-store tests cover transfer semantics.

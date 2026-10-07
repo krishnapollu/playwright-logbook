@@ -1,6 +1,6 @@
 # Local team-store demo
 
-For visual review, install `packages/vscode/dist/playwright-logbook-vscode-0.2.21-monorepo.5.vsix`
+For visual review, install `packages/vscode/dist/playwright-logbook-vscode-0.2.21-monorepo.6.vsix`
 using VS Code's **Extensions: Install from VSIX…**, then open
 `../pw-test-team-demo/team.code-workspace`. The VSIX is a local development
 build; it is not published to the Marketplace.
@@ -49,6 +49,15 @@ if its bytes change. Open `../pw-test-team-demo/team.code-workspace` in VS Code 
 see Alice and Bob as separate folders, each with labels relative to its author. CI runs show **CI**;
 the other author's run shows **Peer**. `store push` only sends selected runs;
 `store pull` repeats safely and skips identical runs.
+
+In the local extension build, **Sync Team Runs** in the Recent Runs toolbar or on
+Alice/Bob's folder performs `store pull` for that workspace. **Push Selected Run**
+appears on a `[Local]` run and previews its target and retained/missing evidence
+before publishing it. The first action asks for the shared store folder; select
+`~/Projects/logbook-store`. **Logbook: Select Team Store…** changes that choice.
+The run overview shows the same Local/Peer/CI origin and its recorded author or
+CI provider/build/attempt. The `[CI]` run in this demo was simulated locally;
+it did not come from a remote GitHub workflow.
 
 The repository's `.logbook-demo/` folder is older generated HTML-report demo
 data from `npm run demo`; it is unrelated to these team workspaces or the

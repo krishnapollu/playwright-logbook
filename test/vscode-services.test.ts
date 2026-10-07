@@ -82,6 +82,9 @@ it('shows recorded skip reasons and omits empty diagnosis and run-error sections
   expect(detail(1)).not.toContain('<environment unavailable>');
   const overview = renderRunOverview(record, resources);
   expect(overview).toContain('<dt>Status</dt>'); expect(overview).toContain('<dt>Duration</dt>');
+  const withOrigin = renderRunOverview(record, resources, { badge: 'Peer', detail: 'Local execution · author <Alice>' });
+  expect(withOrigin).toContain('class="origin-pill peer">Peer</span> Local execution · author &lt;Alice&gt;');
+  expect(renderRunOverview(record, resources, { badge: 'CI', detail: 'CI · github · build 42 · attempt 2' })).toContain('class="origin-pill ci">CI</span> CI · github · build 42 · attempt 2');
   expect(overview).not.toContain('Completion</span>'); expect(overview).not.toContain('<h2>Run errors</h2>');
   expect(renderRunOverview({ ...record, globalErrors: [{ message: 'setup failed', stack: null, snippet: null, location: null }] }, resources)).toContain('<h2>Run errors</h2>');
 });

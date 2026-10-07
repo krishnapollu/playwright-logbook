@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.21-monorepo.6 (local preview)
+
+- Highlight Local, Peer and CI on run rows and show origin details in run overviews.
+- Add explicit team sync and selected local-run push actions to the Recent Runs view.
+
 ## 0.2.21-monorepo.5 (local preview)
 
 - Show CI, Local and Peer provenance for shared team-store runs.

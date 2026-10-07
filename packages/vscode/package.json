@@ -2,7 +2,7 @@
   "name": "playwright-logbook-vscode",
   "displayName": "Playwright Logbook",
   "description": "Browse Playwright runs, investigate failures and retries, compare test history, and import CI results.",
-  "version": "0.2.21-monorepo.5",
+  "version": "0.2.21-monorepo.6",
   "publisher": "krishnapollu",
   "private": true,
   "license": "MIT",
@@ -89,6 +89,20 @@
         "icon": "$(filter)"
       },
       {
+        "command": "logbook.syncTeam",
+        "title": "Logbook: Sync Team Runs",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "logbook.pushRun",
+        "title": "Logbook: Push Selected Run",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "logbook.selectTeamStore",
+        "title": "Logbook: Select Team Store…"
+      },
+      {
         "command": "logbook.filterSpecFile",
         "title": "Logbook: Filter Tests in This Spec File"
       },
@@ -128,6 +142,11 @@
     "menus": {
       "view/title": [
         {
+          "command": "logbook.syncTeam",
+          "when": "view == logbook.recentRuns && isWorkspaceTrusted",
+          "group": "navigation"
+        },
+        {
           "command": "logbook.importBundle",
           "when": "view == logbook.recentRuns && isWorkspaceTrusted",
           "group": "navigation"
@@ -156,6 +175,18 @@
           "command": "logbook.selectStore",
           "when": "view == logbook.recentRuns",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "logbook.syncTeam",
+          "when": "view == logbook.recentRuns && viewItem == logbook.workspaceFolder && isWorkspaceTrusted",
+          "group": "inline"
+        },
+        {
+          "command": "logbook.pushRun",
+          "when": "view == logbook.recentRuns && viewItem == logbook.localRun && isWorkspaceTrusted",
+          "group": "inline"
         }
       ],
       "explorer/context": [
