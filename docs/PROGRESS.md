@@ -1072,3 +1072,17 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when: `npm run check` passed with browser access: 47 files, 230 tests,
   including the unchanged golden test. The disposable installed VS Code host
   journey exited 0 and asserted Peer/CI run-tree labels. No publication.
+
+- [x] S1 Central filesystem store prototype
+  An end-to-end smoke used two disposable copies of real `pw-test` records,
+  explicit authors Alice and Bob, six retained evidence files, one temporary
+  team store and a downloaded-style CI ZIP. Alice and Bob each pushed one
+  selected run; Bob's first pull added Alice's run and skipped his own, then a
+  repeat pull skipped both. CI ingest added `ci-github-4242-1`; final pulls
+  added it to both workspaces. All commands exited 0 with no missing evidence.
+  The source `pw-test` workspace and proposed permanent store were untouched.
+- Done when: `npm run check` passed with 47 files, 230 tests (unchanged golden
+  included). The installed VS Code host journey exited 0 and checked Peer/CI
+  labels in the actual tree. Same-ID conflict, concurrent writers, interrupted
+  objects, partial success, project isolation and retained artifacts have
+  focused passing tests. Permanent path spelling awaits user confirmation.

@@ -39,6 +39,21 @@ uploading. Pull preserves team origin there. The VS Code run tree shows CI,
 Local or Peer relative to the configured author, and result detail shows the
 recorded source. Older runs without provenance receive no guessed label.
 
+For the filesystem prototype, give both workspaces the same `projectId` and
+`store.root` in their Logbook reporter options, with different explicit
+`author` values. After running tests, each author chooses runs to share:
+
+```sh
+logbook store push --run RUN_ID
+logbook store pull
+```
+
+To add a downloaded CI artifact, export its merged run as a project-bound ZIP
+in CI, download it, then run `logbook store ingest --from BUNDLE.zip` in a
+configured workspace. Each workspace then runs `logbook store pull`. The
+filesystem folder is a single-machine development target; concurrent writers
+on NFS/SMB are not validated.
+
 `debug` does not contact a model or inspect attachment contents. It includes only stored evidence and marks missing capture data as unavailable. Redaction cannot detect every secret; review the output before sharing it with an AI provider or another person.
 
 `analyze` requires reporter 0.3.1 or newer. It prints the agent task and evidence; it does not produce an AI diagnosis,
