@@ -70,7 +70,7 @@ it('classifies provenance relative to the viewing author without guessing old re
   const viewer = { projectId: 'pw-test', author: 'Bob' };
   expect(teamOriginText(null, viewer).badge).toBeNull();
   expect(teamOriginText({ type: 'local', author: 'Bob' }, viewer).badge).toBe('Local');
-  expect(teamOriginText({ type: 'local', author: 'Alice' }, viewer).badge).toBe('Peer');
+  expect(teamOriginText({ type: 'local', author: 'Alice' }, viewer)).toEqual({ badge: 'Peer', detail: 'Tester: Alice' });
   expect(teamOriginText({ type: 'ci', provider: 'github', buildId: '42', attempt: '2' }, viewer)).toEqual({ badge: 'CI', detail: 'CI · github · build 42 · attempt 2' });
 });
 

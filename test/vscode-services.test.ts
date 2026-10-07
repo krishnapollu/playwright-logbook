@@ -9,12 +9,18 @@ import { renderDetail, renderRunOverview, panelAction, outcomeTone } from '../pa
 import { HistoryReader } from '../src/historyreader.js';
 import { LocalHistoryFiles } from '../src/historyfiles.js';
 import { FileHistoryStore } from '../src/store.js';
-import { errorPresentation, renderError, statusIcon, displayTime, renderAttemptWorkspace } from '../packages/vscode/src/presentation.js';
+import { errorPresentation, renderError, statusIcon, displayTime, renderAttemptWorkspace, treeOriginLabel } from '../packages/vscode/src/presentation.js';
 import { run, testRecord } from './factories.js';
 
 const temporary: string[] = [];
 async function fixture() { const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-vscode-')); temporary.push(dir); return dir; }
 afterEach(async () => { for (const dir of temporary.splice(0)) await fs.rm(dir, { recursive: true, force: true }); });
+
+it('gives all three colored tree origin tags the same character width', () => {
+  const labels = ['Local', 'Peer', 'CI'].map(treeOriginLabel);
+  expect(new Set(labels.map(label => [...label].length)).size).toBe(1);
+  expect(labels.every(label => label.endsWith(' '))).toBe(true);
+});
 
 it('opens mapped source safely, rejecting traversal, absolute paths, URLs and symlink escapes', async () => {
   const root = await fixture(), outside = await fixture();
@@ -53,8 +59,8 @@ it('renders failure beside scoped history with escaped hostile content and expli
   expect(html).toContain('does not establish a first-ever failure'); expect(html).toContain('Shard completeness unknown');
   expect(html).toContain("default-src 'none'"); expect(html).toContain('Selected execution preserved');
   const withOrigin = renderDetail({ run: current, result: current.tests[0]!, runError: null, history, scope, anchorRunId: 'current', storeLabel: '.logbook', sourceLabel: '.', newHistory: false,
-    origin: { badge: 'Peer', detail: 'Local execution · author <Alice>' } }, { css: 'local:css', script: 'local:js', cspSource: 'local:' });
-  expect(withOrigin).toContain('Origin: Peer · Local execution · author &lt;Alice&gt;');
+    origin: { badge: 'Peer', detail: 'Tester: <Alice>' } }, { css: 'local:css', script: 'local:js', cspSource: 'local:' });
+  expect(withOrigin).toContain('Origin: Peer · Tester: &lt;Alice&gt;');
   expect(panelAction({ type: 'history', key: history.items[0]!.key }, history.items.map((item) => item.key))).toEqual({ type: 'history', key: history.items[0]!.key });
   for (const value of [{ type: 'history', key: 'removed' }, { type: 'history', key: 0 }, { type: 'execute', command: 'bad' }, null]) expect(panelAction(value, history.items.map((item) => item.key))).toBeNull();
 });
@@ -82,8 +88,8 @@ it('shows recorded skip reasons and omits empty diagnosis and run-error sections
   expect(detail(1)).not.toContain('<environment unavailable>');
   const overview = renderRunOverview(record, resources);
   expect(overview).toContain('<dt>Status</dt>'); expect(overview).toContain('<dt>Duration</dt>');
-  const withOrigin = renderRunOverview(record, resources, { badge: 'Peer', detail: 'Local execution · author <Alice>' });
-  expect(withOrigin).toContain('class="origin-pill peer">Peer</span> Local execution · author &lt;Alice&gt;');
+  const withOrigin = renderRunOverview(record, resources, { badge: 'Peer', detail: 'Tester: <Alice>' });
+  expect(withOrigin).toContain('class="origin-pill peer">Peer</span> Tester: &lt;Alice&gt;');
   expect(renderRunOverview(record, resources, { badge: 'CI', detail: 'CI · github · build 42 · attempt 2' })).toContain('class="origin-pill ci">CI</span> CI · github · build 42 · attempt 2');
   expect(overview).not.toContain('Completion</span>'); expect(overview).not.toContain('<h2>Run errors</h2>');
   expect(renderRunOverview({ ...record, globalErrors: [{ message: 'setup failed', stack: null, snippet: null, location: null }] }, resources)).toContain('<h2>Run errors</h2>');

@@ -69,6 +69,6 @@ try {
     await fs.access(path.join(developmentPath, 'dist/extension.cjs'));
   }
   await runTests({ version: editorVersion, vscodeExecutablePath: executable, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries'), extensionDevelopmentPath: developmentPath, extensionTestsPath,
-    extensionTestsEnv: { ELECTRON_RUN_AS_NODE: undefined },
+    extensionTestsEnv: { ELECTRON_RUN_AS_NODE: undefined, LOGBOOK_TEST_NODE_MODULES: path.join(repository, 'node_modules') },
     launchArgs: [workspace, '--disable-extensions', '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes', '--user-data-dir', path.join(directory, 'profile'), '--extensions-dir', path.join(directory, 'extensions')] });
 } finally { await fs.rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }

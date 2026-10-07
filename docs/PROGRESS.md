@@ -1144,3 +1144,17 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   `0.2.21-monorepo.6` VSIX was packaged and installed in the user's VS Code.
   Host checks cover prominent origin labels, command registration and scoped
   Push/Sync contexts; existing team-store tests cover transfer semantics.
+
+### Config-backed team actions and aligned origin tags
+
+- [x] Use equal-width colored tags in the native Recent Runs tree, keep the
+  existing status icons, and call the displayed person a Tester. Sync and Push
+  now resolve the shared filesystem destination, project ID, tester and local
+  output directory from each workspace's trusted Playwright config. Removed the
+  separate folder picker and its saved choice. Transfers still operate on whole
+  immutable runs; selecting tests inside a run would misstate its completeness,
+  counts and history.
+- Done when output: `npm run check` passed with 47 test files and 231 tests;
+  the VS Code 1.140.0 host journey exited 0 and pulled a new run from the
+  configured shared store without a picker. The packaged VSIX host journey
+  also exited 0. No run JSON or CLI transfer format changed.

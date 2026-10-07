@@ -166,5 +166,5 @@ export async function readTeamViewer(localRoot: string): Promise<TeamViewer | nu
 export function teamOriginText(value: TeamOrigin | null, viewer: TeamViewer | null): { badge: string | null; detail: string | null } {
   if (!value) return { badge: null, detail: null };
   if (value.type === 'ci') return { badge: 'CI', detail: `CI · ${value.provider}${value.buildId ? ` · build ${value.buildId}` : ''} · attempt ${value.attempt}` };
-  return { badge: viewer ? value.author === viewer.author ? 'Local' : 'Peer' : null, detail: `Local execution · author ${value.author}` };
+  return { badge: viewer ? value.author === viewer.author ? 'Local' : 'Peer' : null, detail: `Tester: ${value.author}` };
 }

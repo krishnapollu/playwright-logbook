@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.21-monorepo.7 (local preview)
+
+- Align colored Local, Peer and CI tags in the native run tree.
+- Show Tester in provenance and push review; read the shared store from Playwright config for Sync and Push.
+
 ## 0.2.21-monorepo.6 (local preview)
 
 - Highlight Local, Peer and CI on run rows and show origin details in run overviews.

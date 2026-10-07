@@ -1,5 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 import { BundleError, projectIdSchema } from './bundles/archive.js';
 
@@ -11,11 +13,14 @@ const settings = z.object({
 });
 export interface TeamSettings { localRoot: string; teamRoot: string; projectId: string; author: string }
 
-/** Explicit CLI actions evaluate the same trusted Playwright config used by the reporter. */
+/** Explicit CLI and trusted editor actions read the same Playwright config as the reporter. */
 export async function loadTeamSettings(root: string): Promise<TeamSettings> {
   try {
     // Playwright's installed config loader handles TS, JS and imported config modules.
-    const playwright = await import('playwright/lib/common');
+    let playwrightModule: string;
+    try { playwrightModule = createRequire(path.join(root, 'package.json')).resolve('playwright/lib/common'); }
+    catch { playwrightModule = createRequire(import.meta.url).resolve('playwright/lib/common'); }
+    const playwright: typeof import('playwright/lib/common') = await import(pathToFileURL(playwrightModule).href);
     const loaded = (await playwright.configLoader.loadConfigFromFile(root)).config;
     if (!loaded.configFile || !Array.isArray(loaded.reporter)) throw new BundleError('Playwright config with Logbook reporter options is required.');
     const candidates = loaded.reporter.flatMap((entry: unknown) => Array.isArray(entry) && entry.length === 2 && typeof entry[1] === 'object' && entry[1] !== null && 'store' in entry[1] ? [entry[1]] : []);

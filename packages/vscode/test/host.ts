@@ -1,6 +1,8 @@
 import { pasteIntoAgentInput } from '../src/ideanalysis.js';
+import { treeOriginLabel } from '../src/presentation.js';
 import { analysisPrompt } from '../../../src/analyze.js';
-import { createBundle } from '../../../src/bundles/archive.js';
+import { createBundle, inspectBundleZip } from '../../../src/bundles/archive.js';
+import { publishTeamBundle, readTeamOrigin } from '../../../src/teamstore.js';
 import { run as makeRun, testRecord } from '../../../test/factories.js';
 import type { ReaderRun } from '../../../src/historyreader.js';
 import { recordTeamOrigin } from '../../../src/teamstore.js';
@@ -53,9 +55,10 @@ async function journey(): Promise<void> {
   await recordTeamOrigin(localStore, 'previous', { type: 'ci', provider: 'github', buildId: '42', attempt: '2' }, { projectId: 'pw-test', author: 'Bob' });
   await recordTeamOrigin(localStore, 'feature', { type: 'local', author: 'Bob' }, { projectId: 'pw-test', author: 'Bob' });
   const origins = await logbook.getChildren(first);
-  assert.ok(origins.find(item => item.runId === 'current')?.label.startsWith('[Peer] '), 'Other author has a prominent Peer label');
-  assert.ok(origins.find(item => item.runId === 'previous')?.label.startsWith('[CI] '), 'Recorded CI origin has a prominent CI label');
-  assert.ok(origins.find(item => item.runId === 'feature')?.label.startsWith('[Local] '), 'Local author has a prominent Local label');
+  assert.ok(origins.find(item => item.runId === 'current')?.label.startsWith(treeOriginLabel('Peer')), 'Other tester has a prominent Peer label');
+  assert.ok(origins.find(item => item.runId === 'previous')?.label.startsWith(treeOriginLabel('CI')), 'Recorded CI origin has a prominent CI label');
+  assert.ok(origins.find(item => item.runId === 'feature')?.label.startsWith(treeOriginLabel('Local')), 'Local tester has a prominent Local label');
+  assert.equal(new Set(['Local', 'Peer', 'CI'].map(value => [...treeOriginLabel(value)].length)).size, 1, 'Origin labels occupy equal character widths');
   assert.equal(logbook.getTreeItem(origins.find(item => item.runId === 'feature')!).contextValue, 'logbook.localRun', 'Only local run exposes Push');
   assert.equal(logbook.getTreeItem(origins.find(item => item.runId === 'current')!).contextValue, undefined, 'Peer run has no Push action');
   assert.equal(logbook.getTreeItem(first).contextValue, 'logbook.workspaceFolder', 'Workspace folder exposes Sync');
@@ -276,6 +279,24 @@ async function journey(): Promise<void> {
   await logbook.setup();
   assert.ok(!(await logbook.getChildren(first)).some(item => item.kind === 'package'), 'Rescan removes deleted package stores');
   console.log('Host journey: monorepo grouping and package removal passed');
+  const sharedRoot = path.join(path.dirname(mappedRoot), 'shared-store');
+  await fs.mkdir(sharedRoot);
+  const shared = makeRun('team-shared', '2026-01-05T00:00:00.000Z');
+  assert.equal(await publishTeamBundle(sharedRoot, 'editor-project', await inspectBundleZip(await createBundle([shared], 'editor-project')), { type: 'local', author: 'Alice' }), 'added');
+  await fs.writeFile(path.join(mappedRoot, 'playwright.config.mjs'), `export default { reporter: [['list', { outputDir: '.logbook', projectId: 'editor-project', author: 'Bob', store: { type: 'filesystem', root: '../shared-store' } }]] };\n`);
+  const modules = process.env.LOGBOOK_TEST_NODE_MODULES;
+  assert.ok(modules, 'Editor fixture needs project-local Playwright');
+  await fs.symlink(modules, path.join(mappedRoot, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  const syncFolder = (await logbook.getChildren()).find(item => item.label === 'first')!;
+  void vscode.commands.executeCommand('logbook.syncTeam', syncFolder.id);
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try { await fs.access(path.join(rootStore, 'runs/team-shared.json')); break; }
+    catch { await new Promise(resolve => setTimeout(resolve, 50)); }
+  }
+  await fs.access(path.join(rootStore, 'runs/team-shared.json'));
+  assert.equal((await readTeamOrigin(rootStore, 'team-shared'))?.type, 'local', 'Sync reads the configured store with no folder picker');
+  assert.ok((await logbook.getChildren(syncFolder)).some(item => item.runId === 'team-shared'), 'Synced run appears in its workspace');
+  console.log('Host journey: configured team-store Sync pulled a shared run without a folder picker');
   const watchersBeforeRemoval = roots.length;
   assert.equal(watchersBeforeRemoval, 2);
   assert.equal(vscode.workspace.updateWorkspaceFolders(1, 1), true);
@@ -287,7 +308,7 @@ async function journey(): Promise<void> {
   const remaining = await logbook.getChildren();
   assert.equal(remaining.length, 1, 'One workspace still has a root folder');
   assert.equal(remaining[0]?.kind, 'folder');
-  assert.equal(remaining[0]?.description, '4 runs', 'Single workspace folder retains its saved run count');
+  assert.equal(remaining[0]?.description, '5 runs', 'Single workspace folder retains its saved run count after Sync');
   assert.ok((await logbook.getChildren(remaining[0])).some((item) => item.runId === 'current'), 'One remaining folder contains its runs');
   console.log('VS Code host: failure → scoped history → source, refresh, invalid actions and multi-root isolation passed.');
 }

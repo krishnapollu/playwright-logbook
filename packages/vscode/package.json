@@ -2,7 +2,7 @@
   "name": "playwright-logbook-vscode",
   "displayName": "Playwright Logbook",
   "description": "Browse Playwright runs, investigate failures and retries, compare test history, and import CI results.",
-  "version": "0.2.21-monorepo.6",
+  "version": "0.2.21-monorepo.7",
   "publisher": "krishnapollu",
   "private": true,
   "license": "MIT",
@@ -97,10 +97,6 @@
         "command": "logbook.pushRun",
         "title": "Logbook: Push Selected Run",
         "icon": "$(cloud-upload)"
-      },
-      {
-        "command": "logbook.selectTeamStore",
-        "title": "Logbook: Select Team Store…"
       },
       {
         "command": "logbook.filterSpecFile",
