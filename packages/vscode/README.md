@@ -31,6 +31,18 @@ Browse recorded Playwright runs, inspect failures, compare history, and open evi
 
 Keep `.logbook/index.jsonl` and `.logbook/runs/` to retain history. Open the folder containing your Playwright configuration. The extension needs desktop VS Code 1.95+; the reporter needs Node.js 20+ and Playwright 1.42+.
 
+The sidebar always shows the open workspace folder above its runs. For a monorepo,
+open its root folder. Logbook groups default stores in direct child
+suites and `packages/*` under that folder; **Refresh** rescans for newly added or
+removed suites. Each suite keeps separate runs and source paths. To configure a
+suite's custom history or source mapping, open that suite as a VS Code workspace
+folder and use the existing Logbook settings.
+Folder descriptions show saved run counts. A workspace folder's count includes its
+own history and every discovered child suite, independent of the loaded run page.
+While a test filter is active, folder descriptions switch to the matching runs
+currently loaded in the tree, marked `shown`. **Search older runs** extends that
+window and updates the counts.
+
 ## Explore runs
 
 - **One live filter:** Search run ID, date, title, status, branch, commit, test name, ID, project, or path. **Search older runs** extends the loaded window; **Clear** resets it.

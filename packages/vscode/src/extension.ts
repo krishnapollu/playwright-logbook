@@ -18,6 +18,7 @@ import { createHash } from 'node:crypto';
 import { HistoryReader, completionLabel, diagnosticMessage, executionIdentity } from '../../../src/historyreader.js';
 import type { HistoryScope, Page, ReaderRun, RecordedExecution } from '../../../src/historyreader.js';
 import { LocalHistoryFiles } from '../../../src/historyfiles.js';
+import { discoverPackageRoots } from '../../../src/workspacediscovery.js';
 import { permittedRoot, recordedSource, sourcePosition } from './workspace.js';
 import { escapeHtml, panelAction, renderDetail, renderRunOverview } from './detail.js';
 import { comparisonRef, comparisonSide, matchingPair, renderComparison } from './comparison.js';
@@ -31,9 +32,10 @@ import { ideAnalysisBackend } from './ideanalysis.js';
 interface StoreContext {
   folder: vscode.WorkspaceFolder; reader: HistoryReader; storeRoot: string; sourceRoot: string;
   runLimit: number; pageSize: number; watchers: vscode.Disposable[]; error: string | null;
+  parentFolderKey?: string;
 }
 interface TreeNode {
-  id: string; kind: 'folder' | 'run' | 'result' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
+  id: string; kind: 'folder' | 'package' | 'run' | 'result' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
   folderKey: string; label: string; description?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string };
 }
 interface Selection {
@@ -69,6 +71,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   private selection: Selection | undefined;
   private testFilter: TestTreeFilter = emptyTestFilter();
   private expandedIds = new Set<string>();
+  private collapsedIds = new Set<string>();
   private filterInput: vscode.InputBox | undefined;
   private history: Page<RecordedExecution> = { items: [], nextOffset: null, diagnostics: [] };
   private generation = 0;
@@ -102,7 +105,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       vscode.commands.registerCommand('logbook.clearTestFilter', () => { this.filterInput?.hide(); this.setTestFilter(emptyTestFilter()); }),
       vscode.commands.registerCommand('logbook.expandAll', () => this.expandAll()),
       vscode.commands.registerCommand('logbook.importBundle', () => this.importBundle()),
-      vscode.commands.registerCommand('logbook.refresh', () => this.refresh()),
+      vscode.commands.registerCommand('logbook.refresh', () => this.setup()),
       vscode.commands.registerCommand('logbook.selectStore', () => this.selectFolder('historyPath')),
       vscode.commands.registerCommand('logbook.configureSource', () => this.selectFolder('sourceRoot')),
       vscode.commands.registerCommand('logbook.openSource', () => this.openSource()),
@@ -134,18 +137,56 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     for (const store of this.stores.values()) store.watchers.forEach((watcher) => watcher.dispose());
     this.historicalDocuments.clear(); this.disposables.forEach((item) => item.dispose()); this.panel?.dispose(); this.comparisonPanel?.dispose(); this.changed.dispose();
     this.filterInput?.dispose();
+    this.collapsedIds.clear();
   }
   private folderKey(folder: vscode.WorkspaceFolder): string { return folder.uri.toString(); }
   private register(node: TreeNode): TreeNode { this.nodes.set(node.id, node); return node; }
   attachTreeView(view: vscode.TreeView<TreeNode>): void { this.treeView = view; }
   getParent(node: TreeNode): TreeNode | undefined {
     if (node.kind === 'folder') return undefined;
-    if (node.kind === 'run') return this.stores.size > 1 ? this.nodes.get(JSON.stringify([node.folderKey, 'folder'])) : undefined;
+    if (node.kind === 'package') {
+      const store = this.stores.get(node.folderKey);
+      if (store?.parentFolderKey) return this.nodes.get(JSON.stringify([store.parentFolderKey, 'folder']));
+      return undefined;
+    }
+    if (node.kind === 'run') {
+      const store = this.stores.get(node.folderKey);
+      if (store?.parentFolderKey) return this.nodes.get(JSON.stringify([node.folderKey, 'package']));
+      return this.nodes.get(JSON.stringify([node.folderKey, 'folder']));
+    }
     if (node.runId) return this.nodes.get(JSON.stringify([node.folderKey, node.runId]));
-    return this.stores.size > 1 ? this.nodes.get(JSON.stringify([node.folderKey, 'folder'])) : undefined;
+    const store = this.stores.get(node.folderKey);
+    if (store?.parentFolderKey) return this.nodes.get(JSON.stringify([node.folderKey, 'package']));
+    return this.nodes.get(JSON.stringify([node.folderKey, 'folder']));
   }
   private message(folderKey: string, label: string, suffix = label): TreeNode {
     return this.register({ id: JSON.stringify([folderKey, 'message', suffix]), kind: 'message', folderKey, label });
+  }
+  private async runCount(key: string, signal: AbortSignal): Promise<number | null> {
+    const store = this.stores.get(key);
+    if (!store || store.error) return null;
+    const filter = this.testFilter;
+    if (filter.folderKey && filter.folderKey !== key) return 0;
+    try {
+      if (!hasTestFilter(filter)) return await store.reader.countRuns(signal);
+      const page = await collectPages((offset, limit) => store.reader.listRuns(offset, limit, signal), store.runLimit);
+      let count = 0;
+      for (const summary of page.items) {
+        if (matchesRunFilter(summary, filter)) { count += 1; continue; }
+        try {
+          const run = await store.reader.getRun(summary.runId, signal);
+          if (run.tests.some(test => matchesTestFilter(test, filter, summary))) count += 1;
+        } catch (error) { if (signal.aborted) throw error; }
+      }
+      return filter === this.testFilter ? count : null;
+    }
+    catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') return 0;
+      return null;
+    }
+  }
+  private countDescription(count: number, filtered: boolean): string {
+    return filtered ? `${count} shown` : `${count} ${count === 1 ? 'run' : 'runs'}`;
   }
   private async roots(folder: vscode.WorkspaceFolder): Promise<{ storeRoot: string; sourceRoot: string }> {
     if (folder.uri.scheme !== 'file' || vscode.env.remoteName) throw new Error('This preview supports local desktop workspaces; remote and virtual workspaces are not yet validated.');
@@ -153,6 +194,14 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const storeRoot = await permittedRoot(folder.uri.fsPath, config.get<string>('historyPath', '.logbook'), vscode.workspace.isTrusted);
     const sourceRoot = await permittedRoot(folder.uri.fsPath, config.get<string>('sourceRoot', '.'), vscode.workspace.isTrusted);
     return { storeRoot, sourceRoot };
+  }
+  private async rootsForStore(store: StoreContext): Promise<{ storeRoot: string; sourceRoot: string }> {
+    if (!store.parentFolderKey) return this.roots(store.folder);
+    const root = store.folder.uri.fsPath;
+    return {
+      storeRoot: await permittedRoot(root, '.logbook', vscode.workspace.isTrusted),
+      sourceRoot: await permittedRoot(root, '.', vscode.workspace.isTrusted),
+    };
   }
   async setup(): Promise<void> {
     this.analysis.cancel();
@@ -170,7 +219,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         read: async (...args) => { await this.roots(folder); return local.read(...args); },
         listRunFiles: async (...args) => { await this.roots(folder); return local.listRunFiles(...args); },
       });
-      const store: StoreContext = { folder, reader, storeRoot, sourceRoot, error, runLimit: 20,
+      const store: StoreContext = { folder, reader, storeRoot, sourceRoot, error, runLimit: this.stores.get(key)?.runLimit ?? 20,
         pageSize: Math.max(1, Math.min(100, config.get<number>('historyLimit', 20))), watchers: [] };
       stores.set(key, store);
       if (!error && config.get<boolean>('autoRefresh', true)) {
@@ -182,10 +231,65 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         store.watchers.push(watcher, watcher.onDidCreate(update), watcher.onDidChange(update), watcher.onDidDelete(update));
       }
     }
+    // Default stores in direct child suites and packages/* share the CLI discovery rule.
+    for (const rootFolder of vscode.workspace.workspaceFolders ?? []) {
+      if (rootFolder.uri.scheme !== 'file' || vscode.env.remoteName) continue;
+      try {
+        const rootKey = this.folderKey(rootFolder);
+        const workspaceRoot = rootFolder.uri.fsPath;
+        for (const pkgPath of await discoverPackageRoots(workspaceRoot)) {
+          try {
+            const pkgFolderUri = vscode.Uri.file(pkgPath);
+            const pkgConfig = vscode.workspace.getConfiguration('logbook', pkgFolderUri);
+            const pkgStoreRoot = await permittedRoot(pkgPath, '.logbook', vscode.workspace.isTrusted);
+            const pkgSourceRoot = await permittedRoot(pkgPath, '.', vscode.workspace.isTrusted);
+            const pkgLocal = new LocalHistoryFiles(pkgStoreRoot);
+            const pkgReader = new HistoryReader({
+              read: async (relative, maxBytes, signal) => {
+                await permittedRoot(pkgPath, pkgStoreRoot, vscode.workspace.isTrusted);
+                return pkgLocal.read(relative, maxBytes, signal);
+              },
+              listRunFiles: async (signal) => {
+                await permittedRoot(pkgPath, pkgStoreRoot, vscode.workspace.isTrusted);
+                return pkgLocal.listRunFiles(signal);
+              },
+            });
+            const pkgKey = pkgFolderUri.toString();
+            if (!stores.has(pkgKey)) {
+              const pkgStore: StoreContext = {
+                folder: { uri: pkgFolderUri, name: path.relative(workspaceRoot, pkgPath).split(path.sep).join('/'), index: 0 } as vscode.WorkspaceFolder,
+                reader: pkgReader,
+                storeRoot: pkgStoreRoot,
+                sourceRoot: pkgSourceRoot,
+                error: null,
+                runLimit: this.stores.get(pkgKey)?.runLimit ?? 20,
+                pageSize: Math.max(1, Math.min(100, pkgConfig.get<number>('historyLimit', 20))),
+                watchers: [],
+                parentFolderKey: rootKey,
+              };
+              stores.set(pkgKey, pkgStore);
+              // Watch package .logbook
+              if (!pkgConfig.get<boolean>('autoRefresh', true)) continue;
+              const pkgWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(pkgStoreRoot), '{index.jsonl,runs/*.json}'));
+              const pkgUpdate = () => {
+                const prev = this.timers.get(pkgKey);
+                if (prev) clearTimeout(prev);
+                this.timers.set(pkgKey, setTimeout(() => { this.timers.delete(pkgKey); void this.refresh(pkgKey, true); }, 200));
+              };
+              pkgStore.watchers.push(pkgWatcher, pkgWatcher.onDidCreate(pkgUpdate), pkgWatcher.onDidChange(pkgUpdate), pkgWatcher.onDidDelete(pkgUpdate));
+            }
+          } catch { /* An unsafe or unreadable package store is omitted. */ }
+        }
+        const discoveryWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(rootFolder, '{*/.logbook,packages/*/.logbook}'));
+        const rescan = () => { void this.setup(); };
+        stores.get(rootKey)?.watchers.push(discoveryWatcher, discoveryWatcher.onDidCreate(rescan), discoveryWatcher.onDidDelete(rescan));
+      } catch { /* Workspace directory may disappear while setup runs. */ }
+    }
+
     if (setupGeneration !== this.setupGeneration || this.disposed) { stores.forEach((store) => store.watchers.forEach((watcher) => watcher.dispose())); return; }
     this.stores.forEach((store) => store.watchers.forEach((watcher) => watcher.dispose()));
     for (const timer of this.timers.values()) clearTimeout(timer);
-    this.timers.clear(); this.stores = stores; this.nodes.clear(); this.expandedIds.clear();
+    this.timers.clear(); this.stores = stores; this.nodes.clear();
     if (this.testFilter.folderKey && !stores.has(this.testFilter.folderKey)) this.setTestFilter(emptyTestFilter());
     await this.refresh();
   }
@@ -198,10 +302,12 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (this.selection) await this.updatePanel(automatic && (!folderKey || this.selection.folderKey === folderKey));
   }
   getTreeItem(node: TreeNode): vscode.TreeItem {
-    const collapsible = ['folder', 'run', 'runErrors'].includes(node.kind);
-    const item = new vscode.TreeItem(node.label, collapsible ? this.expandedIds.has(node.id) ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+    const collapsible = ['folder', 'package', 'run', 'runErrors'].includes(node.kind);
+    const defaultExpanded = node.kind === 'folder';
+    const isExpanded = this.expandedIds.has(node.id) || (defaultExpanded && !this.collapsedIds.has(node.id));
+    const item = new vscode.TreeItem(node.label, collapsible ? (isExpanded ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed) : vscode.TreeItemCollapsibleState.None);
     item.id = node.id; item.description = node.description; item.tooltip = `${node.label}${node.runId ? `\nRun: ${node.runId}` : ''}${node.description ? `\n${node.description}` : ''}`;
-    item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
+    item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'package' ? 'package' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
     if (node.kind === 'result' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
     if (node.kind === 'overview') item.command = { command: 'logbook.runOverview', title: 'View recorded run overview', arguments: [node.id] };
     if (node.kind === 'more') item.command = { command: 'logbook.loadMoreRuns', title: 'Load more runs', arguments: [node.id] };
@@ -212,10 +318,39 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const filter = this.testFilter;
     if (!node) {
       if (!this.stores.size) return [];
-      if (this.stores.size === 1) return this.runNodes([...this.stores.keys()][0]!);
-      return [...this.stores].filter(([key]) => !filter.folderKey || filter.folderKey === key).map(([key, store]) => this.register({ id: JSON.stringify([key, 'folder']), kind: 'folder', folderKey: key, label: store.folder.name }));
+      const rootStores = [...this.stores.entries()].filter(([, s]) => !s.parentFolderKey);
+      if (rootStores.length === 0) {
+        return [...this.stores.entries()].map(([key, store]) => this.register({ id: JSON.stringify([key, 'package']), kind: 'package', folderKey: key, label: store.folder.name }));
+      }
+      const visibleRoots = rootStores.filter(([key]) => {
+          if (!filter.folderKey) return true;
+          if (filter.folderKey === key) return true;
+          return [...this.stores.entries()].some(([childKey, s]) => s.parentFolderKey === key && childKey === filter.folderKey);
+        });
+      return Promise.all(visibleRoots.map(async ([key, store]) => {
+        const related = [key, ...[...this.stores.entries()].filter(([, child]) => child.parentFolderKey === key).map(([childKey]) => childKey)];
+        const counts = await Promise.all(related.map(relatedKey => this.runCount(relatedKey, signal)));
+        const description = counts.every((count): count is number => count !== null)
+          ? this.countDescription(counts.reduce((sum, count) => sum + count, 0), hasTestFilter(filter)) : undefined;
+        return this.register({ id: JSON.stringify([key, 'folder']), kind: 'folder', folderKey: key, label: store.folder.name, description });
+      }));
     }
-    if (node.kind === 'folder') return this.runNodes(node.folderKey);
+    if (node.kind === 'folder') {
+      const childPackages = [...this.stores.entries()].filter(([, s]) => s.parentFolderKey === node.folderKey);
+      if (childPackages.length > 0) {
+        const pkgNodes = await Promise.all(childPackages
+          .filter(([key]) => !filter.folderKey || filter.folderKey === key)
+          .map(async ([key, store]) => {
+            const count = await this.runCount(key, signal);
+            return this.register({ id: JSON.stringify([key, 'package']), kind: 'package', folderKey: key,
+              label: store.folder.name, description: count === null ? undefined : this.countDescription(count, hasTestFilter(filter)) });
+          }));
+        const rootRuns = await this.runNodes(node.folderKey, true);
+        return [...pkgNodes, ...rootRuns];
+      }
+      return this.runNodes(node.folderKey);
+    }
+    if (node.kind === 'package') return this.runNodes(node.folderKey);
     if (!['run', 'runErrors'].includes(node.kind) || !node.runId) return [];
     const store = this.stores.get(node.folderKey); if (!store) return [];
     try {
@@ -237,7 +372,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       return children;
     } catch (error) { return signal.aborted ? [] : [this.message(node.folderKey, diagnosticMessage(error), `${node.runId}-read-error`)]; }
   }
-  private async runNodes(key: string): Promise<TreeNode[]> {
+  private async runNodes(key: string, suppressEmpty = false): Promise<TreeNode[]> {
     const signal = this.operation.signal;
     const filter = this.testFilter;
     const store = this.stores.get(key); if (!store) return [];
@@ -260,11 +395,12 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       if (page.nextOffset !== null) nodes.push(this.register({ id: JSON.stringify([key, 'more', store.runLimit]), kind: 'more', folderKey: key, label: hasTestFilter(filter) ? 'Search older runs' : 'Load more runs' }));
       nodes.push(...page.diagnostics.map((entry) => this.message(key, `${entry.record}: ${entry.message}`)));
       if (hasTestFilter(filter) && !visible.length) nodes.unshift(this.message(key, page.nextOffset !== null ? 'No matches in loaded runs. Search older runs to continue.' : 'No recorded runs or tests match this filter.', 'filter-empty'));
-      else if (!page.items.length && !page.diagnostics.length) nodes.push(this.message(key, 'No recorded runs yet. Logbook reads history collected by its reporter. Select History Folder to view copied records.'));
+      else if (!suppressEmpty && !page.items.length && !page.diagnostics.length) nodes.push(this.message(key, 'No recorded runs yet. Logbook reads history collected by its reporter. Select History Folder to view copied records.'));
       return nodes;
     } catch (error) {
       if (signal.aborted) return [];
       const missing = typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+      if (missing && suppressEmpty) return [];
       return [this.message(key, missing ? 'No Logbook history found. Configure the reporter or select a history folder; an HTML report alone is insufficient.' : diagnosticMessage(error))];
     }
   }
@@ -296,8 +432,13 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     this.changed.fire(undefined);
   }
   noteTreeExpansion(node: TreeNode, expanded: boolean): void {
-    if (expanded) this.expandedIds.add(node.id);
-    else this.expandedIds.delete(node.id);
+    if (expanded) {
+      this.expandedIds.add(node.id);
+      this.collapsedIds.delete(node.id);
+    } else {
+      this.expandedIds.delete(node.id);
+      this.collapsedIds.add(node.id);
+    }
   }
   private async showTestFilter(): Promise<void> {
     await vscode.commands.executeCommand('workbench.view.extension.logbook');
@@ -317,18 +458,22 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (!uri || uri.scheme !== 'file' || !isSpecFile(uri.fsPath)) return;
     let file: string;
     try { file = await fs.realpath(uri.fsPath); } catch { return; }
+    let match: { key: string; sourceRoot: string } | undefined;
     for (const [key, store] of this.stores) {
       try {
-        const roots = await this.roots(store.folder);
+        const roots = await this.rootsForStore(store);
         if (!withinRoot(roots.sourceRoot, file)) continue;
-        const relative = path.relative(roots.sourceRoot, file).split(path.sep).join('/');
-        const editor = vscode.window.activeTextEditor;
-        const title = fromEditor && editor?.document.uri.toString() === uri.toString()
-          ? testTitleAtCursor(uri.fsPath, editor.document.getText(), editor.document.offsetAt(editor.selection.active)) : null;
-        this.setTestFilter({ query: '', file: relative, title, folderKey: key });
-        await this.showTestFilter();
-        return;
+        if (!match || roots.sourceRoot.length > match.sourceRoot.length) match = { key, sourceRoot: roots.sourceRoot };
       } catch { /* Other workspace folders may have unavailable mappings. */ }
+    }
+    if (match) {
+      const relative = path.relative(match.sourceRoot, file).split(path.sep).join('/');
+      const editor = vscode.window.activeTextEditor;
+      const title = fromEditor && editor?.document.uri.toString() === uri.toString()
+        ? testTitleAtCursor(uri.fsPath, editor.document.getText(), editor.document.offsetAt(editor.selection.active)) : null;
+      this.setTestFilter({ query: '', file: relative, title, folderKey: match.key });
+      await this.showTestFilter();
+      return;
     }
     await vscode.window.showInformationMessage('This spec file is outside the mapped Logbook source folders. Configure Source Mapping to filter its recorded tests.');
   }
@@ -340,6 +485,16 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     for (const top of await this.getChildren()) {
       if (top.kind === 'folder') {
         if (operation !== this.operation || this.disposed) return;
+        await view.reveal(top, { expand: 1, select: false, focus: false });
+        for (const child of await this.getChildren(top)) {
+          if (child.kind === 'package') {
+            await view.reveal(child, { expand: 1, select: false, focus: false });
+            runs.push(...(await this.getChildren(child)).filter(c => c.kind === 'run'));
+          } else if (child.kind === 'run') {
+            runs.push(child);
+          }
+        }
+      } else if (top.kind === 'package') {
         await view.reveal(top, { expand: 1, select: false, focus: false });
         runs.push(...(await this.getChildren(top)).filter(child => child.kind === 'run'));
       } else if (top.kind === 'run') {
@@ -423,7 +578,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       if (!selected?.resultKey || attachment.identity !== selected.resultKey) return;
       const store = this.stores.get(selected.folderKey); if (!store) return;
       try {
-        const roots = await this.roots(store.folder);
+        const roots = await this.rootsForStore(store);
         const run = await store.reader.getRun(selected.runId);
         const result = run.tests.find(test => executionIdentity(run.runId, test) === selected.resultKey);
         if (!result) return;
@@ -584,7 +739,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (!pair || !store || store.storeRoot !== pair.storeRoot) throw new GitSourceError('Pinned source mapping unavailable. Configure Source Mapping.');
     const side = await this.loadComparisonSide(ref, pair.folderKey);
     if (!side.result || !side.run) throw new GitSourceError('Pinned execution unavailable.');
-    const roots = await this.roots(store.folder);
+    const roots = await this.rootsForStore(store);
     return readHistoricalSource(roots.sourceRoot, side.result.file, side.run.env?.git?.commit ?? null, vscode.workspace.isTrusted);
   }
   private async handleComparison(message: unknown): Promise<void> {
@@ -626,7 +781,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (!selected?.resultKey) { await vscode.window.showInformationMessage('Select a recorded test result in Logbook first.'); return; }
     const store = this.stores.get(selected.folderKey); if (!store) return;
     try {
-      const roots = await this.roots(store.folder);
+      const roots = await this.rootsForStore(store);
       const run = await store.reader.getRun(selected.runId);
       const test = run.tests.find((item) => executionIdentity(run.runId, item) === selected.resultKey);
       if (!test) throw new Error('Recorded test unavailable.');
@@ -647,13 +802,13 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   async prepareBundleImport(folderKey: string, files: readonly string[], projectId: string, signal?: AbortSignal): Promise<PreparedImport> {
     const store = this.stores.get(folderKey);
     if (!store) throw new Error('Import target workspace is no longer open.');
-    const { storeRoot } = await this.roots(store.folder);
+    const { storeRoot } = await this.rootsForStore(store);
     return prepareImport(folderKey, storeRoot, files, projectId, vscode.workspace.isTrusted, signal);
   }
   async commitBundleImport(prepared: PreparedImport, signal?: AbortSignal): Promise<ImportResult> {
     const store = this.stores.get(prepared.folderKey);
     if (!store || !vscode.workspace.isTrusted) throw new Error('A trusted import target workspace is required.');
-    const { storeRoot } = await this.roots(store.folder);
+    const { storeRoot } = await this.rootsForStore(store);
     if (storeRoot !== prepared.storeRoot) throw new Error('History folder changed. Review the import again.');
     const result = await ingestBundles(storeRoot, prepared.bundles, { projectId: prepared.projectId, signal });
     await this.refresh(prepared.folderKey);
@@ -670,7 +825,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const files = await vscode.window.showOpenDialog({ canSelectFiles: true, canSelectFolders: false, canSelectMany: true, filters: { 'Logbook ZIP bundles': ['zip'] }, openLabel: 'Review Run Bundles' });
     if (!files?.length || files.some(file => file.scheme !== 'file')) return;
     try {
-      const { storeRoot } = await this.roots(target.folder);
+      const { storeRoot } = await this.rootsForStore(target);
       const catalog = await readImportCatalog(storeRoot);
       const projectId = catalog?.projectId ?? await vscode.window.showInputBox({ title: 'Bind this history store to a project', prompt: 'Use the same stable project ID as your CI exports (for example my-project).', validateInput: value => projectIdSchema.safeParse(value).success ? null : 'Use 1–128 letters, digits, dots, underscores or hyphens; start with a letter or digit.' });
       if (!projectId) return;
@@ -708,6 +863,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       store = choice?.store;
     }
     if (!store) { await vscode.window.showInformationMessage('Open a local workspace folder to use Logbook.'); return; }
+    if (store.parentFolderKey) { await vscode.window.showInformationMessage('Open this package as a VS Code workspace folder to configure its history or source mapping.'); return; }
     const choice = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, defaultUri: store.folder.uri, openLabel: setting === 'historyPath' ? 'Select History Folder' : 'Map Source Root' });
     const uri = choice?.[0]; if (!uri || uri.scheme !== 'file') return;
     try {

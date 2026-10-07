@@ -59,7 +59,7 @@ try {
   let developmentPath = extensionRoot;
   let executable = process.argv.includes('--vscode-executable') ? option('--vscode-executable') : undefined;
   if (process.argv.includes('--vsix')) {
-    executable = await downloadAndUnzipVSCode({ version: editorVersion, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries') });
+    executable ??= await downloadAndUnzipVSCode({ version: editorVersion, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries') });
     const [cli, ...args] = resolveCliArgsFromVSCodeExecutablePath(executable, { reuseMachineInstall: true });
     const install = spawnSync(cli, [...args, '--install-extension', path.join(extensionRoot, `dist/playwright-logbook-vscode-${extensionManifest.version}.vsix`), '--user-data-dir', path.join(directory, 'profile'), '--extensions-dir', path.join(directory, 'extensions')], {
       encoding: 'utf8', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 60_000, shell: process.platform === 'win32',
@@ -71,4 +71,4 @@ try {
   await runTests({ version: editorVersion, vscodeExecutablePath: executable, cachePath: path.join(os.tmpdir(), 'logbook-vscode-binaries'), extensionDevelopmentPath: developmentPath, extensionTestsPath,
     extensionTestsEnv: { ELECTRON_RUN_AS_NODE: undefined },
     launchArgs: [workspace, '--disable-extensions', '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes', '--user-data-dir', path.join(directory, 'profile'), '--extensions-dir', path.join(directory, 'extensions')] });
-} finally { await fs.rm(directory, { recursive: true, force: true }); }
+} finally { await fs.rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }

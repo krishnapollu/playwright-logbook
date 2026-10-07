@@ -1010,3 +1010,20 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   visually reviewed against current production renderers. The repackaged
   0.2.20 VSIX contains the exact four new PNGs, checked extension bundle and
   README tour link. `npm run check` passed: 44 files, 219 tests.
+- [x] T13 Monorepo workspace discovery (feature branch)
+  CLI and extension share bounded, code-unit-sorted discovery of direct child
+  suites and `packages/*` default stores. The tree always shows a workspace
+  folder, then child suites and runs. Package source mappings, imports, spec/test
+  filters, refresh, run pagination and diagnostics remain scoped to the correct
+  store. Folder descriptions count all cataloged runs normally and matching loaded
+  runs while filtering. An absent root store adds no message when child stores
+  exist. The follow-on product plan is `docs/SPEC-team-portal-v0.1.md`.
+- Done when: `npm run check` passed: 45 files, 221 tests. The earlier scenario
+  failure was caused by macOS sandbox denial of Chromium's Mach port; the same
+  suite passed outside that sandbox. The packaged VS Code 1.140.0 host journey
+  exited 0 using the installed editor and a disposable profile. It exercised
+  default-store grouping, root and package counts, filtered counts, packages-only
+  history, package spec filtering, package removal, bundle import, source mapping,
+  comparison and attachment navigation. The host runner now honors an explicit
+  `--vscode-executable`. Cached editor binaries were killed during installation;
+  the installed editor completed the same packaged journey.
