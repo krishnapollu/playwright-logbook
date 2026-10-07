@@ -1105,8 +1105,8 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 
 ### Persistent local team-store demo
 
-- [x] Set up the confirmed `~/Projects/logbook-store` path with three ignored
-  `pw-test` workspace copies under `.local/team-demo/`. The setup script and
+- [x] Set up the confirmed `~/Projects/logbook-store` path with three sibling
+  `pw-test` workspace copies under `../pw-test-team-demo/`. The setup script and
   local guide preserve source mapping, separate histories and selected push.
   Alice and Bob each ran two offline smoke tests and pushed one local run. A
   third workspace simulated GitHub run `ci-github-4243-1` across two populated
@@ -1119,3 +1119,13 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   including the unchanged golden test. The generated `team.code-workspace`
   points to both author workspaces; actual editor inspection remains a manual
   step when opening it.
+
+### Development VSIX and demo workspace placement
+
+- [x] Moved the three demo workspaces to sibling `../pw-test-team-demo/`,
+  preserving their histories and the shared store. Removed the repository's
+  `.local/` directory. Built extension preview `0.2.21-monorepo.5` as a local
+  VSIX and confirmed its packaged runtime hash matches the checked build.
+  The installed VSIX host journey passed in a disposable profile using local
+  VS Code 1.140.0. `.logbook-demo/` is older generated report demo data and
+  remains separate from this team-store workflow.

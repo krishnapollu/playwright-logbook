@@ -5,7 +5,7 @@ import { fileURLToPath, URL } from 'node:url';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const source = path.resolve(repo, '../pw-test');
-const root = path.join(repo, '.local/team-demo');
+const root = path.resolve(repo, '../pw-test-team-demo');
 
 await fs.access(path.join(source, 'tests'));
 await fs.access(path.join(repo, 'node_modules/@playwright/test'));
@@ -25,7 +25,7 @@ export default defineConfig({
   outputDir: process.env.PW_TEST_SHARD ? 'test-results-' + process.env.PW_TEST_SHARD : 'test-results',
   fullyParallel: true,
   retries: 1,
-  reporter: [['../../../dist/index.js', {
+  reporter: [['../../pw-logbook/dist/index.js', {
     title: 'pw-test', captureDetails: true, outputDir: '.logbook',
     projectId: 'pw-test', author: '${author}',
     store: { type: 'filesystem', root: '~/Projects/logbook-store' },

@@ -7,7 +7,6 @@ dist
 .logbook
 .logbook-demo
 .logbook-details
-.local/
 test-results
 *.tsbuildinfo
 *.vsix

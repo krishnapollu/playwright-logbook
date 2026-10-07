@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.21-monorepo.5 (local preview)
+
+- Show CI, Local and Peer provenance for shared team-store runs.
+- Package the current team-store preview for local IDE inspection.
+
 ## 0.2.21-monorepo.4 (local preview)
 
 - Group default Logbook stores in direct child suites and `packages/*` under the workspace.
