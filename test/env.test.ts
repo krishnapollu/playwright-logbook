@@ -4,13 +4,13 @@ import type { DetectEnvOptions } from '../src/env.js';
 
 const fixed: DetectEnvOptions = { clock: () => new Date('2026-01-02T03:04:05.000Z'), random: () => 'abcd', machine: { os: 'linux', arch: 'x64', node: '20.0.0', cpus: 4 }, exec: () => { throw new Error('no git'); } };
 const cases = [
-  { provider: 'github', env: { GITHUB_ACTIONS: 'true', GITHUB_RUN_ID: '42', GITHUB_RUN_ATTEMPT: '2', GITHUB_SERVER_URL: 'https://github.com', GITHUB_REPOSITORY: 'org/repo', GITHUB_HEAD_REF: 'feature', GITHUB_SHA: 'sha', GITHUB_REF: 'refs/pull/7/merge' }, id: 'gh-42-2', build: '42', pr: 7, branch: 'feature' },
-  { provider: 'gitlab', env: { GITLAB_CI: 'true', CI_PIPELINE_ID: '42', CI_PIPELINE_URL: 'https://gitlab.test/build', CI_COMMIT_REF_NAME: 'feature', CI_COMMIT_SHA: 'sha', CI_MERGE_REQUEST_IID: '7' }, id: 'gl-42', build: '42', pr: 7, branch: 'feature' },
-  { provider: 'azure', env: { TF_BUILD: 'true', BUILD_BUILDID: '42', SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://dev.test/', SYSTEM_TEAMPROJECT: 'proj', BUILD_SOURCEBRANCHNAME: 'feature', BUILD_SOURCEVERSION: 'sha', SYSTEM_PULLREQUEST_PULLREQUESTNUMBER: '7' }, id: 'ado-42', build: '42', pr: 7, branch: 'feature' },
-  { provider: 'jenkins', env: { JENKINS_URL: 'https://jenkins.test', JOB_NAME: 'proj', BUILD_NUMBER: '42', BUILD_URL: 'https://jenkins.test/42', GIT_BRANCH: 'feature', GIT_COMMIT: 'sha', CHANGE_ID: '7' }, id: 'jk-proj-42', build: '42', pr: 7, branch: 'feature' },
-  { provider: 'circleci', env: { CIRCLECI: 'true', CIRCLE_WORKFLOW_ID: '42', CIRCLE_BUILD_NUM: '8', CIRCLE_BUILD_URL: 'https://circle.test/8', CIRCLE_BRANCH: 'feature', CIRCLE_SHA1: 'sha', CIRCLE_PULL_REQUEST: 'https://git.test/pull/7' }, id: 'cci-42', build: '8', pr: 7, branch: 'feature' },
-  { provider: 'bitbucket', env: { BITBUCKET_BUILD_NUMBER: '42', BITBUCKET_BRANCH: 'feature', BITBUCKET_COMMIT: 'sha', BITBUCKET_PR_ID: '7' }, id: 'bb-42', build: '42', pr: 7, branch: 'feature' },
-  { provider: 'other', env: { CI: 'true' }, id: 'ci-20260102T030405Z-abcd', build: null, pr: null, branch: null },
+  { provider: 'github', env: { GITHUB_ACTIONS: 'true', GITHUB_RUN_ID: '42', GITHUB_RUN_ATTEMPT: '2', GITHUB_SERVER_URL: 'https://github.com', GITHUB_REPOSITORY: 'org/repo', GITHUB_HEAD_REF: 'feature', GITHUB_SHA: 'sha', GITHUB_REF: 'refs/pull/7/merge' }, id: 'ci-github-42-2', build: '42', pr: 7, branch: 'feature' },
+  { provider: 'gitlab', env: { GITLAB_CI: 'true', CI_PIPELINE_ID: '42', CI_PIPELINE_URL: 'https://gitlab.test/build', CI_COMMIT_REF_NAME: 'feature', CI_COMMIT_SHA: 'sha', CI_MERGE_REQUEST_IID: '7' }, id: 'ci-gitlab-42-1', build: '42', pr: 7, branch: 'feature' },
+  { provider: 'azure', env: { TF_BUILD: 'true', BUILD_BUILDID: '42', SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://dev.test/', SYSTEM_TEAMPROJECT: 'proj', BUILD_SOURCEBRANCHNAME: 'feature', BUILD_SOURCEVERSION: 'sha', SYSTEM_PULLREQUEST_PULLREQUESTNUMBER: '7' }, id: 'ci-azure-42-1', build: '42', pr: 7, branch: 'feature' },
+  { provider: 'jenkins', env: { JENKINS_URL: 'https://jenkins.test', JOB_NAME: 'proj', BUILD_NUMBER: '42', BUILD_URL: 'https://jenkins.test/42', GIT_BRANCH: 'feature', GIT_COMMIT: 'sha', CHANGE_ID: '7' }, id: 'ci-jenkins-proj-42-1', build: '42', pr: 7, branch: 'feature' },
+  { provider: 'circleci', env: { CIRCLECI: 'true', CIRCLE_WORKFLOW_ID: '42', CIRCLE_BUILD_NUM: '8', CIRCLE_BUILD_URL: 'https://circle.test/8', CIRCLE_BRANCH: 'feature', CIRCLE_SHA1: 'sha', CIRCLE_PULL_REQUEST: 'https://git.test/pull/7' }, id: 'ci-circleci-42-1', build: '8', pr: 7, branch: 'feature' },
+  { provider: 'bitbucket', env: { BITBUCKET_BUILD_NUMBER: '42', BITBUCKET_BRANCH: 'feature', BITBUCKET_COMMIT: 'sha', BITBUCKET_PR_ID: '7' }, id: 'ci-bitbucket-42-1', build: '42', pr: 7, branch: 'feature' },
+  { provider: 'other', env: { CI: 'true' }, id: 'ci-other-mjwaid1k-88d4266fd4e6-1', build: null, pr: null, branch: null },
 ] as const;
 
 describe('detectEnv', () => {
@@ -22,7 +22,14 @@ describe('detectEnv', () => {
     expect(value.git.branch).toBe(entry.branch);
   });
   it('uses injected time/random for local ids', () => {
-    expect(detectEnv({ ...fixed, env: {} }).runId).toBe('local-20260102T030405Z-abcd');
+    expect(detectEnv({ ...fixed, env: {} }).runId).toBe('local-mjwaid1k-88d4266fd4e6');
+    expect(detectEnv({ ...fixed, env: {}, random: () => 'different' }).runId).not.toBe('local-mjwaid1k-88d4266fd4e6');
+    expect(detectEnv({ ...fixed, env: {}, clock: () => new Date('2026-01-02T03:04:05.001Z') }).runId).not.toBe('local-mjwaid1k-88d4266fd4e6');
+  });
+  it('shares CI identity across shards of one attempt', () => {
+    const env = { GITHUB_ACTIONS: 'true', GITHUB_RUN_ID: '42', GITHUB_RUN_ATTEMPT: '2' };
+    expect(detectEnv({ ...fixed, env, random: () => 'one' }).runId).toBe(detectEnv({ ...fixed, env, random: () => 'two' }).runId);
+    expect(detectEnv({ ...fixed, env: { ...env, GITHUB_RUN_ATTEMPT: '3' } }).runId).toBe('ci-github-42-3');
   });
   it('applies run id precedence, sanitization, and length limit', () => {
     expect(detectEnv({ ...fixed, env: { LOGBOOK_RUN_ID: 'from/env' } }).runId).toBe('from-env');

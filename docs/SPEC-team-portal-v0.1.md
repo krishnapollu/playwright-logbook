@@ -83,6 +83,10 @@ Give one working GitHub Actions example from completed run to bundle download/im
 
 Choose the provider and its authentication model in `docs/DECISIONS.md`. Reuse bundle validation and ingestion. Test cancellation, limits, API error, wrong project, duplicate, conflict, and no local mutation before confirmation. Done when a real CI artifact can be fetched and opened locally and the full check passes.
 
+### S1a — run identity prerequisite
+
+Generate new local and CI run IDs as specified in section 9, preserving explicit overrides and old saved IDs. Done when injected-clock/random tests cover uniqueness and shared CI execution identity, and the full check passes.
+
 ### S1 — central filesystem store
 
 Implement the section 9 filesystem prototype with project partitioning, selected push, complete incremental pull, CI bundle ingestion, provenance and editor labels. Exercise two workspaces for the same `pw-test` project and different authors, plus one CI run. Done when crash/retry/conflict, partial-success, artifact, and end-to-end CLI/editor checks pass.

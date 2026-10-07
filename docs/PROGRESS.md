@@ -1027,3 +1027,14 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   comparison and attachment navigation. The host runner now honors an explicit
   `--vscode-executable`. Cached editor binaries were killed during installation;
   the installed editor completed the same packaged journey.
+
+### Team-store prototype
+
+- [x] S1a Run identity prerequisite
+  New local IDs use base36 UTC milliseconds and 12 hex characters derived from
+  injected randomness. CI IDs use provider, build/run ID and attempt where
+  available; explicit overrides and saved IDs remain valid. Tests cover stable
+  CI identity across shards and changed local time/randomness.
+- Done when: `npm run check` passed: 45 files, 222 tests, including the unchanged
+  golden test. The sandboxed Chromium scenario initially failed; the focused
+  scenario and full check passed with browser access. No team-store transfer yet.
