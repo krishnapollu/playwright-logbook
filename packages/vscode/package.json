@@ -24,7 +24,7 @@
   },
   "type": "module",
   "engines": {
-    "vscode": "^1.95.0"
+    "vscode": "^1.74.0"
   },
   "categories": [
     "Testing"

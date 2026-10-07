@@ -31,6 +31,7 @@ import { ideAnalysisBackend } from './ideanalysis.js';
 interface StoreContext {
   folder: vscode.WorkspaceFolder; reader: HistoryReader; storeRoot: string; sourceRoot: string;
   runLimit: number; pageSize: number; watchers: vscode.Disposable[]; error: string | null;
+  parentFolderKey?: string;
 }
 interface TreeNode {
   id: string; kind: 'folder' | 'package' | 'run' | 'result' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
@@ -69,6 +70,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   private selection: Selection | undefined;
   private testFilter: TestTreeFilter = emptyTestFilter();
   private expandedIds = new Set<string>();
+  private collapsedIds = new Set<string>();
   private filterInput: vscode.InputBox | undefined;
   private history: Page<RecordedExecution> = { items: [], nextOffset: null, diagnostics: [] };
   private generation = 0;
@@ -134,14 +136,26 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     for (const store of this.stores.values()) store.watchers.forEach((watcher) => watcher.dispose());
     this.historicalDocuments.clear(); this.disposables.forEach((item) => item.dispose()); this.panel?.dispose(); this.comparisonPanel?.dispose(); this.changed.dispose();
     this.filterInput?.dispose();
+    this.collapsedIds.clear();
   }
   private folderKey(folder: vscode.WorkspaceFolder): string { return folder.uri.toString(); }
   private register(node: TreeNode): TreeNode { this.nodes.set(node.id, node); return node; }
   attachTreeView(view: vscode.TreeView<TreeNode>): void { this.treeView = view; }
   getParent(node: TreeNode): TreeNode | undefined {
     if (node.kind === 'folder') return undefined;
-    if (node.kind === 'run') return this.stores.size > 1 ? this.nodes.get(JSON.stringify([node.folderKey, 'folder'])) : undefined;
+    if (node.kind === 'package') {
+      const store = this.stores.get(node.folderKey);
+      if (store?.parentFolderKey) return this.nodes.get(JSON.stringify([store.parentFolderKey, 'folder']));
+      return undefined;
+    }
+    if (node.kind === 'run') {
+      const store = this.stores.get(node.folderKey);
+      if (store?.parentFolderKey) return this.nodes.get(JSON.stringify([node.folderKey, 'package']));
+      return this.stores.size > 1 ? this.nodes.get(JSON.stringify([node.folderKey, 'folder'])) : undefined;
+    }
     if (node.runId) return this.nodes.get(JSON.stringify([node.folderKey, node.runId]));
+    const store = this.stores.get(node.folderKey);
+    if (store?.parentFolderKey) return this.nodes.get(JSON.stringify([node.folderKey, 'package']));
     return this.stores.size > 1 ? this.nodes.get(JSON.stringify([node.folderKey, 'folder'])) : undefined;
   }
   private message(folderKey: string, label: string, suffix = label): TreeNode {
@@ -184,42 +198,66 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     }
     // Monorepo package discovery: scan packages/*/ for .logbook stores
     try {
-      const workspaceRoot = (vscode.workspace.workspaceFolders ?? [])[0]?.uri.fsPath ?? (this.extension.extensionPath ? path.dirname(this.extension.extensionPath) : '.');
-      const packagesDir = path.join(workspaceRoot, 'packages');
-      const pkgEntries = await fs.promises.readdir(packagesDir, { withFileTypes: true }).catch(() => [] as fs.Dirent[]);
-      for (const p of pkgEntries) {
-        if (!p.isDirectory() || p.name === 'node_modules') continue;
-        const pkgPath = path.join(packagesDir, p.name);
-        const logbookPath = path.join(pkgPath, '.logbook');
-        try {
-          await fs.promises.access(logbookPath);
-          const pkgFolderUri = vscode.Uri.file(pkgPath);
-          const pkgConfig = vscode.workspace.getConfiguration('logbook', pkgFolderUri);
-          const pkgStoreRoot = await permittedRoot(pkgPath, pkgConfig.get<string>('historyPath', '.logbook'), vscode.workspace.isTrusted);
-          const pkgSourceRoot = await permittedRoot(pkgPath, pkgConfig.get<string>('sourceRoot', '.'), vscode.workspace.isTrusted);
-          const pkgLocal = new LocalHistoryFiles(pkgStoreRoot);
-          const pkgReader = new HistoryReader({
-            read: async (...args: unknown[]) => { await permittedRoot(pkgPath, pkgStoreRoot, vscode.workspace.isTrusted); return pkgLocal.read(...args as [string]); },
-            listRunFiles: async (...args: unknown[]) => { await permittedRoot(pkgPath, pkgStoreRoot, vscode.workspace.isTrusted); return pkgLocal.listRunFiles(...args as [string, number]); },
-          });
-          const pkgKey = pkgPath; // synthetic folder key
-          if (!stores.has(pkgKey)) {
-            const pkgStore: StoreContext = { folder: { uri: pkgFolderUri, name: p.name, index: 0 } as vscode.WorkspaceFolder, reader: pkgReader, storeRoot: pkgStoreRoot, sourceRoot: pkgSourceRoot, error: null, runLimit: 20, pageSize: 10, watchers: [], folderKey: pkgKey };
-            stores.set(pkgKey, pkgStore);
-            // Watch package .logbook
-            if (!pkgConfig.get<boolean>('autoRefresh', true)) continue;
-            const pkgWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(pkgStoreRoot), '{index.jsonl,runs/*.json}'));
-            const pkgUpdate = () => { const prev = this.timers.get(pkgKey); if (prev) clearTimeout(prev); this.timers.set(pkgKey, setTimeout(() => { this.timers.delete(pkgKey); void this.refresh(pkgKey, true); }, 200)); };
-            pkgStore.watchers.push(pkgWatcher, pkgWatcher.onDidCreate(pkgUpdate), pkgWatcher.onDidChange(pkgUpdate), pkgWatcher.onDidDelete(pkgUpdate));
-          }
-        } catch { /* no .logbook or not trusted */ }
+      const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+      for (const rootFolder of workspaceFolders) {
+        const rootKey = this.folderKey(rootFolder);
+        const workspaceRoot = rootFolder.uri.fsPath;
+        const packagesDir = path.join(workspaceRoot, 'packages');
+        const pkgEntries = await fs.readdir(packagesDir, { withFileTypes: true }).catch(() => [] as import("node:fs").Dirent[]);
+        for (const p of pkgEntries) {
+          if (!p.isDirectory() || p.name === 'node_modules') continue;
+          const pkgPath = path.join(packagesDir, p.name);
+          const logbookPath = path.join(pkgPath, '.logbook');
+          try {
+            await fs.access(logbookPath);
+            const pkgFolderUri = vscode.Uri.file(pkgPath);
+            const pkgConfig = vscode.workspace.getConfiguration('logbook', pkgFolderUri);
+            const pkgStoreRoot = await permittedRoot(pkgPath, pkgConfig.get<string>('historyPath', '.logbook'), vscode.workspace.isTrusted);
+            const pkgSourceRoot = await permittedRoot(pkgPath, pkgConfig.get<string>('sourceRoot', '.'), vscode.workspace.isTrusted);
+            const pkgLocal = new LocalHistoryFiles(pkgStoreRoot);
+            const pkgReader = new HistoryReader({
+              read: async (relative, maxBytes, signal) => {
+                await permittedRoot(pkgPath, pkgStoreRoot, vscode.workspace.isTrusted);
+                return pkgLocal.read(relative, maxBytes, signal);
+              },
+              listRunFiles: async (signal) => {
+                await permittedRoot(pkgPath, pkgStoreRoot, vscode.workspace.isTrusted);
+                return pkgLocal.listRunFiles(signal);
+              },
+            });
+            const pkgKey = pkgPath; // synthetic folder key
+            if (!stores.has(pkgKey)) {
+              const pkgStore: StoreContext = {
+                folder: { uri: pkgFolderUri, name: p.name, index: 0 } as vscode.WorkspaceFolder,
+                reader: pkgReader,
+                storeRoot: pkgStoreRoot,
+                sourceRoot: pkgSourceRoot,
+                error: null,
+                runLimit: 20,
+                pageSize: 10,
+                watchers: [],
+                parentFolderKey: rootKey,
+              };
+              stores.set(pkgKey, pkgStore);
+              // Watch package .logbook
+              if (!pkgConfig.get<boolean>('autoRefresh', true)) continue;
+              const pkgWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(pkgStoreRoot), '{index.jsonl,runs/*.json}'));
+              const pkgUpdate = () => {
+                const prev = this.timers.get(pkgKey);
+                if (prev) clearTimeout(prev);
+                this.timers.set(pkgKey, setTimeout(() => { this.timers.delete(pkgKey); void this.refresh(pkgKey, true); }, 200));
+              };
+              pkgStore.watchers.push(pkgWatcher, pkgWatcher.onDidCreate(pkgUpdate), pkgWatcher.onDidChange(pkgUpdate), pkgWatcher.onDidDelete(pkgUpdate));
+            }
+          } catch { /* no .logbook or not trusted */ }
+        }
       }
     } catch { /* packages/ missing */ }
 
     if (setupGeneration !== this.setupGeneration || this.disposed) { stores.forEach((store) => store.watchers.forEach((watcher) => watcher.dispose())); return; }
     this.stores.forEach((store) => store.watchers.forEach((watcher) => watcher.dispose()));
     for (const timer of this.timers.values()) clearTimeout(timer);
-    this.timers.clear(); this.stores = stores; this.nodes.clear(); this.expandedIds.clear();
+    this.timers.clear(); this.stores = stores; this.nodes.clear(); this.expandedIds.clear(); this.collapsedIds.clear();
     if (this.testFilter.folderKey && !stores.has(this.testFilter.folderKey)) this.setTestFilter(emptyTestFilter());
     await this.refresh();
   }
@@ -232,10 +270,12 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     if (this.selection) await this.updatePanel(automatic && (!folderKey || this.selection.folderKey === folderKey));
   }
   getTreeItem(node: TreeNode): vscode.TreeItem {
-    const collapsible = ['folder', 'run', 'runErrors'].includes(node.kind);
-    const item = new vscode.TreeItem(node.label, collapsible ? this.expandedIds.has(node.id) ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+    const collapsible = ['folder', 'package', 'run', 'runErrors'].includes(node.kind);
+    const defaultExpanded = node.kind === 'folder';
+    const isExpanded = this.expandedIds.has(node.id) || (defaultExpanded && !this.collapsedIds.has(node.id));
+    const item = new vscode.TreeItem(node.label, collapsible ? (isExpanded ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed) : vscode.TreeItemCollapsibleState.None);
     item.id = node.id; item.description = node.description; item.tooltip = `${node.label}${node.runId ? `\nRun: ${node.runId}` : ''}${node.description ? `\n${node.description}` : ''}`;
-    item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
+    item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'package' ? 'package' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
     if (node.kind === 'result' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
     if (node.kind === 'overview') item.command = { command: 'logbook.runOverview', title: 'View recorded run overview', arguments: [node.id] };
     if (node.kind === 'more') item.command = { command: 'logbook.loadMoreRuns', title: 'Load more runs', arguments: [node.id] };
@@ -246,10 +286,37 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const filter = this.testFilter;
     if (!node) {
       if (!this.stores.size) return [];
-      if (this.stores.size === 1) return this.runNodes([...this.stores.keys()][0]!);
-      return [...this.stores].filter(([key]) => !filter.folderKey || filter.folderKey === key).map(([key, store]) => this.register({ id: JSON.stringify([key, 'folder']), kind: 'folder', folderKey: key, label: store.folder.name }));
+      const rootStores = [...this.stores.entries()].filter(([, s]) => !s.parentFolderKey);
+      if (rootStores.length === 0) {
+        return [...this.stores.entries()].map(([key, store]) => this.register({ id: JSON.stringify([key, 'package']), kind: 'package', folderKey: key, label: store.folder.name }));
+      }
+      if (rootStores.length === 1) {
+        const [rootKey, rootStore] = rootStores[0]!;
+        const childPackages = [...this.stores.entries()].filter(([, s]) => s.parentFolderKey === rootKey);
+        if (childPackages.length === 0) return this.runNodes(rootKey);
+        return [this.register({ id: JSON.stringify([rootKey, 'folder']), kind: 'folder', folderKey: rootKey, label: rootStore.folder.name })];
+      }
+      return rootStores
+        .filter(([key]) => {
+          if (!filter.folderKey) return true;
+          if (filter.folderKey === key) return true;
+          return [...this.stores.entries()].some(([childKey, s]) => s.parentFolderKey === key && childKey === filter.folderKey);
+        })
+        .map(([key, store]) => this.register({ id: JSON.stringify([key, 'folder']), kind: 'folder', folderKey: key, label: store.folder.name }));
     }
-    if (node.kind === 'folder') return this.runNodes(node.folderKey);
+    if (node.kind === 'folder') {
+      const childPackages = [...this.stores.entries()].filter(([, s]) => s.parentFolderKey === node.folderKey);
+      if (childPackages.length > 0) {
+        const pkgNodes = childPackages
+          .filter(([key]) => !filter.folderKey || filter.folderKey === key)
+          .map(([key, store]) => this.register({ id: JSON.stringify([key, 'package']), kind: 'package', folderKey: key, label: store.folder.name }));
+        const rootRuns = await this.runNodes(node.folderKey);
+        const realRootRuns = rootRuns.filter(r => r.kind === 'run');
+        return [...pkgNodes, ...realRootRuns];
+      }
+      return this.runNodes(node.folderKey);
+    }
+    if (node.kind === 'package') return this.runNodes(node.folderKey);
     if (!['run', 'runErrors'].includes(node.kind) || !node.runId) return [];
     const store = this.stores.get(node.folderKey); if (!store) return [];
     try {
@@ -330,8 +397,13 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     this.changed.fire(undefined);
   }
   noteTreeExpansion(node: TreeNode, expanded: boolean): void {
-    if (expanded) this.expandedIds.add(node.id);
-    else this.expandedIds.delete(node.id);
+    if (expanded) {
+      this.expandedIds.add(node.id);
+      this.collapsedIds.delete(node.id);
+    } else {
+      this.expandedIds.delete(node.id);
+      this.collapsedIds.add(node.id);
+    }
   }
   private async showTestFilter(): Promise<void> {
     await vscode.commands.executeCommand('workbench.view.extension.logbook');
@@ -374,6 +446,16 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     for (const top of await this.getChildren()) {
       if (top.kind === 'folder') {
         if (operation !== this.operation || this.disposed) return;
+        await view.reveal(top, { expand: 1, select: false, focus: false });
+        for (const child of await this.getChildren(top)) {
+          if (child.kind === 'package') {
+            await view.reveal(child, { expand: 1, select: false, focus: false });
+            runs.push(...(await this.getChildren(child)).filter(c => c.kind === 'run'));
+          } else if (child.kind === 'run') {
+            runs.push(child);
+          }
+        }
+      } else if (top.kind === 'package') {
         await view.reveal(top, { expand: 1, select: false, focus: false });
         runs.push(...(await this.getChildren(top)).filter(child => child.kind === 'run'));
       } else if (top.kind === 'run') {

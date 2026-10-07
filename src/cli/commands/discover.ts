@@ -21,7 +21,7 @@ export async function discoverCommand(context: CliContext, options: DiscoverOpti
           for (const p of pkgEntries) {
             if (p.isDirectory()) dirsToScan.push(path.join(root, 'packages', p.name));
           }
-        } catch {}
+        } catch { /* packages unreadable */ }
       } else {
         dirsToScan.push(path.join(root, entry.name));
       }
