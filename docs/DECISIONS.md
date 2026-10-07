@@ -37,3 +37,4 @@
 
 
 | 2026-10-06 | How should default monorepo stores be discovered? | Use one bounded direct-suite/`packages/*` discovery rule for CLI and VS Code; preserve configured workspace roots and VS Code 1.95 minimum. | Keeps per-suite history separate, avoids symlink stores, and permits explicit custom mappings when a suite is opened as a workspace folder. The revised delivery plan is in `SPEC-team-portal-v0.1.md`. |
+| 2026-10-07 | How do explicit CLI store commands read reporter options? | Use installed Playwright 1.63.0's `configLoader.loadConfigFromFile` only when a user invokes a store command. | This reuses TypeScript and JavaScript config evaluation without another config file or dependency. The loader is an internal Playwright API, so upgrade checks must exercise the CLI config test. The extension must not evaluate workspace config merely to list history. |

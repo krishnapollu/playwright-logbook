@@ -91,6 +91,10 @@ Generate new local and CI run IDs as specified in section 9, preserving explicit
 
 Publish one validated, project-bound run at a time with content-addressed objects and a manifest written last. Pull all published runs into local history through existing bundle ingestion, validating objects and recording origin outside run JSON. Done when focused tests cover artifacts, idempotent delta, conflicts, interrupted object writes, damaged data and project isolation, and the full check passes.
 
+### S1c — explicit transfer CLI
+
+Read the filesystem target, project ID, author and local output directory from the Logbook reporter options in Playwright config. Add selected `store push`, all-run `store pull` and downloaded-CI-bundle `store ingest` commands. Done when a two-workspace CLI test covers partial push, idempotent pull, CI origin, mismatch and path ambiguity, and the full check passes.
+
 ### S1 — central filesystem store
 
 Implement the section 9 filesystem prototype with project partitioning, selected push, complete incremental pull, CI bundle ingestion, provenance and editor labels. Exercise two workspaces for the same `pw-test` project and different authors, plus one CI run. Done when crash/retry/conflict, partial-success, artifact, and end-to-end CLI/editor checks pass.

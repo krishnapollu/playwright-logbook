@@ -1049,3 +1049,13 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   and partial success. CLI/editor wiring remains in S1.
 - Done when: `npm run check` passed with browser access: 46 files, 225 tests,
   including the unchanged golden test. No new dependencies or publication.
+
+- [x] S1c Explicit transfer CLI
+  `store push --run` sends selected runs with available evidence; `store pull`
+  brings the full project partition into local history; `store ingest --from`
+  publishes downloaded CI bundles. Commands load reporter options from the
+  Playwright config, report each run and continue after individual failures.
+  The two-workspace CLI test covers partial success, later pull, CI origin,
+  wrong project and ambiguous tilde spelling. Editor labels remain in S1.
+- Done when: `npm run check` passed with browser access: 47 files, 227 tests,
+  including unchanged golden. No publication attempted.

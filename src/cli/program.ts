@@ -13,6 +13,7 @@ import { summaryCommand } from './commands/summary.js';
 import { debugCommand } from './commands/debug.js';
 import { analyzeCommand } from './commands/analyze.js';
 import { discoverCommand } from './commands/discover.js';
+import { storeIngestCommand, storePullCommand, storePushCommand } from './commands/store.js';
 
 export interface CliDeps {
   env?: Record<string, string | undefined>;
@@ -46,6 +47,13 @@ export function createProgram(deps: CliDeps = {}): Command {
   program.command('import').description('Ingest distinct bundled runs into existing history (not shard merge)')
     .requiredOption('--from <file...>').option('--dry-run').option('--project-id <key>')
     .action(async (options) => done(await importCommand(context(), options)));
+  const store = program.command('store').description('Explicit filesystem team-store transfer');
+  store.command('push').description('Push only selected local runs and available artifacts')
+    .requiredOption('--run <id...>').action(async (options: { run: string[] }) => done(await storePushCommand(context(), options.run)));
+  store.command('pull').description('Pull all team runs and retained artifacts into local history')
+    .action(async () => done(await storePullCommand(context())));
+  store.command('ingest').description('Ingest downloaded CI run bundles into the team store')
+    .requiredOption('--from <file...>').action(async (options: { from: string[] }) => done(await storeIngestCommand(context(), options.from)));
   program.command('merge').description('Merge shard files into a run')
     .option('--run-id <id>').option('--from <dir...>').option('--force')
     .option('--no-report').option('--no-history').option('--no-timestamp')
