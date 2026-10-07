@@ -1038,3 +1038,14 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when: `npm run check` passed: 45 files, 222 tests, including the unchanged
   golden test. The sandboxed Chromium scenario initially failed; the focused
   scenario and full check passed with browser access. No team-store transfer yet.
+
+- [x] S1b Immutable filesystem core
+  `publishTeamBundle` verifies project binding and writes content-addressed run
+  and artifact objects before an immutable per-run manifest. `pullTeamStore`
+  validates each object and imports through the existing bundle path, records
+  origin in a local sidecar, skips identical runs and continues after damaged
+  records. The three focused tests cover two workspaces, artifact retention,
+  later delta, same-ID conflict, project isolation, interrupted object writes
+  and partial success. CLI/editor wiring remains in S1.
+- Done when: `npm run check` passed with browser access: 46 files, 225 tests,
+  including the unchanged golden test. No new dependencies or publication.

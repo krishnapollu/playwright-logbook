@@ -87,6 +87,10 @@ Choose the provider and its authentication model in `docs/DECISIONS.md`. Reuse b
 
 Generate new local and CI run IDs as specified in section 9, preserving explicit overrides and old saved IDs. Done when injected-clock/random tests cover uniqueness and shared CI execution identity, and the full check passes.
 
+### S1b — immutable filesystem core
+
+Publish one validated, project-bound run at a time with content-addressed objects and a manifest written last. Pull all published runs into local history through existing bundle ingestion, validating objects and recording origin outside run JSON. Done when focused tests cover artifacts, idempotent delta, conflicts, interrupted object writes, damaged data and project isolation, and the full check passes.
+
 ### S1 — central filesystem store
 
 Implement the section 9 filesystem prototype with project partitioning, selected push, complete incremental pull, CI bundle ingestion, provenance and editor labels. Exercise two workspaces for the same `pw-test` project and different authors, plus one CI run. Done when crash/retry/conflict, partial-success, artifact, and end-to-end CLI/editor checks pass.
