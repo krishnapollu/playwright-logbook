@@ -34,6 +34,10 @@ transfers runs automatically. `store ingest` requires recorded CI metadata.
 Conflicts retain existing bytes, and each command reports per-run results.
 These commands can return 4 after processing other valid runs. Use `~/` for a
 home-relative store path; `~Projects` is ambiguous and rejected.
+The reporter records local or CI origin beside configured local history without
+uploading. Pull preserves team origin there. The VS Code run tree shows CI,
+Local or Peer relative to the configured author, and result detail shows the
+recorded source. Older runs without provenance receive no guessed label.
 
 `debug` does not contact a model or inspect attachment contents. It includes only stored evidence and marks missing capture data as unavailable. Redaction cannot detect every secret; review the output before sharing it with an AI provider or another person.
 

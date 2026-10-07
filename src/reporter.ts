@@ -18,6 +18,7 @@ import { compareRuns, computeFlaky, previousRun } from './history.js';
 import { renderReport } from './render.js';
 import type { StepRecord } from './schema.js';
 import { resolveArtifactAvailability } from './artifacts.js';
+import { recordTeamOrigin } from './teamstore.js';
 
 interface ReporterSuite { allTests(): PwTest[] }
 interface FullResult { status: 'passed' | 'failed' | 'timedout' | 'interrupted'; startTime?: Date; duration?: number }
@@ -145,6 +146,12 @@ export class LogbookReporter {
         const { run } = mergeShards([shard], { outputDir: toRel(this.root, outputDir) });
         const store = this.deps.historyStore ?? new FileHistoryStore(outputDir);
         await store.saveRun(run);
+        if (this.options.projectId && this.options.author && this.options.store) {
+          const ci = this.detected.ci;
+          const origin = ci ? { type: 'ci' as const, provider: ci.provider, buildId: ci.buildId, attempt: run.runId.match(/-(\d+)$/)?.[1] ?? '1' } : { type: 'local' as const, author: this.options.author };
+          try { await recordTeamOrigin(outputDir, run.runId, origin, { projectId: this.options.projectId, author: this.options.author }); }
+          catch (error) { this.warning(error); }
+        }
         if (this.options.autoReport) await this.saveReport(run, store, outputDir);
       }
       if (!this.options.quiet) {

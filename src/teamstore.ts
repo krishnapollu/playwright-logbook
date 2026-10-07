@@ -15,6 +15,8 @@ const origin = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ci'), provider: z.string().min(1).max(100), buildId: z.string().max(100).nullable(), attempt: z.string().max(100) }).strict(),
 ]);
 export type TeamOrigin = z.infer<typeof origin>;
+const viewerSchema = z.object({ projectId: projectIdSchema, author: z.string().trim().min(1).max(100) }).strict();
+export type TeamViewer = z.infer<typeof viewerSchema>;
 const artifact = z.object({ recordedPath: z.string(), state: z.enum(['included', 'missing', 'omitted']), file: z.string().nullable(), object: object.nullable() }).strict();
 const manifestSchema = z.object({ version: z.literal(1), projectId: projectIdSchema, runId: id, record: object, artifacts: z.array(artifact).max(10000), origin }).strict();
 export type TeamManifest = z.infer<typeof manifestSchema>;
@@ -57,6 +59,7 @@ async function createImmutable(root: string, relative: string, bytes: Buffer): P
     catch (error) {
       if (!existing(error)) throw error;
       const current = await resolveRecordedFile(root, relative);
+      if ((await fs.stat(current)).size !== bytes.length) return 'conflict';
       return (await readBounded(current, bytes.length)).equals(bytes) ? 'skipped' : 'conflict';
     }
   } finally { await fs.rm(temp, { recursive: true, force: true }); }
@@ -113,6 +116,8 @@ export async function pullTeamStore(teamRoot: string, localRoot: string, project
     try {
       if (!id.safeParse(runId).success) throw new BundleError('Invalid team run ID.');
       const manifest = await readManifest(teamRoot, projectId, runId);
+      const priorOrigin = await readTeamOrigin(localRoot, runId);
+      if (priorOrigin && canonicalJson(priorOrigin) !== canonicalJson(manifest.origin)) { output.conflicts.push(runId); continue; }
       const record = validatePortableRun(JSON.parse((await readObject(teamRoot, projectId, manifest.record)).toString('utf8')) as unknown);
       if (record.runId !== runId) throw new BundleError('Team record identity mismatch.');
       const files = new Map<string, Buffer>();
@@ -125,7 +130,7 @@ export async function pullTeamStore(teamRoot: string, localRoot: string, project
       output.missingArtifacts += imported.missingArtifacts;
     } catch (error) {
       signal?.throwIfAborted();
-      output.failed.push({ runId, message: error instanceof Error ? error.message : 'Team run unavailable.' });
+      output.failed.push({ runId, message: error instanceof BundleError ? error.message : 'Team run unavailable or store I/O failed.' });
     }
   }
   return output;
@@ -135,4 +140,31 @@ export async function readTeamOrigin(localRoot: string, runId: string): Promise<
   if (!id.safeParse(runId).success) return null;
   try { return origin.parse(JSON.parse((await readBounded(await resolveRecordedFile(localRoot, `team-origins/${runId}.json`), 1024)).toString('utf8')) as unknown); }
   catch (error) { if (isMissing(error)) return null; throw error; }
+}
+
+export async function writeTeamViewer(localRoot: string, viewer: TeamViewer): Promise<void> {
+  await atomicStoreFile(localRoot, 'team-viewer.json', canonicalJson(viewerSchema.parse(viewer)));
+}
+
+export async function recordLocalTeamOrigin(localRoot: string, runId: string, viewer: TeamViewer): Promise<void> {
+  await recordTeamOrigin(localRoot, runId, { type: 'local', author: viewer.author }, viewer);
+}
+
+export async function recordTeamOrigin(localRoot: string, runId: string, value: TeamOrigin, viewer: TeamViewer): Promise<void> {
+  if (!id.safeParse(runId).success) throw new BundleError('Invalid local run ID.');
+  const previous = await readTeamOrigin(localRoot, runId);
+  if (previous && canonicalJson(previous) !== canonicalJson(value)) throw new BundleError('Existing local origin conflicts with selected run.');
+  await writeTeamViewer(localRoot, viewer);
+  await atomicStoreFile(localRoot, `team-origins/${runId}.json`, canonicalJson(origin.parse(value)));
+}
+
+export async function readTeamViewer(localRoot: string): Promise<TeamViewer | null> {
+  try { return viewerSchema.parse(JSON.parse((await readBounded(await resolveRecordedFile(localRoot, 'team-viewer.json'), 1024)).toString('utf8')) as unknown); }
+  catch (error) { if (isMissing(error)) return null; throw error; }
+}
+
+export function teamOriginText(value: TeamOrigin | null, viewer: TeamViewer | null): { badge: string | null; detail: string | null } {
+  if (!value) return { badge: null, detail: null };
+  if (value.type === 'ci') return { badge: 'CI', detail: `CI · ${value.provider}${value.buildId ? ` · build ${value.buildId}` : ''} · attempt ${value.attempt}` };
+  return { badge: viewer ? value.author === viewer.author ? 'Local' : 'Peer' : null, detail: `Local execution · author ${value.author}` };
 }

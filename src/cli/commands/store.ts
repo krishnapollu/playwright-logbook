@@ -5,14 +5,14 @@ import type { InspectedBundle } from '../../bundles/archive.js';
 import { exportBundle } from '../../bundles/export.js';
 import { readBundleBatch } from '../../bundles/ingest.js';
 import { loadTeamSettings } from '../../teamconfig.js';
-import { publishTeamBundle, pullTeamStore } from '../../teamstore.js';
+import { publishTeamBundle, pullTeamStore, readTeamOrigin, recordLocalTeamOrigin, writeTeamViewer } from '../../teamstore.js';
 import type { TeamOrigin, TeamResult } from '../../teamstore.js';
 
 function printResult(context: CliContext, result: TeamResult): number {
   for (const id of result.added.sort(compare)) context.stdout(`added: ${id}\n`);
   for (const id of result.skipped.sort(compare)) context.stdout(`skipped: ${id}\n`);
   for (const id of result.conflicts.sort(compare)) context.stderr(`conflicting: ${id}; existing run retained\n`);
-  for (const item of result.failed.sort((a, b) => compare(a.runId, b.runId))) context.stderr(`failed: ${item.runId}; ${item.message}\n`);
+  for (const item of result.failed.sort((a, b) => compare(a.runId, b.runId))) context.stderr(`failed: ${item.runId.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 200)}; ${item.message}\n`);
   context.stdout(`store: ${result.added.length} added, ${result.skipped.length} skipped, ${result.conflicts.length} conflicting, ${result.failed.length} failed; ${result.missingArtifacts} missing/omitted artifacts\n`);
   return result.conflicts.length || result.failed.length ? 4 : 0;
 }
@@ -26,16 +26,20 @@ export async function storePushCommand(context: CliContext, ids: string[]): Prom
       const exported = await exportBundle(context.root, settings.localRoot, { runIds: [id], artifacts: true, projectId: settings.projectId });
       const bundle = await inspectBundleZip(exported.bytes);
       const runId = bundle.manifest.runs[0]!.runId;
+      const prior = await readTeamOrigin(settings.localRoot, runId);
+      if (bundle.runs.get(runId)?.env.ci || prior && (prior.type !== 'local' || prior.author !== settings.author)) throw new BundleError('Selected run has CI or another author origin; use store ingest for CI bundles.');
+      await recordLocalTeamOrigin(settings.localRoot, runId, { projectId: settings.projectId, author: settings.author });
       const status = await publishTeamBundle(settings.teamRoot, settings.projectId, bundle, { type: 'local', author: settings.author });
       result[status === 'conflict' ? 'conflicts' : status === 'added' ? 'added' : 'skipped'].push(runId);
       result.missingArtifacts += exported.missingArtifacts + exported.omittedArtifacts;
-    } catch (error) { result.failed.push({ runId: id, message: error instanceof Error ? error.message : 'Run unavailable.' }); }
+    } catch (error) { result.failed.push({ runId: id, message: error instanceof BundleError ? error.message : 'Run unavailable or store I/O failed.' }); }
   }
   return printResult(context, result);
 }
 
 export async function storePullCommand(context: CliContext): Promise<number> {
   const settings = await loadTeamSettings(context.root);
+  await writeTeamViewer(settings.localRoot, { projectId: settings.projectId, author: settings.author });
   return printResult(context, await pullTeamStore(settings.teamRoot, settings.localRoot, settings.projectId));
 }
 
@@ -60,7 +64,7 @@ export async function storeIngestCommand(context: CliContext, names: string[]): 
         const status = await publishTeamBundle(settings.teamRoot, settings.projectId, await singleRun(bundle, runId, settings.projectId), origin);
         result[status === 'conflict' ? 'conflicts' : status === 'added' ? 'added' : 'skipped'].push(runId);
         result.missingArtifacts += bundle.manifest.artifactReferences.filter(ref => ref.runId === runId && ref.state !== 'included').length;
-      } catch (error) { result.failed.push({ runId, message: error instanceof Error ? error.message : 'CI run unavailable.' }); }
+      } catch (error) { result.failed.push({ runId, message: error instanceof BundleError ? error.message : 'CI run unavailable or store I/O failed.' }); }
     }
   }
   return printResult(context, result);

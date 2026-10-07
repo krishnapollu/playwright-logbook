@@ -27,7 +27,11 @@ it('requires explicit selection, pushes partial success, pulls delta, and ingest
   expect(push.err).toContain('failed: missing');
   expect((await execute(bob, ['pull'])).out).toContain('added: local-a');
   expect(await readTeamOrigin(path.join(bob, '.logbook'), 'local-a')).toEqual({ type: 'local', author: 'Alice' });
+  expect((await execute(bob, ['push', '--run', 'local-a'])).code).toBe(4);
+  expect(await readTeamOrigin(path.join(bob, '.logbook'), 'local-a')).toEqual({ type: 'local', author: 'Alice' });
   expect((await execute(bob, ['pull'])).out).toContain('skipped: local-a');
+  await new FileHistoryStore(path.join(alice, '.logbook')).saveRun({ ...run('local-a'), title: 'changed' }, { replace: true });
+  expect((await execute(alice, ['push', '--run', 'local-a'])).err).toContain('conflicting: local-a');
 
   const ci = run('ci-github-42-2'); ci.env.ci = { provider: 'github', buildId: '42', buildUrl: null };
   await new FileHistoryStore(path.join(alice, '.logbook')).saveRun(ci);

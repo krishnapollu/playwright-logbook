@@ -95,6 +95,10 @@ Publish one validated, project-bound run at a time with content-addressed object
 
 Read the filesystem target, project ID, author and local output directory from the Logbook reporter options in Playwright config. Add selected `store push`, all-run `store pull` and downloaded-CI-bundle `store ingest` commands. Done when a two-workspace CLI test covers partial push, idempotent pull, CI origin, mismatch and path ambiguity, and the full check passes.
 
+### S1d — viewer-relative IDE provenance
+
+Write validated origin and viewer sidecars beside local history without changing run JSON or transmitting from the reporter. Show CI, Local and Peer text in the run tree, keep status icons, and show full recorded origin in result detail. Done when focused tests and the installed-editor host journey cover all three labels, unknown old records and escaped author text, and the full check passes.
+
 ### S1 — central filesystem store
 
 Implement the section 9 filesystem prototype with project partitioning, selected push, complete incremental pull, CI bundle ingestion, provenance and editor labels. Exercise two workspaces for the same `pw-test` project and different authors, plus one CI run. Done when crash/retry/conflict, partial-success, artifact, and end-to-end CLI/editor checks pass.

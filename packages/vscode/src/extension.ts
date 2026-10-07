@@ -28,6 +28,7 @@ import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQuali
 import type { HistoricalSource } from './gitsource.js';
 import { AnalysisSession, analysisAction, analysisPrompt, agentKey, renderAnalysis } from './analysis.js';
 import { ideAnalysisBackend } from './ideanalysis.js';
+import { readTeamOrigin, readTeamViewer, teamOriginText } from '../../../src/teamstore.js';
 
 interface StoreContext {
   folder: vscode.WorkspaceFolder; reader: HistoryReader; storeRoot: string; sourceRoot: string;
@@ -389,9 +390,13 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         visible.push(run);
       }
       if (filter !== this.testFilter) return [];
-      const nodes = visible.map((run) => this.register({ id: JSON.stringify([key, run.runId]), kind: 'run', folderKey: key, runId: run.runId,
-        label: `${displayTime(run.startedAt)} · ${run.title ?? shortRunId(run.runId)} · ${run.runId.slice(-8)}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'),
-        description: `${run.status ?? 'Status unknown'} · ${run.summary ? `${run.summary.failed} unexpected, ${run.summary.flaky} retry-flaky` : 'Counts unknown'} · ${completionLabel(run.complete)}` }));
+      const viewer = await readTeamViewer(store.storeRoot).catch(() => null);
+      const nodes = await Promise.all(visible.map(async (run) => {
+        const origin = teamOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), viewer);
+        return this.register({ id: JSON.stringify([key, run.runId]), kind: 'run', folderKey: key, runId: run.runId,
+          label: `${displayTime(run.startedAt)} · ${run.title ?? shortRunId(run.runId)} · ${run.runId.slice(-8)}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'),
+          description: `${origin.badge ? `${origin.badge} · ` : ''}${run.status ?? 'Status unknown'} · ${run.summary ? `${run.summary.failed} unexpected, ${run.summary.flaky} retry-flaky` : 'Counts unknown'} · ${completionLabel(run.complete)}` });
+      }));
       if (page.nextOffset !== null) nodes.push(this.register({ id: JSON.stringify([key, 'more', store.runLimit]), kind: 'more', folderKey: key, label: hasTestFilter(filter) ? 'Search older runs' : 'Load more runs' }));
       nodes.push(...page.diagnostics.map((entry) => this.message(key, `${entry.record}: ${entry.message}`)));
       if (hasTestFilter(filter) && !visible.length) nodes.unshift(this.message(key, page.nextOffset !== null ? 'No matches in loaded runs. Search older runs to continue.' : 'No recorded runs or tests match this filter.', 'filter-empty'));
@@ -557,8 +562,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       this.analysis.reset(result ? createHash('sha256').update(JSON.stringify([selected.folderKey, store.storeRoot, store.sourceRoot, run.runId, run.startedAt, run.complete, run.env, result, selected.scope])).digest('hex') : '');
       const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
       const relative = (root: string) => path.relative(store.folder.uri.fsPath, root).split(path.sep).join('/') || '.';
+      const origin = teamOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), await readTeamViewer(store.storeRoot).catch(() => null));
       panel.webview.html = renderDetail({ run, result: result ?? null, runError: errorIndex, runErrorKey: selected.errorKey, history, scope: selected.scope, anchorRunId: selected.anchorRunId,
-        storeLabel: relative(store.storeRoot), sourceLabel: relative(store.sourceRoot), newHistory,
+        storeLabel: relative(store.storeRoot), sourceLabel: relative(store.sourceRoot), newHistory, origin,
         analysis: { identity: this.analysis.identity, state: this.analysis.state } }, {
         css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(),
         script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource,

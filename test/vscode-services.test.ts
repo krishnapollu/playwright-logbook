@@ -52,6 +52,9 @@ it('renders failure beside scoped history with escaped hostile content and expli
   expect(html).toContain('Open test definition'); expect(html).toContain('Exact historical source alignment is unknown');
   expect(html).toContain('does not establish a first-ever failure'); expect(html).toContain('Shard completeness unknown');
   expect(html).toContain("default-src 'none'"); expect(html).toContain('Selected execution preserved');
+  const withOrigin = renderDetail({ run: current, result: current.tests[0]!, runError: null, history, scope, anchorRunId: 'current', storeLabel: '.logbook', sourceLabel: '.', newHistory: false,
+    origin: { badge: 'Peer', detail: 'Local execution · author <Alice>' } }, { css: 'local:css', script: 'local:js', cspSource: 'local:' });
+  expect(withOrigin).toContain('Origin: Peer · Local execution · author &lt;Alice&gt;');
   expect(panelAction({ type: 'history', key: history.items[0]!.key }, history.items.map((item) => item.key))).toEqual({ type: 'history', key: history.items[0]!.key });
   for (const value of [{ type: 'history', key: 'removed' }, { type: 'history', key: 0 }, { type: 'execute', command: 'bad' }, null]) expect(panelAction(value, history.items.map((item) => item.key))).toBeNull();
 });

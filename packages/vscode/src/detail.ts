@@ -11,6 +11,7 @@ export interface DetailInput {
   run: ReaderRun; result: ReaderResult | null; runError: number | null; runErrorKey?: string | null;
   history: Page<RecordedExecution>; scope: HistoryScope; anchorRunId: string;
   storeLabel: string; sourceLabel: string; newHistory: boolean;
+  origin?: { badge: string | null; detail: string | null };
   analysis?: { identity: string; state: AnalysisState };
 }
 const outcomeBadge = (result: ReaderResult): string => {
@@ -41,6 +42,7 @@ export function renderDetail(input: DetailInput, resources: { css: string; scrip
 <h1>${escapeHtml(result?.title ?? 'Recorded run error')}</h1>
 <div class="summary-layout"><dl class="summary-context"><div><dt>Status</dt><dd>${result ? outcomeBadge(result) : '<span class="badge failure">Recorded run error; phase unknown</span>'}</dd></div><div><dt>Run</dt><dd>${escapeHtml(run.runId)}</dd></div><div><dt>Project</dt><dd>${escapeHtml(result?.project || 'Unknown')}</dd></div><div><dt>Attempts</dt><dd>${attempts == null ? 'Unknown' : attempts.length}</dd></div>${run.env?.git?.branch ? `<div><dt>Branch</dt><dd>${escapeHtml(run.env.git.branch)}</dd></div>` : ''}${run.env?.git?.commit ? `<div><dt>Commit</dt><dd>${escapeHtml(run.env.git.commit.slice(0, 8))}</dd></div>` : ''}<div><dt>Recorded</dt><dd><time>${escapeHtml(displayTime(run.startedAt))}</time></dd></div><div><dt>Workspace</dt><dd>${escapeHtml(run.title ?? 'Unknown')}</dd></div></dl>${result ? renderTestInsights(result, history.items) : ''}</div>
 ${run.complete !== true ? `<p class="note">${escapeHtml(completionLabel(run.complete))}. Some results may be missing.</p>` : ''}
+${input.origin?.detail ? `<p class="note">Origin: ${input.origin.badge ? `${escapeHtml(input.origin.badge)} · ` : ''}${escapeHtml(input.origin.detail)}</p>` : ''}
 ${source}
 </header>
 <div class="detail-grid"><div class="diagnostics">

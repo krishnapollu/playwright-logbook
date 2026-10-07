@@ -1059,3 +1059,16 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   wrong project and ambiguous tilde spelling. Editor labels remain in S1.
 - Done when: `npm run check` passed with browser access: 47 files, 227 tests,
   including unchanged golden. No publication attempted.
+
+- [x] S1d Viewer-relative IDE provenance
+  The configured reporter and explicit CLI actions write bounded local origin
+  and viewer sidecars, leaving schema-v1 run JSON unchanged. The extension
+  reads those files without evaluating workspace config, keeps the recorded
+  status icon and adds CI/Local/Peer text to run rows. Result detail shows
+  escaped full origin metadata. Old runs have no guessed label. Concurrent
+  manifest writers, missing evidence, author preservation and mismatched
+  origins have focused coverage. The installed VS Code host journey checked
+  Peer/CI labels in the actual Recent Runs tree.
+- Done when: `npm run check` passed with browser access: 47 files, 230 tests,
+  including the unchanged golden test. The disposable installed VS Code host
+  journey exited 0 and asserted Peer/CI run-tree labels. No publication.

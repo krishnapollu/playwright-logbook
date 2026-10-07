@@ -5,7 +5,7 @@ import { afterEach, expect, it } from 'vitest';
 import { exportBundle } from '../src/bundles/export.js';
 import { inspectBundleZip, digest } from '../src/bundles/archive.js';
 import { FileHistoryStore } from '../src/store.js';
-import { publishTeamBundle, pullTeamStore, readTeamOrigin } from '../src/teamstore.js';
+import { publishTeamBundle, pullTeamStore, readTeamOrigin, teamOriginText } from '../src/teamstore.js';
 import { run, testRecord } from './factories.js';
 
 const roots: string[] = [];
@@ -64,4 +64,24 @@ it('repairs an object-only interruption and continues after one damaged run', as
   await fs.writeFile(path.join(team, 'projects/pw-test/objects', digest(record)), 'damaged');
   expect(await pullTeamStore(team, target, 'pw-test')).toMatchObject({ added: ['b'], failed: [{ runId: 'a', message: expect.stringContaining('size mismatch') }] });
   expect(await readTeamOrigin(target, 'b')).toEqual({ type: 'ci', provider: 'github', buildId: '7', attempt: '2' });
+});
+
+it('classifies provenance relative to the viewing author without guessing old records', () => {
+  const viewer = { projectId: 'pw-test', author: 'Bob' };
+  expect(teamOriginText(null, viewer).badge).toBeNull();
+  expect(teamOriginText({ type: 'local', author: 'Bob' }, viewer).badge).toBe('Local');
+  expect(teamOriginText({ type: 'local', author: 'Alice' }, viewer).badge).toBe('Peer');
+  expect(teamOriginText({ type: 'ci', provider: 'github', buildId: '42', attempt: '2' }, viewer)).toEqual({ badge: 'CI', detail: 'CI · github · build 42 · attempt 2' });
+});
+
+it('keeps one concurrent manifest winner and reports missing evidence after pull', async () => {
+  const team = await fixture(), left = await fixture(), right = await fixture(), target = path.join(await fixture(), '.logbook');
+  const missing = run('same'); missing.tests = [testRecord('case')];
+  missing.tests[0]!.attempts = [{ retry: 0, status: 'passed', durationMs: 1, startedAt: missing.startedAt, workerIndex: 0, errors: [], attachments: [{ name: 'missing', path: 'results/missing.png', contentType: 'image/png', inline: false, sizeBytes: null }] }];
+  await new FileHistoryStore(path.join(left, '.logbook')).saveRun(missing);
+  await new FileHistoryStore(path.join(right, '.logbook')).saveRun({ ...missing, title: 'different' });
+  const make = async (root: string) => inspectBundleZip((await exportBundle(root, path.join(root, '.logbook'), { runIds: ['same'], projectId: 'pw-test', artifacts: true })).bytes);
+  const outcomes = await Promise.all([publishTeamBundle(team, 'pw-test', await make(left), { type: 'local', author: 'Alice' }), publishTeamBundle(team, 'pw-test', await make(right), { type: 'local', author: 'Bob' })]);
+  expect(outcomes.sort()).toEqual(['added', 'conflict']);
+  expect(await pullTeamStore(team, target, 'pw-test')).toMatchObject({ added: ['same'], missingArtifacts: 1 });
 });
