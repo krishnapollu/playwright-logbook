@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.21-monorepo.8 (local preview)
+
+- Replace the native Recent Runs tree with a sidebar that shows equal-width Local, Peer and CI pills alongside aligned run names.
+- Keep run and test navigation, filtering, pagination, Sync and Push in the sidebar.
+
 ## 0.2.21-monorepo.7 (local preview)
 
 - Align colored Local, Peer and CI tags in the native run tree.

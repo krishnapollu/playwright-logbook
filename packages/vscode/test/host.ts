@@ -1,5 +1,4 @@
 import { pasteIntoAgentInput } from '../src/ideanalysis.js';
-import { treeOriginLabel } from '../src/presentation.js';
 import { analysisPrompt } from '../../../src/analyze.js';
 import { createBundle, inspectBundleZip } from '../../../src/bundles/archive.js';
 import { publishTeamBundle, readTeamOrigin } from '../../../src/teamstore.js';
@@ -35,6 +34,15 @@ async function waitForActiveDocumentText(expected: string): Promise<void> {
   assert.fail(`Expected active document text ${expected}; active=${JSON.stringify(vscode.window.activeTextEditor?.document.getText())}; tabs=${JSON.stringify(vscode.window.tabGroups.all.flatMap(group => group.tabs.map(tab => ({ label: tab.label, active: tab.isActive }))))}`);
 }
 
+async function waitForActiveSource(suffix: string): Promise<vscode.TextEditor> {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const editor = vscode.window.activeTextEditor;
+    if (editor?.document.uri.path.endsWith(suffix)) return editor;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  assert.fail(`Expected active source ${suffix}; active=${vscode.window.activeTextEditor?.document.uri.path}`);
+}
+
 async function journey(): Promise<void> {
   const extension = vscode.extensions.getExtension<Awaited<ReturnType<typeof activate>>>('krishnapollu.playwright-logbook-vscode');
   assert.ok(extension, 'Development extension must be discoverable');
@@ -55,21 +63,25 @@ async function journey(): Promise<void> {
   await recordTeamOrigin(localStore, 'previous', { type: 'ci', provider: 'github', buildId: '42', attempt: '2' }, { projectId: 'pw-test', author: 'Bob' });
   await recordTeamOrigin(localStore, 'feature', { type: 'local', author: 'Bob' }, { projectId: 'pw-test', author: 'Bob' });
   const origins = await logbook.getChildren(first);
-  assert.ok(origins.find(item => item.runId === 'current')?.label.startsWith(treeOriginLabel('Peer')), 'Other tester has a prominent Peer label');
-  assert.ok(origins.find(item => item.runId === 'previous')?.label.startsWith(treeOriginLabel('CI')), 'Recorded CI origin has a prominent CI label');
-  assert.ok(origins.find(item => item.runId === 'feature')?.label.startsWith(treeOriginLabel('Local')), 'Local tester has a prominent Local label');
-  assert.equal(new Set(['Local', 'Peer', 'CI'].map(value => [...treeOriginLabel(value)].length)).size, 1, 'Origin labels occupy equal character widths');
+  assert.ok(origins.every(item => /^\d{4}-\d{2}-\d{2}/.test(item.label)), 'Run labels begin with aligned timestamps');
+  assert.equal(origins.find(item => item.runId === 'current')?.originBadge, 'Peer');
+  assert.equal(origins.find(item => item.runId === 'previous')?.originBadge, 'CI');
+  assert.equal(origins.find(item => item.runId === 'feature')?.originBadge, 'Local');
+  const sidebarHarness = logbook as unknown as { sidebar: { webview: { postMessage(message: { html: string }): Promise<boolean> } } | undefined; renderSidebar(): Promise<void> };
+  const actualSidebar = sidebarHarness.sidebar;
+  let sidebarHtml = '';
+  sidebarHarness.sidebar = { webview: { postMessage: async message => { sidebarHtml = message.html; return true; } } };
+  await sidebarHarness.renderSidebar();
+  sidebarHarness.sidebar = actualSidebar;
+  for (const badge of ['local', 'peer', 'ci']) assert.ok(sidebarHtml.includes(`class="origin-pill ${badge}"`), `Sidebar renders a ${badge} pill`);
+  assert.ok(!sidebarHtml.includes('🟢') && !sidebarHtml.includes('【'), 'Old origin markers are absent');
+  assert.ok(sidebarHtml.includes('data-action="push"') && sidebarHtml.includes('data-action="sync"'), 'Sidebar keeps selected Push and folder Sync');
   assert.equal(logbook.getTreeItem(origins.find(item => item.runId === 'feature')!).contextValue, 'logbook.localRun', 'Only local run exposes Push');
   assert.equal(logbook.getTreeItem(origins.find(item => item.runId === 'current')!).contextValue, undefined, 'Peer run has no Push action');
   assert.equal(logbook.getTreeItem(first).contextValue, 'logbook.workspaceFolder', 'Workspace folder exposes Sync');
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.syncTeam'), 'Team sync command is registered');
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.pushRun'), 'Selected push command is registered');
-  const view = (logbook as unknown as { treeView: vscode.TreeView<{ id: string }> }).treeView;
-  const expanded = new Set<string>();
-  const expansion = view.onDidExpandElement(({ element }) => expanded.add(element.id));
   await vscode.commands.executeCommand('logbook.expandAll');
-  expansion.dispose();
-  assert.ok(expanded.has(current.id), 'Expand All visibly expands the recorded run');
   assert.equal(logbook.getTreeItem(first).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens workspace folders');
   assert.equal(logbook.getTreeItem(current).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens recorded runs');
   await vscode.commands.executeCommand('logbook.filterSpecFile', vscode.Uri.file(path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, 'tests/ui.spec.ts')));
@@ -169,7 +181,7 @@ async function journey(): Promise<void> {
   console.log('Host journey: pinned comparison survives selection changes and refresh');
   await vscode.commands.executeCommand('logbook.openSource');
   console.log('Host journey: current source opened');
-  let editor = vscode.window.activeTextEditor;
+  let editor = await waitForActiveSource('/tests/ui.spec.ts');
   assert.ok(editor); assert.equal(editor.selection.start.line, 2, 'Current execution opens its recorded third line');
   assert.ok(editor.document.uri.path.endsWith('/tests/ui.spec.ts'));
   await vscode.commands.executeCommand('logbook.openFailure');

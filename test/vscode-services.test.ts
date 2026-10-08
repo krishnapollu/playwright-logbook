@@ -9,18 +9,12 @@ import { renderDetail, renderRunOverview, panelAction, outcomeTone } from '../pa
 import { HistoryReader } from '../src/historyreader.js';
 import { LocalHistoryFiles } from '../src/historyfiles.js';
 import { FileHistoryStore } from '../src/store.js';
-import { errorPresentation, renderError, statusIcon, displayTime, renderAttemptWorkspace, treeOriginLabel } from '../packages/vscode/src/presentation.js';
+import { errorPresentation, renderError, statusIcon, displayTime, renderAttemptWorkspace } from '../packages/vscode/src/presentation.js';
 import { run, testRecord } from './factories.js';
 
 const temporary: string[] = [];
 async function fixture() { const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-vscode-')); temporary.push(dir); return dir; }
 afterEach(async () => { for (const dir of temporary.splice(0)) await fs.rm(dir, { recursive: true, force: true }); });
-
-it('gives all three colored tree origin tags the same character width', () => {
-  const labels = ['Local', 'Peer', 'CI'].map(treeOriginLabel);
-  expect(new Set(labels.map(label => [...label].length)).size).toBe(1);
-  expect(labels.every(label => label.endsWith(' '))).toBe(true);
-});
 
 it('opens mapped source safely, rejecting traversal, absolute paths, URLs and symlink escapes', async () => {
   const root = await fixture(), outside = await fixture();

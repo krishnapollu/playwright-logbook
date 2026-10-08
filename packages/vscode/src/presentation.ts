@@ -37,12 +37,6 @@ export function displayTime(value: string): string {
 export function shortRunId(id: string): string {
   return id.length > 24 ? `${id.slice(0, 12)}…${id.slice(-8)}` : id;
 }
-export function treeOriginLabel(badge: string | null): string {
-  if (badge === 'Local') return '🟢【ＬＯＣＡＬ】 ';
-  if (badge === 'Peer') return '🔵【ＰＥＥＲ　】 ';
-  if (badge === 'CI') return '🟠【ＣＩ　　　】 ';
-  return '';
-}
 export function contextPill(label: string, value: string, kind = 'context'): string {
   return `<span class="pill ${kind}"><span class="pill-label">${escapeHtml(label)}</span>${escapeHtml(value)}</span>`;
 }

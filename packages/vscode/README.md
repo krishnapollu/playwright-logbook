@@ -49,7 +49,7 @@ window and updates the counts.
 - **Spec shortcut:** Right-click a `.spec.*` or `.test.*` file in Explorer to filter to that file. Right-click inside a test in the editor to filter to that test.
 - **Expand All:** Open visible runs and their recorded-error groups; VS Code's Collapse All closes them.
 - **Run overview:** Select a run's overview to see counts, project breakdown, and clickable cases. Run overviews and results open as ordinary tabs in the active editor group.
-- **Team origin:** Run rows lead with equal-width colored Local, Peer, or CI tags. The overview shows a colored origin pill and the recorded tester or CI provider/build/attempt when available.
+- **Team origin:** Recent Runs and run overviews show colored Local, Peer, or CI pills. Run overviews also show the recorded tester or CI provider/build/attempt when available.
 - **Share runs:** Use **Sync Team Runs** in the Recent Runs toolbar (or on a workspace folder) to pull shared runs into that folder. Use **Push Selected Run** on a Local run to review and publish only that run. Both actions read the shared filesystem store, project ID, tester, and local history path from that workspace's Playwright reporter config. They require a trusted local workspace.
 
 <img src="media/pw-test-live-filter.png" alt="Live filter for pw-test runs and tests" width="880">

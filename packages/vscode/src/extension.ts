@@ -24,7 +24,7 @@ import { escapeHtml, panelAction, renderDetail, renderRunOverview } from './deta
 import { comparisonRef, comparisonSide, matchingPair, renderComparison } from './comparison.js';
 import type { ExecutionRef, ComparisonSide } from './comparison.js';
 import { readHistoricalSource, GitSourceError } from './gitsource.js';
-import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQualifier, treeOriginLabel } from './presentation.js';
+import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQualifier } from './presentation.js';
 import type { HistoricalSource } from './gitsource.js';
 import { AnalysisSession, analysisAction, analysisPrompt, agentKey, renderAnalysis } from './analysis.js';
 import { ideAnalysisBackend } from './ideanalysis.js';
@@ -61,12 +61,13 @@ async function collectPages<T>(load: (offset: number, limit: number) => Promise<
   }
 }
 
-class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
+class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewProvider, vscode.Disposable {
   private readonly changed = new vscode.EventEmitter<TreeNode | undefined>();
   readonly onDidChangeTreeData = this.changed.event;
   private stores = new Map<string, StoreContext>();
   private readonly nodes = new Map<string, TreeNode>();
-  private treeView: vscode.TreeView<TreeNode> | undefined;
+  private sidebar: vscode.WebviewView | undefined;
+  private sidebarGeneration = 0;
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private comparisonPanel: vscode.WebviewPanel | undefined;
@@ -98,6 +99,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
 
   constructor(private readonly extension: vscode.ExtensionContext) {
     this.disposables.push(
+      this.changed.event(() => { void this.renderSidebar(); }),
       vscode.workspace.registerTextDocumentContentProvider('logbook-history', { provideTextDocumentContent: (uri) => this.historicalDocuments.get(uri.toString()) ?? 'Historical source is no longer available.' }),
       vscode.workspace.onDidCloseTextDocument((document) => { if (document.uri.scheme === 'logbook-history') this.historicalDocuments.delete(document.uri.toString()); }),
       vscode.commands.registerCommand('logbook.viewComparedSource', (side: unknown) => this.handleComparison({ type: side === 'baseline' ? 'baselineSource' : side === 'selected' ? 'selectedSource' : 'invalid' })),
@@ -147,7 +149,52 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   }
   private folderKey(folder: vscode.WorkspaceFolder): string { return folder.uri.toString(); }
   private register(node: TreeNode): TreeNode { this.nodes.set(node.id, node); return node; }
-  attachTreeView(view: vscode.TreeView<TreeNode>): void { this.treeView = view; }
+  resolveWebviewView(view: vscode.WebviewView): void {
+    this.sidebar = view;
+    const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
+    view.webview.options = { enableScripts: true, localResourceRoots: [media] };
+    const css = view.webview.asWebviewUri(vscode.Uri.joinPath(media, 'sidebar.css'));
+    const script = view.webview.asWebviewUri(vscode.Uri.joinPath(media, 'sidebar.js'));
+    this.disposables.push(view.webview.onDidReceiveMessage((message: unknown) => { void this.sidebarAction(message); }));
+    view.webview.html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${view.webview.cspSource}; script-src ${view.webview.cspSource}"><link rel="stylesheet" href="${css}"></head><body><div id="runs" role="tree" aria-label="Recent Runs"></div><script src="${script}"></script></body></html>`;
+  }
+  private async sidebarAction(message: unknown): Promise<void> {
+    if (!message || typeof message !== 'object' || !('type' in message)) return;
+    if (message.type === 'ready') { await this.renderSidebar(); return; }
+    if (!('id' in message) || typeof message.id !== 'string') return;
+    const node = this.nodes.get(message.id);
+    if (!node) return;
+    if (message.type === 'toggle' && ['folder', 'package', 'run', 'runErrors'].includes(node.kind)) {
+      this.noteTreeExpansion(node, !this.expandedIds.has(node.id) && (node.kind !== 'folder' || this.collapsedIds.has(node.id)));
+      await this.renderSidebar();
+    } else if (message.type === 'open') {
+      if (node.kind === 'result' || node.kind === 'runError') await this.inspect(node.id);
+      else if (node.kind === 'overview') await this.runOverview(node.id);
+      else if (node.kind === 'more') await this.moreRuns(node.id);
+    } else if (message.type === 'sync' && (node.kind === 'folder' || node.kind === 'package')) await this.syncTeam(node.id);
+    else if (message.type === 'push' && node.kind === 'run' && node.originBadge === 'Local') await this.pushRun(node.id);
+  }
+  private async renderSidebar(): Promise<void> {
+    const view = this.sidebar;
+    if (!view || this.disposed) return;
+    const generation = ++this.sidebarGeneration;
+    try {
+      const render = async (nodes: TreeNode[], depth: number): Promise<string> => (await Promise.all(nodes.map(async (node) => {
+        const expandable = ['folder', 'package', 'run', 'runErrors'].includes(node.kind);
+        const expanded = expandable && (this.expandedIds.has(node.id) || (node.kind === 'folder' && !this.collapsedIds.has(node.id)));
+        const action = expandable ? 'toggle' : ['result', 'runError', 'overview', 'more'].includes(node.kind) ? 'open' : '';
+        const icon = node.statusIcon?.id === 'pass' ? '✓' : node.statusIcon?.id === 'error' ? '×' : node.statusIcon?.id === 'warning' ? '!' : expandable ? expanded ? '⌄' : '›' : node.kind === 'overview' ? '▥' : '·';
+        const pill = node.kind === 'run' && node.originBadge ? `<span class="origin-pill ${node.originBadge.toLowerCase()}">${escapeHtml(node.originBadge)}</span>` : '';
+        const id = escapeHtml(node.id);
+        const title = escapeHtml(`${node.label}${node.description ? ` · ${node.description}` : ''}`);
+        const content = `<span class="icon ${node.statusIcon?.id === 'pass' ? 'passed' : node.statusIcon?.id === 'error' ? 'failed' : ''}" aria-hidden="true">${icon}</span>${pill}<span class="label">${escapeHtml(node.label)}</span>`;
+        const row = `<div class="row" style="--depth:${depth}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}" aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${node.description && node.kind !== 'run' ? `<small>${escapeHtml(node.description)}</small>` : ''}${node.kind === 'run' && node.originBadge === 'Local' && vscode.workspace.isTrusted ? `<button class="action" data-action="push" data-id="${id}" title="Push selected run" aria-label="Push ${escapeHtml(node.label)}">⇧</button>` : ''}${(node.kind === 'folder' || node.kind === 'package') && vscode.workspace.isTrusted ? `<button class="action" data-action="sync" data-id="${id}" title="Sync team runs" aria-label="Sync ${escapeHtml(node.label)}">↻</button>` : ''}</div>`;
+        return `<div role="treeitem" aria-expanded="${expandable ? expanded : ''}">${row}${expanded ? `<div role="group">${await render(await this.getChildren(node), depth + 1)}</div>` : ''}</div>`;
+      }))).join('');
+      const html = await render(await this.getChildren(), 0);
+      if (generation === this.sidebarGeneration && view === this.sidebar) await view.webview.postMessage({ type: 'render', html });
+    } catch { /* A workspace refresh can cancel a sidebar read. */ }
+  }
   getParent(node: TreeNode): TreeNode | undefined {
     if (node.kind === 'folder') return undefined;
     if (node.kind === 'package') {
@@ -401,7 +448,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       const nodes = await Promise.all(visible.map(async (run) => {
         const origin = teamOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), viewer);
         return this.register({ id: JSON.stringify([key, run.runId]), kind: 'run', folderKey: key, runId: run.runId,
-          label: `${treeOriginLabel(origin.badge)}${displayTime(run.startedAt)} · ${run.title ?? shortRunId(run.runId)} · ${run.runId.slice(-8)}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'), originBadge: origin.badge ?? undefined,
+          label: `${displayTime(run.startedAt)} · ${run.title ?? shortRunId(run.runId)} · ${run.runId.slice(-8)}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'), originBadge: origin.badge ?? undefined,
           description: `${run.status ?? 'Status unknown'} · ${run.summary ? `${run.summary.failed} unexpected, ${run.summary.flaky} retry-flaky` : 'Counts unknown'} · ${completionLabel(run.complete)}` });
       }));
       if (page.nextOffset !== null) nodes.push(this.register({ id: JSON.stringify([key, 'more', store.runLimit]), kind: 'more', folderKey: key, label: hasTestFilter(filter) ? 'Search older runs' : 'Load more runs' }));
@@ -544,23 +591,21 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   }
   async expandAll(): Promise<void> {
     const operation = this.operation;
-    const view = this.treeView;
-    if (!view) return;
     const runs: TreeNode[] = [];
     for (const top of await this.getChildren()) {
       if (top.kind === 'folder') {
         if (operation !== this.operation || this.disposed) return;
-        await view.reveal(top, { expand: 1, select: false, focus: false });
+        this.noteTreeExpansion(top, true);
         for (const child of await this.getChildren(top)) {
           if (child.kind === 'package') {
-            await view.reveal(child, { expand: 1, select: false, focus: false });
+            this.noteTreeExpansion(child, true);
             runs.push(...(await this.getChildren(child)).filter(c => c.kind === 'run'));
           } else if (child.kind === 'run') {
             runs.push(child);
           }
         }
       } else if (top.kind === 'package') {
-        await view.reveal(top, { expand: 1, select: false, focus: false });
+        this.noteTreeExpansion(top, true);
         runs.push(...(await this.getChildren(top)).filter(child => child.kind === 'run'));
       } else if (top.kind === 'run') {
         runs.push(top);
@@ -568,8 +613,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     }
     for (const run of runs) {
       if (operation !== this.operation || this.disposed) return;
-      await view.reveal(run, { expand: 2, select: false, focus: false });
+      this.noteTreeExpansion(run, true);
     }
+    await this.renderSidebar();
   }
   private async moreRuns(id: unknown): Promise<void> {
     const node = typeof id === 'string' ? this.nodes.get(id) : undefined;
@@ -944,11 +990,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
 
 export async function activate(context: vscode.ExtensionContext): Promise<Logbook> {
   const logbook = new Logbook(context);
-  const view = vscode.window.createTreeView('logbook.recentRuns', { treeDataProvider: logbook, showCollapseAll: true });
-  logbook.attachTreeView(view);
-  context.subscriptions.push(logbook, view,
-    view.onDidExpandElement(({ element }) => logbook.noteTreeExpansion(element, true)),
-    view.onDidCollapseElement(({ element }) => logbook.noteTreeExpansion(element, false)));
+  context.subscriptions.push(logbook, vscode.window.registerWebviewViewProvider('logbook.recentRuns', logbook));
   await logbook.setup();
   return logbook;
 }

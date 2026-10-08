@@ -1158,3 +1158,13 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   the VS Code 1.140.0 host journey exited 0 and pulled a new run from the
   configured shared store without a picker. The packaged VSIX host journey
   also exited 0. No run JSON or CLI transfer format changed.
+
+### Origin pills in Recent Runs
+
+- [x] Replace the native Recent Runs tree with a custom sidebar so Local, Peer
+  and CI can use equal-width colored pills matching the run overview. Remove
+  the prior circle and boxed tags. Retain navigation, filtering, pagination,
+  Sync, Push, status marks and keyboard-operable row buttons.
+- Done when output: `npm run check` passed with 47 test files and 230 tests;
+  the VS Code 1.140.0 host journey passed and verified all three rendered
+  pills, aligned timestamp labels and the absence of prior markers.
