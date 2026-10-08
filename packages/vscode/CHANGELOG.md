@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.21-monorepo.12 (local preview)
+
+- Put the live run and test filter in the Recent Runs sidebar and remove its toolbar button.
+- Keep file and test filter scopes visible beside the inline search field.
+
 ## 0.2.21-monorepo.11 (local preview)
 
 - Remove repeated status words from result rows while retaining project and outcome details.

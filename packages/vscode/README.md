@@ -45,14 +45,12 @@ window and updates the counts.
 
 ## Explore runs
 
-- **One live filter:** Search run ID, date, title, status, branch, commit, test name, ID, project, or path. **Search older runs** extends the loaded window; **Clear** resets it.
+- **One live filter:** Use the field above Recent Runs to search run ID, date, title, status, branch, commit, test name, ID, project, or path. **Search older runs** extends the loaded window; **Clear** resets it.
 - **Spec shortcut:** Right-click a `.spec.*` or `.test.*` file in Explorer to filter to that file. Right-click inside a test in the editor to filter to that test.
 - **Expand All / Collapse All:** Open or close visible folders and runs in Recent Runs.
 - **Run overview:** Select a run's overview to see counts, project breakdown, and clickable cases. Run overviews and results open as ordinary tabs in the active editor group.
 - **Team origin:** Recent Runs and run overviews show colored Local, Peer, or CI pills. Run overviews also show the recorded tester or CI provider/build/attempt when available.
 - **Share runs:** Use **Sync Team Runs** in the Recent Runs toolbar (or on a workspace folder) to pull shared runs into that folder. Use **Push Selected Run** on a Local run to review and publish only that run. Both actions read the shared filesystem store, project ID, tester, and local history path from that workspace's Playwright reporter config. They require a trusted local workspace.
-
-<img src="media/pw-test-live-filter.png" alt="Live filter for pw-test runs and tests" width="880">
 
 <img src="media/pw-test-context-menu.png" alt="Filter This Test action in a pw-test spec editor context menu" width="1000">
 

@@ -68,6 +68,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
   private readonly nodes = new Map<string, TreeNode>();
   private sidebar: vscode.WebviewView | undefined;
   private sidebarGeneration = 0;
+  private focusFilterOnRender = false;
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private comparisonPanel: vscode.WebviewPanel | undefined;
@@ -77,7 +78,6 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
   private testFilter: TestTreeFilter = emptyTestFilter();
   private expandedIds = new Set<string>();
   private collapsedIds = new Set<string>();
-  private filterInput: vscode.InputBox | undefined;
   private history: Page<RecordedExecution> = { items: [], nextOffset: null, diagnostics: [] };
   private generation = 0;
   private setupGeneration = 0;
@@ -110,7 +110,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       vscode.commands.registerCommand('logbook.filterTests', () => this.showTestFilter()),
       vscode.commands.registerCommand('logbook.filterSpecFile', (uri: unknown) => this.filterSpecFile(uri, false)),
       vscode.commands.registerCommand('logbook.filterCurrentTest', (uri: unknown) => this.filterSpecFile(uri, true)),
-      vscode.commands.registerCommand('logbook.clearTestFilter', () => { this.filterInput?.hide(); this.setTestFilter(emptyTestFilter()); }),
+      vscode.commands.registerCommand('logbook.clearTestFilter', () => this.setTestFilter(emptyTestFilter())),
       vscode.commands.registerCommand('logbook.expandAll', () => this.expandAll()),
       vscode.commands.registerCommand('logbook.collapseAll', () => this.collapseAll()),
       vscode.commands.registerCommand('logbook.importBundle', () => this.importBundle()),
@@ -145,7 +145,6 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     for (const timer of this.timers.values()) clearTimeout(timer);
     for (const store of this.stores.values()) store.watchers.forEach((watcher) => watcher.dispose());
     this.historicalDocuments.clear(); this.disposables.forEach((item) => item.dispose()); this.panel?.dispose(); this.comparisonPanel?.dispose(); this.changed.dispose();
-    this.filterInput?.dispose();
     this.collapsedIds.clear();
   }
   private folderKey(folder: vscode.WorkspaceFolder): string { return folder.uri.toString(); }
@@ -157,11 +156,14 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     const css = view.webview.asWebviewUri(vscode.Uri.joinPath(media, 'sidebar.css'));
     const script = view.webview.asWebviewUri(vscode.Uri.joinPath(media, 'sidebar.js'));
     this.disposables.push(view.webview.onDidReceiveMessage((message: unknown) => { void this.sidebarAction(message); }));
-    view.webview.html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${view.webview.cspSource}; script-src ${view.webview.cspSource}"><link rel="stylesheet" href="${css}"></head><body><div id="runs" role="tree" aria-label="Recent Runs"></div><script src="${script}"></script></body></html>`;
+    view.webview.html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${view.webview.cspSource}; script-src ${view.webview.cspSource}"><link rel="stylesheet" href="${css}"></head><body><div id="filter-bar"><input id="filter" type="search" maxlength="256" placeholder="Filter runs and tests" aria-label="Filter runs and tests"><small id="filter-scope" hidden></small></div><div id="runs" role="tree" aria-label="Recent Runs"></div><script src="${script}"></script></body></html>`;
   }
   private async sidebarAction(message: unknown): Promise<void> {
     if (!message || typeof message !== 'object' || !('type' in message)) return;
     if (message.type === 'ready') { await this.renderSidebar(); return; }
+    if (message.type === 'filter' && 'query' in message && typeof message.query === 'string') {
+      this.setTestFilter({ ...this.testFilter, query: message.query.slice(0, 256) }); return;
+    }
     if (!('id' in message) || typeof message.id !== 'string') return;
     const node = this.nodes.get(message.id);
     if (!node) return;
@@ -197,7 +199,10 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
         return `<div role="treeitem" aria-expanded="${expandable ? expanded : ''}">${row}${expanded ? `<div role="group">${await render(await this.getChildren(node))}</div>` : ''}</div>`;
       }))).join('');
       const html = await render(await this.getChildren());
-      if (generation === this.sidebarGeneration && view === this.sidebar) await view.webview.postMessage({ type: 'render', html });
+      if (generation === this.sidebarGeneration && view === this.sidebar) {
+        const scope = this.testFilter.title ? `Test: ${this.testFilter.title}` : this.testFilter.file ? `File: ${this.testFilter.file}` : '';
+        if (await view.webview.postMessage({ type: 'render', html, query: this.testFilter.query, scope, focusFilter: this.focusFilterOnRender })) this.focusFilterOnRender = false;
+      }
     } catch { /* A workspace refresh can cancel a sidebar read. */ }
   }
   getParent(node: TreeNode): TreeNode | undefined {
@@ -562,17 +567,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     }
   }
   private async showTestFilter(): Promise<void> {
+    this.focusFilterOnRender = true;
     await vscode.commands.executeCommand('workbench.view.extension.logbook');
-    this.filterInput?.dispose();
-    const input = vscode.window.createInputBox();
-    this.filterInput = input;
-    input.title = this.testFilter.title ? `Filter recorded test: ${this.testFilter.title}` : this.testFilter.file ? `Filter recorded tests in ${this.testFilter.file}` : 'Filter recorded runs and tests';
-    input.placeholder = 'Run ID, date, status, branch, test name, project or path';
-    input.value = this.testFilter.query;
-    input.onDidChangeValue(value => this.setTestFilter({ ...this.testFilter, query: value.slice(0, 256) }));
-    input.onDidAccept(() => input.hide());
-    input.onDidHide(() => { if (this.filterInput === input) this.filterInput = undefined; input.dispose(); });
-    input.show();
+    await this.renderSidebar();
   }
   private async filterSpecFile(argument: unknown, fromEditor: boolean): Promise<void> {
     const uri = argument instanceof vscode.Uri ? argument : vscode.window.activeTextEditor?.document.uri;

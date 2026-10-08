@@ -1209,3 +1209,14 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   result-description, accessible-status, and run-chevron assertions. Chromium
   sidebar-width preview was inspected. VS Code CLI lists `.11`; installed CSS
   and runtime hashes match the build.
+
+### Inline Recent Runs filter
+
+- [x] Place the live run/test filter above the sidebar tree, preserve file and
+  test scopes from context actions, and remove the toolbar filter button and
+  generic input box. Package and install local preview `0.2.21-monorepo.12`.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  `npm run test:vscode -- --vsix --vscode-version 1.140.0` exited 0 with
+  inline-field, scoped-query, and existing host assertions. A Chromium check
+  verified input events and scope display. VS Code CLI lists `.12`; installed
+  CSS, script, and runtime hashes match the tested build.
