@@ -1,6 +1,7 @@
 :root { --success: var(--vscode-testing-iconPassed, #73c991); --warning: var(--vscode-testing-iconQueued, #cca700); }
 body { margin: 0; padding: 4px 0 12px; color: var(--vscode-sideBar-foreground); background: var(--vscode-sideBar-background); font: var(--vscode-font-size) var(--vscode-font-family); }
-.row { display: flex; align-items: center; min-width: 0; padding-left: calc(var(--depth) * 15px); }
+[role="group"] { margin-left: 15px; }
+.row { display: flex; align-items: center; min-width: 0; }
 .row:hover { background: var(--vscode-list-hoverBackground); }
 .main { min-width: 0; flex: 1; display: flex; align-items: center; gap: 6px; height: 25px; padding: 0 5px; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
 span.main { cursor: default; }
@@ -9,11 +10,12 @@ span.main { cursor: default; }
 .icon.passed { color: var(--success); }
 .icon.failed { color: var(--vscode-testing-iconFailed); }
 .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.origin-pill { display: inline-grid; place-items: center; box-sizing: border-box; width: 51px; height: 19px; flex: 0 0 51px; border: 1px solid currentColor; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.origin-pill { display: inline-grid; place-items: center; box-sizing: border-box; width: 43px; height: 16px; flex: 0 0 43px; border: 1px solid currentColor; border-radius: 999px; font-size: 9px; font-weight: 700; text-transform: uppercase; }
 .origin-pill.local { color: var(--success); background: color-mix(in srgb, var(--success) 12%, var(--vscode-sideBar-background)); }
 .origin-pill.peer { color: var(--vscode-textLink-foreground); background: color-mix(in srgb, var(--vscode-textLink-foreground) 12%, var(--vscode-sideBar-background)); }
 .origin-pill.ci { color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, var(--vscode-sideBar-background)); }
 .action { flex: 0 0 24px; height: 24px; margin-right: 3px; border: 0; color: var(--vscode-descriptionForeground); background: transparent; font: inherit; cursor: pointer; }
+.action svg { width: 16px; height: 16px; vertical-align: middle; }
 .action:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
 .row small { max-width: 40%; padding-right: 5px; overflow: hidden; color: var(--vscode-descriptionForeground); text-overflow: ellipsis; white-space: nowrap; }
 body.vscode-high-contrast .origin-pill, body.vscode-high-contrast-light .origin-pill { background: var(--vscode-sideBar-background); }

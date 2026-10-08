@@ -179,19 +179,19 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     if (!view || this.disposed) return;
     const generation = ++this.sidebarGeneration;
     try {
-      const render = async (nodes: TreeNode[], depth: number): Promise<string> => (await Promise.all(nodes.map(async (node) => {
+      const render = async (nodes: TreeNode[]): Promise<string> => (await Promise.all(nodes.map(async (node) => {
         const expandable = ['folder', 'package', 'run', 'runErrors'].includes(node.kind);
         const expanded = expandable && (this.expandedIds.has(node.id) || (node.kind === 'folder' && !this.collapsedIds.has(node.id)));
         const action = expandable ? 'toggle' : ['result', 'runError', 'overview', 'more'].includes(node.kind) ? 'open' : '';
-        const icon = node.statusIcon?.id === 'pass' ? '✓' : node.statusIcon?.id === 'error' ? '×' : node.statusIcon?.id === 'warning' ? '!' : expandable ? expanded ? '⌄' : '›' : node.kind === 'overview' ? '▥' : '·';
+        const icon = node.statusIcon?.id === 'pass' ? '✓' : node.statusIcon?.id === 'error' ? '×' : node.statusIcon?.id === 'warning' ? '!' : node.statusIcon?.id === 'circle-slash' ? '⊘' : expandable ? expanded ? '⌄' : '›' : node.kind === 'overview' ? '▤' : '·';
         const pill = node.kind === 'run' && node.originBadge ? `<span class="origin-pill ${node.originBadge.toLowerCase()}">${escapeHtml(node.originBadge)}</span>` : '';
         const id = escapeHtml(node.id);
         const title = escapeHtml(`${node.label}${node.description ? ` · ${node.description}` : ''}`);
         const content = `<span class="icon ${node.statusIcon?.id === 'pass' ? 'passed' : node.statusIcon?.id === 'error' ? 'failed' : ''}" aria-hidden="true">${icon}</span>${pill}<span class="label">${escapeHtml(node.label)}</span>`;
-        const row = `<div class="row" style="--depth:${depth}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}" aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${node.description && node.kind !== 'run' ? `<small>${escapeHtml(node.description)}</small>` : ''}${node.kind === 'run' && node.originBadge === 'Local' && vscode.workspace.isTrusted ? `<button class="action" data-action="push" data-id="${id}" title="Push selected run" aria-label="Push ${escapeHtml(node.label)}">⇧</button>` : ''}${(node.kind === 'folder' || node.kind === 'package') && vscode.workspace.isTrusted ? `<button class="action" data-action="sync" data-id="${id}" title="Sync team runs" aria-label="Sync ${escapeHtml(node.label)}">↻</button>` : ''}</div>`;
-        return `<div role="treeitem" aria-expanded="${expandable ? expanded : ''}">${row}${expanded ? `<div role="group">${await render(await this.getChildren(node), depth + 1)}</div>` : ''}</div>`;
+        const row = `<div class="row">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}" aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${node.description && node.kind !== 'run' ? `<small>${escapeHtml(node.description)}</small>` : ''}${node.kind === 'run' && node.originBadge === 'Local' && vscode.workspace.isTrusted ? `<button class="action" data-action="push" data-id="${id}" title="Push selected run" aria-label="Push ${escapeHtml(node.label)}">⇧</button>` : ''}${(node.kind === 'folder' || node.kind === 'package') && vscode.workspace.isTrusted ? `<button class="action" data-action="sync" data-id="${id}" title="Sync team runs" aria-label="Sync ${escapeHtml(node.label)}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 6a5 5 0 0 0-8.5-2.5L3 5m0-3v3h3M3 10a5 5 0 0 0 8.5 2.5L13 11m0 3v-3h-3"/></svg></button>` : ''}</div>`;
+        return `<div role="treeitem" aria-expanded="${expandable ? expanded : ''}">${row}${expanded ? `<div role="group">${await render(await this.getChildren(node))}</div>` : ''}</div>`;
       }))).join('');
-      const html = await render(await this.getChildren(), 0);
+      const html = await render(await this.getChildren());
       if (generation === this.sidebarGeneration && view === this.sidebar) await view.webview.postMessage({ type: 'render', html });
     } catch { /* A workspace refresh can cancel a sidebar read. */ }
   }

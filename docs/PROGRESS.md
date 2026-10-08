@@ -1168,3 +1168,12 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when output: `npm run check` passed with 47 test files and 230 tests;
   the VS Code 1.140.0 host journey passed and verified all three rendered
   pills, aligned timestamp labels and the absence of prior markers.
+
+### Recent Runs sidebar spacing and icons
+
+- [x] Indent nested folders, runs and results using tree groups; reduce origin
+  pills; show a two-arrow Sync action; distinguish run overview and skipped
+  result icons.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  `npm run test:vscode -- --vscode-version 1.140.0` exited 0 with sidebar
+  markup and icon assertions and the full host journey passing.
