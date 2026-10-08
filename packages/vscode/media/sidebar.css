@@ -8,6 +8,7 @@ body { margin: 0; padding: 4px 0 12px; color: var(--vscode-sideBar-foreground); 
 .main { min-width: 0; flex: 1; display: flex; align-items: center; gap: 6px; height: 25px; padding: 0 5px; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
 span.main { cursor: default; }
 .main:focus-visible, .action:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+.chevron { display: inline-grid; place-items: center; flex: 0 0 11px; color: var(--vscode-descriptionForeground); font-size: 14px; }
 .icon { display: inline-grid; place-items: center; width: 16px; flex: 0 0 16px; color: var(--vscode-descriptionForeground); font-size: 17px; }
 .icon.passed { color: var(--success); }
 .icon.failed { color: var(--vscode-testing-iconFailed); }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.21-monorepo.11 (local preview)
+
+- Remove repeated status words from result rows while retaining project and outcome details.
+- Add expand/collapse chevrons to run rows alongside their status icons.
+
 ## 0.2.21-monorepo.10 (local preview)
 
 - Align result statuses and reserve a consistent action slot for run Push and folder Sync.

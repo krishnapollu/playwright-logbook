@@ -1197,3 +1197,15 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   action-slot and collapse assertions. A Chromium layout preview placed Passed
   and Failed descriptions at the same x-coordinate (594 px at 810 px width).
   VS Code CLI lists `.10`; installed runtime and CSS hashes match the build.
+
+### Recent Runs status text and run chevrons
+
+- [x] Remove repeated status words from visible result descriptions while
+  retaining project and outcome details; add a separate expand/collapse
+  chevron to run rows while keeping status icons. Keep folder shading as the
+  visual layer cue. Package and install local preview `0.2.21-monorepo.11`.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  `npm run test:vscode -- --vsix --vscode-version 1.140.0` exited 0 with
+  result-description, accessible-status, and run-chevron assertions. Chromium
+  sidebar-width preview was inspected. VS Code CLI lists `.11`; installed CSS
+  and runtime hashes match the build.
