@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.21-monorepo.10 (local preview)
+
+- Align result statuses and reserve a consistent action slot for run Push and folder Sync.
+- Distinguish folder rows and restore Collapse All in the Recent Runs toolbar.
+
 ## 0.2.21-monorepo.9 (local preview)
 
 - Indent nested Recent Runs entries and reduce origin pill size.

@@ -76,6 +76,9 @@ async function journey(): Promise<void> {
   for (const badge of ['local', 'peer', 'ci']) assert.ok(sidebarHtml.includes(`class="origin-pill ${badge}"`), `Sidebar renders a ${badge} pill`);
   assert.ok(!sidebarHtml.includes('🟢') && !sidebarHtml.includes('【'), 'Old origin markers are absent');
   assert.ok(sidebarHtml.includes('data-action="push"') && sidebarHtml.includes('data-action="sync"'), 'Sidebar keeps selected Push and folder Sync');
+  const runRows = sidebarHtml.match(/<div class="row run">.*?<\/div>/g) ?? [];
+  assert.ok(runRows.some(row => row.includes('class="action-slot"></span>')) && runRows.some(row => row.includes('class="action-slot"><button class="action" data-action="push"')), 'Run actions occupy aligned slots');
+  assert.ok(sidebarHtml.includes('class="row folder"'), 'Folder rows have their own styling hook');
   assert.ok(sidebarHtml.includes('data-action="sync"') && sidebarHtml.includes('<svg viewBox="0 0 16 16"'), 'Folder Sync has a two-arrow icon');
   assert.ok(sidebarHtml.includes('<div role="group">') && !sidebarHtml.includes('style="--depth:'), 'Nested rows use stylesheet indentation');
   assert.equal(logbook.getTreeItem(origins.find(item => item.runId === 'feature')!).contextValue, 'logbook.localRun', 'Only local run exposes Push');
@@ -91,6 +94,10 @@ async function journey(): Promise<void> {
   sidebarHarness.sidebar = actualSidebar;
   assert.ok(sidebarHtml.includes('>▤</span><span class="label">Run overview</span>'), 'Overview has a list icon');
   assert.ok(sidebarHtml.includes('>⊘</span><span class="label">'), 'Skipped result has a circle-slash icon');
+  await vscode.commands.executeCommand('logbook.collapseAll');
+  assert.equal(logbook.getTreeItem(first).collapsibleState, vscode.TreeItemCollapsibleState.Collapsed, 'Collapse All closes workspace folders');
+  assert.equal(logbook.getTreeItem(current).collapsibleState, vscode.TreeItemCollapsibleState.Collapsed, 'Collapse All resets recorded runs');
+  await vscode.commands.executeCommand('logbook.expandAll');
   await vscode.commands.executeCommand('logbook.filterSpecFile', vscode.Uri.file(path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, 'tests/ui.spec.ts')));
   const filteredFolders = await logbook.getChildren();
   assert.equal(filteredFolders.length, 1, 'Spec context menu scopes the left tree to its mapped workspace');

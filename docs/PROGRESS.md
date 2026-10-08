@@ -1186,3 +1186,14 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   exited 0; VS Code CLI reported successful installation and lists
   `krishnapollu.playwright-logbook-vscode@0.2.21-monorepo.9`. Installed sidebar
   CSS and runtime hashes match the packaged source.
+
+### Recent Runs alignment and Collapse All
+
+- [x] Align result status descriptions, reserve a right-side action slot for
+  every run, distinguish folder rows, and restore Collapse All in the toolbar.
+  Package and install local preview `0.2.21-monorepo.10`.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  `npm run test:vscode -- --vsix --vscode-version 1.140.0` exited 0 with
+  action-slot and collapse assertions. A Chromium layout preview placed Passed
+  and Failed descriptions at the same x-coordinate (594 px at 810 px width).
+  VS Code CLI lists `.10`; installed runtime and CSS hashes match the build.

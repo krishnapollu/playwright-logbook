@@ -2,7 +2,7 @@
   "name": "playwright-logbook-vscode",
   "displayName": "Playwright Logbook",
   "description": "Browse Playwright runs, investigate failures and retries, compare test history, and import CI results.",
-  "version": "0.2.21-monorepo.9",
+  "version": "0.2.21-monorepo.10",
   "publisher": "krishnapollu",
   "private": true,
   "license": "MIT",
@@ -113,6 +113,11 @@
         "icon": "$(expand-all)"
       },
       {
+        "command": "logbook.collapseAll",
+        "title": "Logbook: Collapse All",
+        "icon": "$(collapse-all)"
+      },
+      {
         "command": "logbook.clearTestFilter",
         "title": "Logbook: Clear Test Filter",
         "icon": "$(clear-all)"
@@ -155,6 +160,11 @@
         },
         {
           "command": "logbook.expandAll",
+          "when": "view == logbook.recentRuns",
+          "group": "navigation"
+        },
+        {
+          "command": "logbook.collapseAll",
           "when": "view == logbook.recentRuns",
           "group": "navigation"
         },

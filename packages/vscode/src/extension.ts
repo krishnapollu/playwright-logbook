@@ -112,6 +112,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       vscode.commands.registerCommand('logbook.filterCurrentTest', (uri: unknown) => this.filterSpecFile(uri, true)),
       vscode.commands.registerCommand('logbook.clearTestFilter', () => { this.filterInput?.hide(); this.setTestFilter(emptyTestFilter()); }),
       vscode.commands.registerCommand('logbook.expandAll', () => this.expandAll()),
+      vscode.commands.registerCommand('logbook.collapseAll', () => this.collapseAll()),
       vscode.commands.registerCommand('logbook.importBundle', () => this.importBundle()),
       vscode.commands.registerCommand('logbook.refresh', () => this.setup()),
       vscode.commands.registerCommand('logbook.selectStore', () => this.selectFolder('historyPath')),
@@ -188,7 +189,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
         const id = escapeHtml(node.id);
         const title = escapeHtml(`${node.label}${node.description ? ` · ${node.description}` : ''}`);
         const content = `<span class="icon ${node.statusIcon?.id === 'pass' ? 'passed' : node.statusIcon?.id === 'error' ? 'failed' : ''}" aria-hidden="true">${icon}</span>${pill}<span class="label">${escapeHtml(node.label)}</span>`;
-        const row = `<div class="row">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}" aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${node.description && node.kind !== 'run' ? `<small>${escapeHtml(node.description)}</small>` : ''}${node.kind === 'run' && node.originBadge === 'Local' && vscode.workspace.isTrusted ? `<button class="action" data-action="push" data-id="${id}" title="Push selected run" aria-label="Push ${escapeHtml(node.label)}">⇧</button>` : ''}${(node.kind === 'folder' || node.kind === 'package') && vscode.workspace.isTrusted ? `<button class="action" data-action="sync" data-id="${id}" title="Sync team runs" aria-label="Sync ${escapeHtml(node.label)}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 6a5 5 0 0 0-8.5-2.5L3 5m0-3v3h3M3 10a5 5 0 0 0 8.5 2.5L13 11m0 3v-3h-3"/></svg></button>` : ''}</div>`;
+        const push = node.kind === 'run' && node.originBadge === 'Local' && vscode.workspace.isTrusted ? `<button class="action" data-action="push" data-id="${id}" title="Push selected run" aria-label="Push ${escapeHtml(node.label)}">⇧</button>` : '';
+        const sync = (node.kind === 'folder' || node.kind === 'package') && vscode.workspace.isTrusted ? `<button class="action" data-action="sync" data-id="${id}" title="Sync team runs" aria-label="Sync ${escapeHtml(node.label)}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 6a5 5 0 0 0-8.5-2.5L3 5m0-3v3h3M3 10a5 5 0 0 0 8.5 2.5L13 11m0 3v-3h-3"/></svg></button>` : '';
+        const row = `<div class="row ${node.kind}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}" aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${node.description && node.kind !== 'run' ? `<small>${escapeHtml(node.description)}</small>` : ''}${['folder', 'package', 'run'].includes(node.kind) ? `<span class="action-slot">${push || sync}</span>` : ''}</div>`;
         return `<div role="treeitem" aria-expanded="${expandable ? expanded : ''}">${row}${expanded ? `<div role="group">${await render(await this.getChildren(node))}</div>` : ''}</div>`;
       }))).join('');
       const html = await render(await this.getChildren());
@@ -615,6 +618,12 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       if (operation !== this.operation || this.disposed) return;
       this.noteTreeExpansion(run, true);
     }
+    await this.renderSidebar();
+  }
+  async collapseAll(): Promise<void> {
+    const folders = (await this.getChildren()).filter(node => node.kind === 'folder');
+    this.expandedIds.clear();
+    this.collapsedIds = new Set(folders.map(node => node.id));
     await this.renderSidebar();
   }
   private async moreRuns(id: unknown): Promise<void> {
