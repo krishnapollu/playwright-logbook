@@ -144,7 +144,7 @@ If you enable `captureDetails`, Logbook can store sanitized steps, output tails,
 
 ## What happens to your data?
 
-By default, the reporter writes history under your project's `.logbook/`. Logbook has no hosted retention policy and performs no automatic AI or test-management upload. If you configure a shared filesystem store, the extension's explicit **Push** and **Sync** actions copy selected runs and evidence between that store and local history. Manual ZIP imports stay in local history. Remove `.logbook/` when you no longer need it.
+By default, the reporter writes history under your project's `.logbook/`. Logbook has no hosted retention policy and performs no automatic AI or test-management upload. CI fetches and manual ZIP imports add runs to local history. Remove `.logbook/` when you no longer need it.
 
 ## Documentation
 

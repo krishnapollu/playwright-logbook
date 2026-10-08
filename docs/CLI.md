@@ -15,9 +15,6 @@ Both `logbook` and `playwright-logbook` invoke the same CLI. Run `npx playwright
 | `import` | `--from <file...>`, `--dry-run`, `--project-id <key>` | Ingest distinct bundled runs into existing history with duplicate/conflict checks |
 | `ci list` | `--repo <owner/repo>`, `--artifact-name <name>` | List up to 100 recent unexpired matching GitHub Actions artifacts |
 | `ci fetch` | `--repo <owner/repo>`, `--artifact-name <name>`, `--project-id <key>` on first import | Fetch the newest matching artifact and import its Logbook ZIP into local history |
-| `store push` | `--run <id...>` required | Send only selected local runs and available artifacts to the configured team store |
-| `store pull` | none | Bring all published team runs and retained artifacts into local history; repeat pulls skip identical runs |
-| `store ingest` | `--from <file...>` required | Publish downloaded CI bundles to the configured team store |
 | `discover` | `--json` | List default `.logbook` stores in direct child suites and `packages/*` |
 
 `discover` uses `--root` as the workspace root and prints project-relative paths.
@@ -35,34 +32,6 @@ Actions read permission and is not written to history. `ci fetch` validates
 the GitHub artifact's single enclosed `.logbook.zip`, uses the existing import
 project binding and leaves conflicting runs intact. Artifacts expire according
 to the repository's GitHub Actions retention policy.
-
-Team-store commands are an unreleased prototype. They read `outputDir`, `projectId`,
-`author` and `store: { type: 'filesystem', root: '../logbook-store' }` from the
-Logbook reporter options in `playwright.config.*` when invoked. Use `--root`
-to select that project. Push requires selected run IDs; the reporter never
-transfers runs automatically. `store ingest` requires recorded CI metadata.
-Conflicts retain existing bytes, and each command reports per-run results.
-These commands can return 4 after processing other valid runs. Use `~/` for a
-home-relative store path; `~Projects` is ambiguous and rejected.
-The reporter records local or CI origin beside configured local history without
-uploading. Pull preserves team origin there. The VS Code run tree shows CI,
-Local or Peer relative to the configured author, and result detail shows the
-recorded source. Older runs without provenance receive no guessed label.
-
-For the filesystem prototype, give both workspaces the same `projectId` and
-`store.root` in their Logbook reporter options, with different explicit
-`author` values. After running tests, each author chooses runs to share:
-
-```sh
-logbook store push --run RUN_ID
-logbook store pull
-```
-
-To add a downloaded CI artifact, export its merged run as a project-bound ZIP
-in CI, download it, then run `logbook store ingest --from BUNDLE.zip` in a
-configured workspace. Each workspace then runs `logbook store pull`. The
-filesystem folder is a single-machine development target; concurrent writers
-on NFS/SMB are not validated.
 
 `debug` does not contact a model or inspect attachment contents. It includes only stored evidence and marks missing capture data as unavailable. Redaction cannot detect every secret; review the output before sharing it with an AI provider or another person.
 

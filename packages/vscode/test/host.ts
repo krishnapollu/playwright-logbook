@@ -1,7 +1,6 @@
 import { pasteIntoAgentInput } from '../src/ideanalysis.js';
 import { analysisPrompt } from '../../../src/analyze.js';
-import { createBundle, inspectBundleZip } from '../../../src/bundles/archive.js';
-import { publishTeamBundle, readTeamOrigin } from '../../../src/teamstore.js';
+import { createBundle } from '../../../src/bundles/archive.js';
 import { run as makeRun, testRecord } from '../../../test/factories.js';
 import type { ReaderRun } from '../../../src/historyreader.js';
 import { recordTeamOrigin } from '../../../src/teamstore.js';
@@ -48,6 +47,7 @@ async function journey(): Promise<void> {
   assert.ok(extension, 'Development extension must be discoverable');
   const logbook = await extension.activate();
   console.log('Host journey: activated');
+  await vscode.commands.executeCommand('logbook.recentRuns.focus');
   await draftPasteJourney();
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.analyze'), 'Analyze Selected Test must be registered in the editor');
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.fetchCiRuns'), 'GitHub CI fetch must be registered in the editor');
@@ -61,7 +61,7 @@ async function journey(): Promise<void> {
   const current = runs.find((item) => item.runId === 'current')!;
   assert.ok(current, 'Real compatible store should load');
   assert.equal(current.originBadge, 'Local', 'Unimported history shows Local without a team store');
-  assert.equal(logbook.getTreeItem(current).contextValue, undefined, 'Inferred Local origin does not enable team Push');
+  assert.equal(logbook.getTreeItem(current).contextValue, undefined, 'Local origin has no team action');
   const localStore = path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, '.logbook');
   await recordTeamOrigin(localStore, 'current', { type: 'local', author: 'Alice' }, { projectId: 'pw-test', author: 'Bob' });
   await recordTeamOrigin(localStore, 'previous', { type: 'ci', provider: 'github', buildId: '42', attempt: '2' }, { projectId: 'pw-test', author: 'Bob' });
@@ -81,18 +81,15 @@ async function journey(): Promise<void> {
   assert.equal(sidebarQuery, '', 'Sidebar starts with an empty inline filter');
   for (const badge of ['local', 'peer', 'ci']) assert.ok(sidebarHtml.includes(`class="origin-pill ${badge}"`), `Sidebar renders a ${badge} pill`);
   assert.ok(!sidebarHtml.includes('🟢') && !sidebarHtml.includes('【'), 'Old origin markers are absent');
-  assert.ok(sidebarHtml.includes('data-action="push"') && sidebarHtml.includes('data-action="sync"'), 'Sidebar keeps selected Push and folder Sync');
+  assert.ok(!sidebarHtml.includes('data-action="push"') && !sidebarHtml.includes('data-action="sync"'), 'Team actions stay out of the release sidebar');
   const runRows = sidebarHtml.match(/<div class="row run">.*?<\/div>/g) ?? [];
-  assert.ok(runRows.some(row => row.includes('class="action-slot"></span>')) && runRows.some(row => row.includes('class="action-slot"><button class="action" data-action="push"')), 'Run actions occupy aligned slots');
   assert.ok(runRows.every(row => row.includes('class="chevron" aria-hidden="true">›</span>')), 'Collapsed runs show a chevron beside their status icon');
   assert.ok(sidebarHtml.includes('class="row folder"'), 'Folder rows have their own styling hook');
-  assert.ok(sidebarHtml.includes('data-action="sync"') && sidebarHtml.includes('<svg viewBox="0 0 16 16"'), 'Folder Sync has a two-arrow icon');
   assert.ok(sidebarHtml.includes('<div role="group">') && !sidebarHtml.includes('style="--depth:'), 'Nested rows use stylesheet indentation');
-  assert.equal(logbook.getTreeItem(origins.find(item => item.runId === 'feature')!).contextValue, 'logbook.localRun', 'Only local run exposes Push');
+  assert.equal(logbook.getTreeItem(origins.find(item => item.runId === 'feature')!).contextValue, undefined, 'Local run has no Push action');
   assert.equal(logbook.getTreeItem(origins.find(item => item.runId === 'current')!).contextValue, undefined, 'Peer run has no Push action');
-  assert.equal(logbook.getTreeItem(first).contextValue, 'logbook.workspaceFolder', 'Workspace folder exposes Sync');
-  assert.ok((await vscode.commands.getCommands(true)).includes('logbook.syncTeam'), 'Team sync command is registered');
-  assert.ok((await vscode.commands.getCommands(true)).includes('logbook.pushRun'), 'Selected push command is registered');
+  assert.ok(!(await vscode.commands.getCommands(true)).includes('logbook.syncTeam'), 'Team Sync stays unavailable');
+  assert.ok(!(await vscode.commands.getCommands(true)).includes('logbook.pushRun'), 'Team Push stays unavailable');
   await vscode.commands.executeCommand('logbook.expandAll');
   assert.equal(logbook.getTreeItem(first).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens workspace folders');
   assert.equal(logbook.getTreeItem(current).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens recorded runs');
@@ -324,24 +321,6 @@ async function journey(): Promise<void> {
   await logbook.setup();
   assert.ok(!(await logbook.getChildren(first)).some(item => item.kind === 'package'), 'Rescan removes deleted package stores');
   console.log('Host journey: monorepo grouping and package removal passed');
-  const sharedRoot = path.join(path.dirname(mappedRoot), 'shared-store');
-  await fs.mkdir(sharedRoot);
-  const shared = makeRun('team-shared', '2026-01-05T00:00:00.000Z');
-  assert.equal(await publishTeamBundle(sharedRoot, 'editor-project', await inspectBundleZip(await createBundle([shared], 'editor-project')), { type: 'local', author: 'Alice' }), 'added');
-  await fs.writeFile(path.join(mappedRoot, 'playwright.config.mjs'), `export default { reporter: [['list', { outputDir: '.logbook', projectId: 'editor-project', author: 'Bob', store: { type: 'filesystem', root: '../shared-store' } }]] };\n`);
-  const modules = process.env.LOGBOOK_TEST_NODE_MODULES;
-  assert.ok(modules, 'Editor fixture needs project-local Playwright');
-  await fs.symlink(modules, path.join(mappedRoot, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
-  const syncFolder = (await logbook.getChildren()).find(item => item.label === 'first')!;
-  void vscode.commands.executeCommand('logbook.syncTeam', syncFolder.id);
-  for (let attempt = 0; attempt < 100; attempt++) {
-    try { await fs.access(path.join(rootStore, 'runs/team-shared.json')); break; }
-    catch { await new Promise(resolve => setTimeout(resolve, 50)); }
-  }
-  await fs.access(path.join(rootStore, 'runs/team-shared.json'));
-  assert.equal((await readTeamOrigin(rootStore, 'team-shared'))?.type, 'local', 'Sync reads the configured store with no folder picker');
-  assert.ok((await logbook.getChildren(syncFolder)).some(item => item.runId === 'team-shared'), 'Synced run appears in its workspace');
-  console.log('Host journey: configured team-store Sync pulled a shared run without a folder picker');
   const watchersBeforeRemoval = roots.length;
   assert.equal(watchersBeforeRemoval, 2);
   assert.equal(vscode.workspace.updateWorkspaceFolders(1, 1), true);
@@ -353,7 +332,7 @@ async function journey(): Promise<void> {
   const remaining = await logbook.getChildren();
   assert.equal(remaining.length, 1, 'One workspace still has a root folder');
   assert.equal(remaining[0]?.kind, 'folder');
-  assert.equal(remaining[0]?.description, '5 runs', 'Single workspace folder retains its saved run count after Sync');
+  assert.equal(remaining[0]?.description, '4 runs', 'Single workspace folder retains its saved run count');
   assert.ok((await logbook.getChildren(remaining[0])).some((item) => item.runId === 'current'), 'One remaining folder contains its runs');
   console.log('VS Code host: failure → scoped history → source, refresh, invalid actions and multi-root isolation passed.');
 }

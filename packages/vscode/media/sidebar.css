@@ -12,7 +12,7 @@ body { margin: 0; padding: 4px 0 12px; color: var(--vscode-sideBar-foreground); 
 .row.folder .main, .row.package .main { height: 31px; font-weight: 600; }
 .main { min-width: 0; flex: 1; display: flex; align-items: center; gap: 6px; height: 25px; padding: 0 5px; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
 span.main { cursor: default; }
-.main:focus-visible, .action:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+.main:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
 .chevron { display: inline-grid; place-items: center; flex: 0 0 11px; color: var(--vscode-descriptionForeground); font-size: 14px; }
 .icon { display: inline-grid; place-items: center; width: 16px; flex: 0 0 16px; color: var(--vscode-descriptionForeground); font-size: 17px; }
 .icon.passed { color: var(--success); }
@@ -22,10 +22,6 @@ span.main { cursor: default; }
 .origin-pill.local { color: var(--success); background: color-mix(in srgb, var(--success) 12%, var(--vscode-sideBar-background)); }
 .origin-pill.peer { color: var(--vscode-textLink-foreground); background: color-mix(in srgb, var(--vscode-textLink-foreground) 12%, var(--vscode-sideBar-background)); }
 .origin-pill.ci { color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, var(--vscode-sideBar-background)); }
-.action-slot { display: inline-grid; place-items: center; flex: 0 0 32px; margin: 0 5px 0 6px; }
-.action { width: 24px; height: 24px; border: 0; color: var(--vscode-descriptionForeground); background: transparent; font: inherit; cursor: pointer; }
-.action svg { width: 16px; height: 16px; vertical-align: middle; }
-.action:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
 .row small { max-width: 40%; padding-right: 5px; overflow: hidden; color: var(--vscode-descriptionForeground); text-overflow: ellipsis; white-space: nowrap; }
 .row.result small { flex: 0 0 27%; }
 body.vscode-high-contrast .origin-pill, body.vscode-high-contrast-light .origin-pill { background: var(--vscode-sideBar-background); }

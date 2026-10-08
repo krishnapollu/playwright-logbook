@@ -50,19 +50,6 @@ window and updates the counts.
 - **Expand All / Collapse All:** Open or close visible folders and runs in Recent Runs.
 - **Run overview:** Select a run's overview to see counts, project breakdown, and clickable cases. Run overviews and results open as ordinary tabs in the active editor group.
 - **Run origin:** Recent Runs and run overviews show Local for runs outside the import catalog, CI for fetched GitHub runs, and Peer for runs from another configured tester. Imported ZIPs without recorded origin remain unmarked. Run overviews show the recorded tester or CI provider/build/attempt when available.
-- **Share runs:** Use **Sync Team Runs** in the Recent Runs toolbar (or on a workspace folder) to pull shared runs into that folder. Use **Push Selected Run** on a Local run to review and publish only that run. Both actions read the shared filesystem store, project ID, tester, and local history path from that workspace's Playwright reporter config. They require a trusted local workspace.
-
-To enable team sharing, add these options to the Logbook reporter in each teammate's Playwright config:
-
-```ts
-['playwright-logbook', {
-  projectId: 'my-project',
-  author: 'Alice',
-  store: { type: 'filesystem', root: '../shared-logbook-store' },
-}]
-```
-
-Use the same `projectId` and store path for everyone; set `author` per tester. A shared store is optional for local browsing and ZIP import.
 
 <img src="media/pw-test-context-menu.png" alt="Filter This Test action in a pw-test spec editor context menu" width="1000">
 
@@ -106,7 +93,7 @@ Analysis requires Workspace Trust. Supported handoffs and evidence limits are de
   No workflow ID or token in settings is needed. GitHub artifacts expire.
 - Export a portable ZIP using the [bundle guide](https://github.com/krishnapollu/playwright-logbook/blob/main/docs/RUN-BUNDLES.md) (reporter 0.3.0+).
 - Choose **Import Runs…** in Recent Runs, then **Local ZIP**; select ZIPs, enter the matching project ID, review the preview, and import.
-- Imported runs join local history. Import does not publish to a shared store or assign a CI origin pill. Logbook does not fetch artifacts or check out commits.
+- Fetched GitHub runs join local history with a CI origin pill. Manual ZIP imports also join local history; a ZIP without recorded origin stays unmarked. Logbook does not check out commits.
 
 <img src="media/pw-test-import-review.png" alt="pw-test CI bundle preview with run and artifact counts before import" width="290">
 

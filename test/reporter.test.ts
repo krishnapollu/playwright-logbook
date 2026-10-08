@@ -6,7 +6,6 @@ import { FileShardSink } from '../src/store.js';
 import { LogbookReporter } from '../src/reporter.js';
 import type { PwConfig, PwTest } from '../src/collect.js';
 import type { ShardFile } from '../src/schema.js';
-import { readTeamOrigin, readTeamViewer } from '../src/teamstore.js';
 
 const baseConfig: PwConfig = { rootDir: '/project/tests', configFile: '/project/playwright.config.ts', projects: [{ name: 'alpha', testDir: '/project/tests' }], workers: 1, version: '1.63.0', shard: null };
 const result = { status: 'failed' as const };
@@ -70,22 +69,6 @@ describe('LogbookReporter', () => {
     const { reporter, lines } = setup(baseConfig, {}, true);
     await reporter.onEnd(result);
     expect(lines).toEqual([]);
-  });
-  it('records configured origin outside run JSON without transferring', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-origin-'));
-    try {
-      const reporter = new LogbookReporter({ runId: 'local-test', quiet: true, autoReport: false, projectId: 'pw-test', author: 'Alice', store: { type: 'filesystem', root: 'team-store' } }, { env: {}, exec: () => { throw new Error('no git'); }, clock: () => new Date('2026-01-01T00:00:00.000Z') });
-      reporter.onBegin({ ...baseConfig, configFile: path.join(root, 'playwright.config.ts'), rootDir: path.join(root, 'tests') }, { allTests: () => [] });
-      await expect(reporter.onEnd({ status: 'passed' })).resolves.toBeUndefined();
-      expect(await readTeamOrigin(path.join(root, '.logbook'), 'local-test')).toEqual({ type: 'local', author: 'Alice' });
-      expect(await readTeamViewer(path.join(root, '.logbook'))).toEqual({ projectId: 'pw-test', author: 'Alice' });
-      expect(JSON.parse(await fs.readFile(path.join(root, '.logbook/runs/local-test.json'), 'utf8'))).not.toHaveProperty('author');
-      const ciReporter = new LogbookReporter({ runId: 'ci-github-42-2', quiet: true, autoReport: false, projectId: 'pw-test', author: 'Alice', store: { type: 'filesystem', root: 'team-store' } }, { env: { GITHUB_ACTIONS: 'true', GITHUB_RUN_ID: '42', GITHUB_RUN_ATTEMPT: '2' }, exec: () => { throw new Error('no git'); }, clock: () => new Date('2026-01-01T00:00:00.000Z') });
-      ciReporter.onBegin({ ...baseConfig, configFile: path.join(root, 'playwright.config.ts'), rootDir: path.join(root, 'tests') }, { allTests: () => [] });
-      await ciReporter.onEnd({ status: 'passed' });
-      expect(await readTeamOrigin(path.join(root, '.logbook'), 'ci-github-42-2')).toEqual({ type: 'ci', provider: 'github', buildId: '42', attempt: '2' });
-      await expect(fs.stat(path.join(root, 'team-store'))).rejects.toThrow();
-    } finally { await fs.rm(root, { recursive: true, force: true }); }
   });
 });
 

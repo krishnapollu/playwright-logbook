@@ -28,10 +28,7 @@ import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQuali
 import type { HistoricalSource } from './gitsource.js';
 import { AnalysisSession, analysisAction, analysisPrompt, agentKey, renderAnalysis } from './analysis.js';
 import { ideAnalysisBackend } from './ideanalysis.js';
-import { publishTeamBundle, pullTeamStore, readTeamOrigin, readTeamViewer, writeTeamViewer } from '../../../src/teamstore.js';
-import { loadTeamSettings } from '../../../src/teamconfig.js';
-import { exportBundle } from '../../../src/bundles/export.js';
-import { inspectBundleZip } from '../../../src/bundles/archive.js';
+import { readTeamOrigin, readTeamViewer } from '../../../src/teamstore.js';
 import { downloadGitHubArtifact, listGitHubArtifacts, recordGitHubOrigins } from '../../../src/githubartifacts.js';
 
 interface StoreContext {
@@ -41,7 +38,7 @@ interface StoreContext {
 }
 interface TreeNode {
   id: string; kind: 'folder' | 'package' | 'run' | 'result' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
-  folderKey: string; label: string; description?: string; sidebarDescription?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string }; originBadge?: string; canPush?: boolean;
+  folderKey: string; label: string; description?: string; sidebarDescription?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string }; originBadge?: string;
 }
 interface Selection {
   folderKey: string; runId: string; resultKey: string | null; errorIndex: number | null; errorKey: string | null;
@@ -106,8 +103,6 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       vscode.commands.registerCommand('logbook.viewComparedSource', (side: unknown) => this.handleComparison({ type: side === 'baseline' ? 'baselineSource' : side === 'selected' ? 'selectedSource' : 'invalid' })),
       vscode.commands.registerCommand('logbook.diffComparedSource', () => this.handleComparison({ type: 'diff' })),
       vscode.commands.registerCommand('logbook.runOverview', (id: unknown) => this.runOverview(id)),
-      vscode.commands.registerCommand('logbook.syncTeam', (id: unknown) => this.syncTeam(id)),
-      vscode.commands.registerCommand('logbook.pushRun', (id: unknown) => this.pushRun(id)),
       vscode.commands.registerCommand('logbook.filterTests', () => this.showTestFilter()),
       vscode.commands.registerCommand('logbook.filterSpecFile', (uri: unknown) => this.filterSpecFile(uri, false)),
       vscode.commands.registerCommand('logbook.filterCurrentTest', (uri: unknown) => this.filterSpecFile(uri, true)),
@@ -181,8 +176,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       if (node.kind === 'result' || node.kind === 'runError') await this.inspect(node.id);
       else if (node.kind === 'overview') await this.runOverview(node.id);
       else if (node.kind === 'more') await this.moreRuns(node.id);
-    } else if (message.type === 'sync' && (node.kind === 'folder' || node.kind === 'package')) await this.syncTeam(node.id);
-    else if (message.type === 'push' && node.kind === 'run' && node.canPush) await this.pushRun(node.id);
+    }
   }
   private async renderSidebar(): Promise<void> {
     const view = this.sidebar;
@@ -199,10 +193,8 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
         const title = escapeHtml(`${node.label}${node.description ? ` · ${node.description}` : ''}`);
         const chevron = node.kind === 'run' ? `<span class="chevron" aria-hidden="true">${expanded ? '⌄' : '›'}</span>` : '';
         const content = `${chevron}<span class="icon ${node.statusIcon?.id === 'pass' ? 'passed' : node.statusIcon?.id === 'error' ? 'failed' : ''}" aria-hidden="true">${icon}</span>${pill}<span class="label">${escapeHtml(node.label)}</span>`;
-        const push = node.kind === 'run' && node.canPush && vscode.workspace.isTrusted ? `<button class="action" data-action="push" data-id="${id}" title="Push selected run" aria-label="Push ${escapeHtml(node.label)}">⇧</button>` : '';
-        const sync = (node.kind === 'folder' || node.kind === 'package') && vscode.workspace.isTrusted ? `<button class="action" data-action="sync" data-id="${id}" title="Sync team runs" aria-label="Sync ${escapeHtml(node.label)}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 6a5 5 0 0 0-8.5-2.5L3 5m0-3v3h3M3 10a5 5 0 0 0 8.5 2.5L13 11m0 3v-3h-3"/></svg></button>` : '';
         const description = node.sidebarDescription ?? node.description;
-        const row = `<div class="row ${node.kind}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}"${node.kind === 'result' ? ` aria-label="${title}"` : ''} aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${description && node.kind !== 'run' ? `<small>${escapeHtml(description)}</small>` : ''}${['folder', 'package', 'run'].includes(node.kind) ? `<span class="action-slot">${push || sync}</span>` : ''}</div>`;
+        const row = `<div class="row ${node.kind}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}"${node.kind === 'result' ? ` aria-label="${title}"` : ''} aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${description && node.kind !== 'run' ? `<small>${escapeHtml(description)}</small>` : ''}</div>`;
         return `<div role="treeitem" aria-expanded="${expandable ? expanded : ''}">${row}${expanded ? `<div role="group">${await render(await this.getChildren(node))}</div>` : ''}</div>`;
       }))).join('');
       const html = await render(await this.getChildren());
@@ -377,7 +369,6 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     const isExpanded = this.expandedIds.has(node.id) || (defaultExpanded && !this.collapsedIds.has(node.id));
     const item = new vscode.TreeItem(node.label, collapsible ? (isExpanded ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed) : vscode.TreeItemCollapsibleState.None);
     item.id = node.id; item.description = node.description; item.tooltip = `${node.label}${node.runId ? `\nRun: ${node.runId}` : ''}${node.originBadge ? `\nOrigin: ${node.originBadge}` : ''}${node.description ? `\n${node.description}` : ''}`;
-    if (node.kind === 'run' && node.canPush) item.contextValue = 'logbook.localRun';
     if (node.kind === 'folder' || node.kind === 'package') item.contextValue = 'logbook.workspaceFolder';
     item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'package' ? 'package' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
     if (node.kind === 'result' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
@@ -470,7 +461,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       const nodes = await Promise.all(visible.map(async (run) => {
         const origin = runOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), viewer, Object.hasOwn(catalog?.runs ?? {}, run.runId));
         return this.register({ id: JSON.stringify([key, run.runId]), kind: 'run', folderKey: key, runId: run.runId,
-          label: `${displayTime(run.startedAt)} · ${run.title ?? shortRunId(run.runId)} · ${run.runId.slice(-8)}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'), originBadge: origin.badge ?? undefined, canPush: origin.canPush,
+          label: `${displayTime(run.startedAt)} · ${run.title ?? shortRunId(run.runId)} · ${run.runId.slice(-8)}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'), originBadge: origin.badge ?? undefined,
           description: `${run.status ?? 'Status unknown'} · ${run.summary ? `${run.summary.failed} unexpected, ${run.summary.flaky} retry-flaky` : 'Counts unknown'} · ${completionLabel(run.complete)}` });
       }));
       if (page.nextOffset !== null) nodes.push(this.register({ id: JSON.stringify([key, 'more', store.runLimit]), kind: 'more', folderKey: key, label: hasTestFilter(filter) ? 'Search older runs' : 'Load more runs' }));
@@ -507,58 +498,6 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       });
       panel.onDidDispose(() => listener.dispose());
     } catch (error) { await vscode.window.showWarningMessage(diagnosticMessage(error)); }
-  }
-  private async teamSettings(store: StoreContext, storeRoot: string): Promise<Awaited<ReturnType<typeof loadTeamSettings>>> {
-    const settings = await loadTeamSettings(store.folder.uri.fsPath);
-    const localRoot = await fs.realpath(settings.localRoot).catch(error => {
-      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') return settings.localRoot;
-      throw error;
-    });
-    if (localRoot !== storeRoot) throw new Error('Logbook history folder differs from the reporter outputDir. Configure History Folder to match.');
-    const teamRoot = await fs.realpath(settings.teamRoot).catch(error => {
-      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') return settings.teamRoot;
-      throw error;
-    });
-    if (teamRoot === storeRoot) throw new Error('The team store must be separate from local Logbook history.');
-    return settings;
-  }
-  private async syncTeam(id?: unknown): Promise<void> {
-    if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage('Trust this workspace before syncing team runs.'); return; }
-    const stores = [...this.stores.values()].filter(store => !store.error);
-    const key = typeof id === 'string' ? id : id && typeof id === 'object' && 'id' in id && typeof id.id === 'string' ? id.id : null;
-    const node = key ? this.nodes.get(key) : undefined;
-    const selected = node && (node.kind === 'folder' || node.kind === 'package') ? this.stores.get(node.folderKey) : undefined;
-    const store = selected ?? (stores.length === 1 ? stores[0] : (await vscode.window.showQuickPick(stores.map(item => ({ label: item.folder.name, description: item.folder.uri.fsPath, store: item })), { title: 'Sync which Logbook workspace?' }))?.store);
-    if (!store) return;
-    try {
-      const { storeRoot } = await this.rootsForStore(store);
-      const settings = await this.teamSettings(store, storeRoot);
-      await writeTeamViewer(storeRoot, { projectId: settings.projectId, author: settings.author });
-      const result = await Promise.resolve(vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Sync Logbook runs: ${store.folder.name}`, cancellable: true }, async (_progress, token) => {
-        const abort = new AbortController(), subscription = token.onCancellationRequested(() => abort.abort());
-        try { return await pullTeamStore(settings.teamRoot, storeRoot, settings.projectId, abort.signal); }
-        finally { subscription.dispose(); }
-      })).finally(() => this.refresh(this.folderKey(store.folder)));
-      await vscode.window.showInformationMessage(`Team sync: ${result.added.length} added · ${result.skipped.length} identical · ${result.conflicts.length} conflicting · ${result.failed.length} failed · ${result.missingArtifacts} missing/omitted artifacts`);
-    } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'Team sync failed.'); }
-  }
-  private async pushRun(id: unknown): Promise<void> {
-    if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage('Trust this workspace before pushing a run.'); return; }
-    const key = typeof id === 'string' ? id : id && typeof id === 'object' && 'id' in id && typeof id.id === 'string' ? id.id : null;
-    const node = key ? this.nodes.get(key) : undefined;
-    const store = node ? this.stores.get(node.folderKey) : undefined;
-    if (!node?.runId || node.kind !== 'run' || !store) return;
-    try {
-      const { storeRoot, sourceRoot } = await this.rootsForStore(store);
-      const settings = await this.teamSettings(store, storeRoot);
-      const origin = await readTeamOrigin(storeRoot, node.runId);
-      if (origin?.type !== 'local' || origin.author !== settings.author) throw new Error('Only a run recorded locally by this workspace tester can be pushed.');
-      const exported = await exportBundle(sourceRoot, storeRoot, { runIds: [node.runId], artifacts: true, projectId: settings.projectId });
-      const confirmed = await vscode.window.showInformationMessage('Push this run to the team store?', { modal: true, detail: `${node.runId}\nProject: ${settings.projectId} · Tester: ${settings.author}\nStore: ${settings.teamRoot}\n${exported.includedArtifacts} included · ${exported.missingArtifacts + exported.omittedArtifacts} missing/omitted artifacts` }, 'Push Run');
-      if (confirmed !== 'Push Run') return;
-      const result = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Push Logbook run ${node.runId}` }, async () => publishTeamBundle(settings.teamRoot, settings.projectId, await inspectBundleZip(exported.bytes), origin));
-      await vscode.window.showInformationMessage(`Team push: ${node.runId} ${result === 'added' ? 'added' : result === 'skipped' ? 'already present' : 'conflicts with an existing run; existing run retained'}.`);
-    } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'Team push failed.'); }
   }
   private setTestFilter(filter: TestTreeFilter): void {
     this.operation.abort(); this.operation = new AbortController();

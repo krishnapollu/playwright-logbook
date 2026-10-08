@@ -13,7 +13,6 @@ import { summaryCommand } from './commands/summary.js';
 import { debugCommand } from './commands/debug.js';
 import { analyzeCommand } from './commands/analyze.js';
 import { discoverCommand } from './commands/discover.js';
-import { storeIngestCommand, storePullCommand, storePushCommand } from './commands/store.js';
 import { ciFetchCommand, ciListCommand } from './commands/ci.js';
 
 export interface CliDeps {
@@ -48,13 +47,6 @@ export function createProgram(deps: CliDeps = {}): Command {
   program.command('import').description('Ingest distinct bundled runs into existing history (not shard merge)')
     .requiredOption('--from <file...>').option('--dry-run').option('--project-id <key>')
     .action(async (options) => done(await importCommand(context(), options)));
-  const store = program.command('store').description('Explicit filesystem team-store transfer');
-  store.command('push').description('Push only selected local runs and available artifacts')
-    .requiredOption('--run <id...>').action(async (options: { run: string[] }) => done(await storePushCommand(context(), options.run)));
-  store.command('pull').description('Pull all team runs and retained artifacts into local history')
-    .action(async () => done(await storePullCommand(context())));
-  store.command('ingest').description('Ingest downloaded CI run bundles into the team store')
-    .requiredOption('--from <file...>').action(async (options: { from: string[] }) => done(await storeIngestCommand(context(), options.from)));
   const ci = program.command('ci').description('Fetch GitHub Actions Logbook artifacts into local history');
   ci.command('list').requiredOption('--repo <owner/repo>').option('--artifact-name <name>', 'artifact name', 'logbook-run')
     .action(async (options: { repo: string; artifactName: string }) => done(await ciListCommand(context(), options)));

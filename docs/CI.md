@@ -81,4 +81,4 @@ The offline integration test performs this flow against a copy of the sample pro
 
 ## History limitation
 
-CI jobs are ephemeral, so history survives only if you persist `.logbook/` via cache, artifacts or a data branch. Portable bundles carry a selected saved run to a local IDE; the explicit filesystem team-store commands offer a separate shared destination.
+CI jobs are ephemeral, so history survives only if you persist `.logbook/` via cache, artifacts or a data branch. Portable bundles carry a selected saved run to a local IDE.

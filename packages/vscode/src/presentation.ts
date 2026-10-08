@@ -4,9 +4,9 @@ import { teamOriginText } from '../../../src/teamstore.js';
 import type { TeamOrigin, TeamViewer } from '../../../src/teamstore.js';
 import { escapeHtml, outcomeTone } from './format.js';
 
-export function runOriginText(origin: TeamOrigin | null, viewer: TeamViewer | null, imported: boolean): { badge: string | null; detail: string | null; canPush: boolean } {
+export function runOriginText(origin: TeamOrigin | null, viewer: TeamViewer | null, imported: boolean): { badge: string | null; detail: string | null } {
   const display = teamOriginText(origin, viewer);
-  return { ...display, badge: display.badge ?? (!origin && !imported ? 'Local' : null), canPush: display.badge === 'Local' };
+  return { ...display, badge: display.badge ?? (!origin && !imported ? 'Local' : null) };
 }
 
 type RecordedError = NonNullable<ReaderResult['firstError']>;

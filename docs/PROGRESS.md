@@ -1293,3 +1293,14 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   VSIX manifest inspection confirmed `.17`, and its runtime hash matches the
   checked build. The packaged editor host passed the new storeless Local and
   no-Push assertions before later unrelated workspace-rescan timing failure.
+
+### Release surface: UI and CI import only
+
+- [x] Remove filesystem team-store Sync/Push from the editor toolbar, sidebar,
+  command palette and context menus; remove `store` CLI commands and reporter
+  options from the public release surface. Keep local history, Local/CI pills,
+  manual ZIP import and GitHub Actions fetch.
+- Done when output: `npm run check` passed with 48 test files and 234 tests;
+  VS Code 1.140.0 host journey exited 0 after explicitly opening Recent Runs,
+  including import and absent team-action assertions. Release-surface tests
+  found `ci` but no `store` CLI command and no Sync/Push VSIX contributions.

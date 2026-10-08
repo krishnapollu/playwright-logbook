@@ -14,9 +14,6 @@ export interface LogbookOptions {
   maxOutputLength?: number;
   maxImageBytes?: number;
   maxEmbeddedBytes?: number;
-  projectId?: string;
-  author?: string;
-  store?: { type: 'filesystem'; root: string };
 }
 
 /** Resolve reporter options with deterministic defaults. */
