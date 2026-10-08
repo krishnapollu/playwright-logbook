@@ -1283,3 +1283,13 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when output: `npm run check` passed with 47 test files and 234 tests;
   `vsce package --no-dependencies` produced the `.16` VSIX, whose version and
   bundled runtime hash match the checked source.
+
+### Storeless Local origin pills
+
+- [x] Show Local for history runs outside the import catalog even without a
+  team store, keep explicit CI and Peer provenance, and keep inferred Local
+  runs ineligible for team Push. Package local preview `0.2.21-monorepo.17`.
+- Done when output: `npm run check` passed with 48 test files and 235 tests;
+  VSIX manifest inspection confirmed `.17`, and its runtime hash matches the
+  checked build. The packaged editor host passed the new storeless Local and
+  no-Push assertions before later unrelated workspace-rescan timing failure.

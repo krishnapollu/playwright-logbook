@@ -60,6 +60,8 @@ async function journey(): Promise<void> {
   const runs = await logbook.getChildren(first);
   const current = runs.find((item) => item.runId === 'current')!;
   assert.ok(current, 'Real compatible store should load');
+  assert.equal(current.originBadge, 'Local', 'Unimported history shows Local without a team store');
+  assert.equal(logbook.getTreeItem(current).contextValue, undefined, 'Inferred Local origin does not enable team Push');
   const localStore = path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, '.logbook');
   await recordTeamOrigin(localStore, 'current', { type: 'local', author: 'Alice' }, { projectId: 'pw-test', author: 'Bob' });
   await recordTeamOrigin(localStore, 'previous', { type: 'ci', provider: 'github', buildId: '42', attempt: '2' }, { projectId: 'pw-test', author: 'Bob' });

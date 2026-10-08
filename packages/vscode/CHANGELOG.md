@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.21-monorepo.17 (local preview)
+
+- Show Local pills for unimported local history without team-store configuration, while keeping CI imports labeled CI and Push restricted to owned team runs.
+
 ## 0.2.21-monorepo.16 (local preview)
 
 - Close the GitHub CI fetch progress notification when the import finishes.

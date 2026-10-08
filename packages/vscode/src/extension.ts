@@ -24,11 +24,11 @@ import { escapeHtml, panelAction, renderDetail, renderRunOverview } from './deta
 import { comparisonRef, comparisonSide, matchingPair, renderComparison } from './comparison.js';
 import type { ExecutionRef, ComparisonSide } from './comparison.js';
 import { readHistoricalSource, GitSourceError } from './gitsource.js';
-import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQualifier } from './presentation.js';
+import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQualifier, runOriginText } from './presentation.js';
 import type { HistoricalSource } from './gitsource.js';
 import { AnalysisSession, analysisAction, analysisPrompt, agentKey, renderAnalysis } from './analysis.js';
 import { ideAnalysisBackend } from './ideanalysis.js';
-import { publishTeamBundle, pullTeamStore, readTeamOrigin, readTeamViewer, teamOriginText, writeTeamViewer } from '../../../src/teamstore.js';
+import { publishTeamBundle, pullTeamStore, readTeamOrigin, readTeamViewer, writeTeamViewer } from '../../../src/teamstore.js';
 import { loadTeamSettings } from '../../../src/teamconfig.js';
 import { exportBundle } from '../../../src/bundles/export.js';
 import { inspectBundleZip } from '../../../src/bundles/archive.js';
@@ -41,7 +41,7 @@ interface StoreContext {
 }
 interface TreeNode {
   id: string; kind: 'folder' | 'package' | 'run' | 'result' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
-  folderKey: string; label: string; description?: string; sidebarDescription?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string }; originBadge?: string;
+  folderKey: string; label: string; description?: string; sidebarDescription?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string }; originBadge?: string; canPush?: boolean;
 }
 interface Selection {
   folderKey: string; runId: string; resultKey: string | null; errorIndex: number | null; errorKey: string | null;
@@ -182,7 +182,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       else if (node.kind === 'overview') await this.runOverview(node.id);
       else if (node.kind === 'more') await this.moreRuns(node.id);
     } else if (message.type === 'sync' && (node.kind === 'folder' || node.kind === 'package')) await this.syncTeam(node.id);
-    else if (message.type === 'push' && node.kind === 'run' && node.originBadge === 'Local') await this.pushRun(node.id);
+    else if (message.type === 'push' && node.kind === 'run' && node.canPush) await this.pushRun(node.id);
   }
   private async renderSidebar(): Promise<void> {
     const view = this.sidebar;
@@ -199,7 +199,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
         const title = escapeHtml(`${node.label}${node.description ? ` · ${node.description}` : ''}`);
         const chevron = node.kind === 'run' ? `<span class="chevron" aria-hidden="true">${expanded ? '⌄' : '›'}</span>` : '';
         const content = `${chevron}<span class="icon ${node.statusIcon?.id === 'pass' ? 'passed' : node.statusIcon?.id === 'error' ? 'failed' : ''}" aria-hidden="true">${icon}</span>${pill}<span class="label">${escapeHtml(node.label)}</span>`;
-        const push = node.kind === 'run' && node.originBadge === 'Local' && vscode.workspace.isTrusted ? `<button class="action" data-action="push" data-id="${id}" title="Push selected run" aria-label="Push ${escapeHtml(node.label)}">⇧</button>` : '';
+        const push = node.kind === 'run' && node.canPush && vscode.workspace.isTrusted ? `<button class="action" data-action="push" data-id="${id}" title="Push selected run" aria-label="Push ${escapeHtml(node.label)}">⇧</button>` : '';
         const sync = (node.kind === 'folder' || node.kind === 'package') && vscode.workspace.isTrusted ? `<button class="action" data-action="sync" data-id="${id}" title="Sync team runs" aria-label="Sync ${escapeHtml(node.label)}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 6a5 5 0 0 0-8.5-2.5L3 5m0-3v3h3M3 10a5 5 0 0 0 8.5 2.5L13 11m0 3v-3h-3"/></svg></button>` : '';
         const description = node.sidebarDescription ?? node.description;
         const row = `<div class="row ${node.kind}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}"${node.kind === 'result' ? ` aria-label="${title}"` : ''} aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${description && node.kind !== 'run' ? `<small>${escapeHtml(description)}</small>` : ''}${['folder', 'package', 'run'].includes(node.kind) ? `<span class="action-slot">${push || sync}</span>` : ''}</div>`;
@@ -377,7 +377,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     const isExpanded = this.expandedIds.has(node.id) || (defaultExpanded && !this.collapsedIds.has(node.id));
     const item = new vscode.TreeItem(node.label, collapsible ? (isExpanded ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed) : vscode.TreeItemCollapsibleState.None);
     item.id = node.id; item.description = node.description; item.tooltip = `${node.label}${node.runId ? `\nRun: ${node.runId}` : ''}${node.originBadge ? `\nOrigin: ${node.originBadge}` : ''}${node.description ? `\n${node.description}` : ''}`;
-    if (node.kind === 'run' && node.originBadge === 'Local') item.contextValue = 'logbook.localRun';
+    if (node.kind === 'run' && node.canPush) item.contextValue = 'logbook.localRun';
     if (node.kind === 'folder' || node.kind === 'package') item.contextValue = 'logbook.workspaceFolder';
     item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'package' ? 'package' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
     if (node.kind === 'result' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
@@ -466,10 +466,11 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       }
       if (filter !== this.testFilter) return [];
       const viewer = await readTeamViewer(store.storeRoot).catch(() => null);
+      const catalog = await readImportCatalog(store.storeRoot).catch(() => null);
       const nodes = await Promise.all(visible.map(async (run) => {
-        const origin = teamOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), viewer);
+        const origin = runOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), viewer, Object.hasOwn(catalog?.runs ?? {}, run.runId));
         return this.register({ id: JSON.stringify([key, run.runId]), kind: 'run', folderKey: key, runId: run.runId,
-          label: `${displayTime(run.startedAt)} · ${run.title ?? shortRunId(run.runId)} · ${run.runId.slice(-8)}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'), originBadge: origin.badge ?? undefined,
+          label: `${displayTime(run.startedAt)} · ${run.title ?? shortRunId(run.runId)} · ${run.runId.slice(-8)}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'), originBadge: origin.badge ?? undefined, canPush: origin.canPush,
           description: `${run.status ?? 'Status unknown'} · ${run.summary ? `${run.summary.failed} unexpected, ${run.summary.flaky} retry-flaky` : 'Counts unknown'} · ${completionLabel(run.complete)}` });
       }));
       if (page.nextOffset !== null) nodes.push(this.register({ id: JSON.stringify([key, 'more', store.runLimit]), kind: 'more', folderKey: key, label: hasTestFilter(filter) ? 'Search older runs' : 'Load more runs' }));
@@ -492,7 +493,8 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       const run = await store.reader.getRun(node.runId);
       const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
       const panel = vscode.window.createWebviewPanel('logbook.run', 'Logbook run overview', vscode.ViewColumn.Active, { enableScripts: true, localResourceRoots: [media] });
-      const origin = teamOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), await readTeamViewer(store.storeRoot).catch(() => null));
+      const catalog = await readImportCatalog(store.storeRoot).catch(() => null);
+      const origin = runOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), await readTeamViewer(store.storeRoot).catch(() => null), Object.hasOwn(catalog?.runs ?? {}, run.runId));
       panel.webview.html = renderRunOverview(run, { css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(), script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource }, origin);
       const listener = panel.webview.onDidReceiveMessage((message: unknown) => {
         const action = overviewAction(message, run.tests.map(test => executionIdentity(run.runId, test)));
@@ -687,7 +689,8 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       this.analysis.reset(result ? createHash('sha256').update(JSON.stringify([selected.folderKey, store.storeRoot, store.sourceRoot, run.runId, run.startedAt, run.complete, run.env, result, selected.scope])).digest('hex') : '');
       const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
       const relative = (root: string) => path.relative(store.folder.uri.fsPath, root).split(path.sep).join('/') || '.';
-      const origin = teamOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), await readTeamViewer(store.storeRoot).catch(() => null));
+      const catalog = await readImportCatalog(store.storeRoot).catch(() => null);
+      const origin = runOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), await readTeamViewer(store.storeRoot).catch(() => null), Object.hasOwn(catalog?.runs ?? {}, run.runId));
       panel.webview.html = renderDetail({ run, result: result ?? null, runError: errorIndex, runErrorKey: selected.errorKey, history, scope: selected.scope, anchorRunId: selected.anchorRunId,
         storeLabel: relative(store.storeRoot), sourceLabel: relative(store.sourceRoot), newHistory, origin,
         analysis: { identity: this.analysis.identity, state: this.analysis.state } }, {

@@ -49,7 +49,7 @@ window and updates the counts.
 - **Spec shortcut:** Right-click a `.spec.*` or `.test.*` file in Explorer to filter to that file. Right-click inside a test in the editor to filter to that test.
 - **Expand All / Collapse All:** Open or close visible folders and runs in Recent Runs.
 - **Run overview:** Select a run's overview to see counts, project breakdown, and clickable cases. Run overviews and results open as ordinary tabs in the active editor group.
-- **Team origin:** Recent Runs and run overviews show colored Local, Peer, or CI pills. Run overviews also show the recorded tester or CI provider/build/attempt when available.
+- **Run origin:** Recent Runs and run overviews show Local for runs outside the import catalog, CI for fetched GitHub runs, and Peer for runs from another configured tester. Imported ZIPs without recorded origin remain unmarked. Run overviews show the recorded tester or CI provider/build/attempt when available.
 - **Share runs:** Use **Sync Team Runs** in the Recent Runs toolbar (or on a workspace folder) to pull shared runs into that folder. Use **Push Selected Run** on a Local run to review and publish only that run. Both actions read the shared filesystem store, project ID, tester, and local history path from that workspace's Playwright reporter config. They require a trusted local workspace.
 
 To enable team sharing, add these options to the Logbook reporter in each teammate's Playwright config:
