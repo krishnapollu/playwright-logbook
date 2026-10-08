@@ -101,11 +101,11 @@ Analysis requires Workspace Trust. Supported handoffs and evidence limits are de
 
 - For GitHub Actions, set `logbook.ciRepository` to `OWNER/REPO` in the workspace.
   The artifact name defaults to `logbook-run`; change `logbook.ciArtifactName`
-  only if your workflow uses another name. Choose **Logbook: Fetch CI Run from
-  GitHub Actions…**, sign in, select a recent artifact and review the import.
+  only if your workflow uses another name. Choose **Import Runs…** in Recent Runs,
+  then **GitHub Actions**; sign in, select a recent artifact and review the import.
   No workflow ID or token in settings is needed. GitHub artifacts expire.
 - Export a portable ZIP using the [bundle guide](https://github.com/krishnapollu/playwright-logbook/blob/main/docs/RUN-BUNDLES.md) (reporter 0.3.0+).
-- Choose **Logbook: Import ZIP to Local History…**, select ZIPs, enter the matching project ID, review the preview, and import.
+- Choose **Import Runs…** in Recent Runs, then **Local ZIP**; select ZIPs, enter the matching project ID, review the preview, and import.
 - Imported runs join local history. Import does not publish to a shared store or assign a CI origin pill. Logbook does not fetch artifacts or check out commits.
 
 <img src="media/pw-test-import-review.png" alt="pw-test CI bundle preview with run and artifact counts before import" width="290">

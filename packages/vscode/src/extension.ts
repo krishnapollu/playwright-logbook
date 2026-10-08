@@ -116,6 +116,11 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       vscode.commands.registerCommand('logbook.collapseAll', () => this.collapseAll()),
       vscode.commands.registerCommand('logbook.importBundle', () => this.importBundle()),
       vscode.commands.registerCommand('logbook.fetchCiRuns', () => this.fetchCiRuns()),
+      vscode.commands.registerCommand('logbook.chooseImport', async () => {
+        const source = await vscode.window.showQuickPick(['Local ZIP', 'GitHub Actions'], { title: 'Import to Local History' });
+        if (source === 'Local ZIP') await this.importBundle();
+        else if (source === 'GitHub Actions') await this.fetchCiRuns();
+      }),
       vscode.commands.registerCommand('logbook.refresh', () => this.setup()),
       vscode.commands.registerCommand('logbook.selectStore', () => this.selectFolder('historyPath')),
       vscode.commands.registerCommand('logbook.configureSource', () => this.selectFolder('sourceRoot')),

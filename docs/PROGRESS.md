@@ -1264,3 +1264,13 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   passed with 47 test files and 234 tests. The VSIX installed and activated in
   a disposable VS Code 1.140.0 profile; the longer host journey has an existing
   active-editor assertion failure also reproduced from the unpackaged source.
+
+### Unified Recent Runs import action
+
+- [x] Replace the two Recent Runs import toolbar icons with one Import action
+  that offers Local ZIP and GitHub Actions. Retain the direct commands in the
+  Command Palette and package local preview `0.2.21-monorepo.15`.
+- Done when output: `npm run check` passed with 47 test files and 234 tests;
+  VSIX manifest inspection found only `logbook.chooseImport` among import
+  toolbar contributions, and its runtime hash matches the tested build. The
+  separate direct import commands remain registered.
