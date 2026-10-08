@@ -1274,3 +1274,12 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   VSIX manifest inspection found only `logbook.chooseImport` among import
   toolbar contributions, and its runtime hash matches the tested build. The
   separate direct import commands remain registered.
+
+### CI fetch progress completion
+
+- [x] End the CI fetch progress task after saving and refreshing the imported
+  run, then show the completion message outside that task. Package local
+  preview `0.2.21-monorepo.16`.
+- Done when output: `npm run check` passed with 47 test files and 234 tests;
+  `vsce package --no-dependencies` produced the `.16` VSIX, whose version and
+  bundled runtime hash match the checked source.

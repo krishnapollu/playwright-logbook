@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.21-monorepo.16 (local preview)
+
+- Close the GitHub CI fetch progress notification when the import finishes.
+
 ## 0.2.21-monorepo.15 (local preview)
 
 - Offer one Recent Runs Import action with Local ZIP and GitHub Actions choices.
