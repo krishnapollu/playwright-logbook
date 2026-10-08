@@ -1253,3 +1253,14 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   fetch, dry-run preview, import and the VS Code history reader opened run
   `gh-37818414331-1` with 20 tests and CI origin. The workflow's Playwright
   step failed on the live suite, while export and upload both succeeded.
+
+### GitHub CI fetch VSIX preview
+
+- [x] Package local preview `0.2.21-monorepo.14` with the GitHub Actions CI
+  fetch command and repository/artifact settings for manual installation.
+- Done when output: `vsce package --no-dependencies` produced the 2.81 MB
+  VSIX; ZIP inspection found version `.14`, `logbook.fetchCiRuns`, and both CI
+  settings. Packaged and built runtime SHA-256 hashes match. `npm run check`
+  passed with 47 test files and 234 tests. The VSIX installed and activated in
+  a disposable VS Code 1.140.0 profile; the longer host journey has an existing
+  active-editor assertion failure also reproduced from the unpackaged source.

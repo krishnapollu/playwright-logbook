@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (development)
+## 0.2.21-monorepo.14 (local preview)
 
 - Fetch a recent named GitHub Actions Logbook artifact into local history after review, without entering a workflow ID.
 
