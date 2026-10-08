@@ -52,9 +52,19 @@ window and updates the counts.
 - **Team origin:** Recent Runs and run overviews show colored Local, Peer, or CI pills. Run overviews also show the recorded tester or CI provider/build/attempt when available.
 - **Share runs:** Use **Sync Team Runs** in the Recent Runs toolbar (or on a workspace folder) to pull shared runs into that folder. Use **Push Selected Run** on a Local run to review and publish only that run. Both actions read the shared filesystem store, project ID, tester, and local history path from that workspace's Playwright reporter config. They require a trusted local workspace.
 
-<img src="media/pw-test-context-menu.png" alt="Filter This Test action in a pw-test spec editor context menu" width="1000">
+To enable team sharing, add these options to the Logbook reporter in each teammate's Playwright config:
 
-<img src="media/pw-test-runs.png" alt="Cropped Logbook sidebar showing an expanded pw-test run and recorded cases" width="360">
+```ts
+['playwright-logbook', {
+  projectId: 'my-project',
+  author: 'Alice',
+  store: { type: 'filesystem', root: '../shared-logbook-store' },
+}]
+```
+
+Use the same `projectId` and store path for everyone; set `author` per tester. A shared store is optional for local browsing and ZIP import.
+
+<img src="media/pw-test-context-menu.png" alt="Filter This Test action in a pw-test spec editor context menu" width="1000">
 
 <img src="media/pw-test-overview.png" alt="Current pw-test run overview showing status, duration, result distribution, project breakdown, and case table" width="820">
 
@@ -91,7 +101,7 @@ Analysis requires Workspace Trust. Supported handoffs and evidence limits are de
 
 - Export a portable ZIP using the [bundle guide](https://github.com/krishnapollu/playwright-logbook/blob/main/docs/RUN-BUNDLES.md) (reporter 0.3.0+).
 - Choose **Logbook: Import ZIP to Local History…**, select ZIPs, enter the matching project ID, review the preview, and import.
-- Imported runs join local history. Logbook does not fetch artifacts or check out commits.
+- Imported runs join local history. Import does not publish to a shared store or assign a CI origin pill. Logbook does not fetch artifacts or check out commits.
 
 <img src="media/pw-test-import-review.png" alt="pw-test CI bundle preview with run and artifact counts before import" width="290">
 
@@ -119,6 +129,6 @@ Select the history folder containing `index.jsonl` and `runs/`. History refreshe
 
 Desktop local workspaces are supported; Remote SSH, containers, and browser-based VS Code are not yet validated. Results stay in your project. Review logs and screenshots before sharing them. See [Advanced usage](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/ADVANCED.md) for logger setup, agent handoff details, attachment limits, and privacy notes.
 
-The screenshots and video tour above use recorded results from the `pw-test` demo project. The tour presents saved views; it does not run tests or submit an AI request. Images show only test data and project-relative paths.
+The screenshots use recorded results from the `pw-test` demo project. Images show only test data and project-relative paths.
 
 [Reporter options](https://github.com/krishnapollu/playwright-logbook#reporter-options) · [Report an issue](https://github.com/krishnapollu/playwright-logbook/issues) · [Changelog](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/CHANGELOG.md)

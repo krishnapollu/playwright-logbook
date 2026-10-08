@@ -1,6 +1,6 @@
 # Local team-store demo
 
-For visual review, install `packages/vscode/dist/playwright-logbook-vscode-0.2.21-monorepo.7.vsix`
+For visual review, install the latest local VSIX from `packages/vscode/dist/`
 using VS Code's **Extensions: Install from VSIX…**, then open
 `../pw-test-team-demo/team.code-workspace`. The VSIX is a local development
 build; it is not published to the Marketplace.

@@ -3,6 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { createBundle } from '../src/bundles/archive.js';
+import { ingestBundles } from '../src/bundles/ingest.js';
+import { readTeamOrigin } from '../src/teamstore.js';
 import { prepareImport } from '../packages/vscode/src/bundleimport.js';
 import { run } from './factories.js';
 const roots: string[] = [];
@@ -20,4 +22,12 @@ it('requires trust, supports partial validation and leaves absent targets unchan
   await expect(prepareImport('workspace-a', target, [zip], 'project', true, cancel.signal)).rejects.toThrow();
   await expect(prepareImport('workspace-a', target, [invalid], 'project', true)).rejects.toThrow('invalid.zip');
   await expect(prepareImport('workspace-a', target, [], 'project', true)).rejects.toThrow('Choose');
+});
+
+it('adds a manually imported bundle to local history without assigning a team origin', async () => {
+  const root = await fixture(), zip = path.join(root, 'ci.zip'), target = path.join(root, 'history');
+  await fs.writeFile(zip, await createBundle([run('ci')], 'project'));
+  const prepared = await prepareImport('workspace-a', target, [zip], 'project', true);
+  expect(await ingestBundles(target, prepared.bundles, { projectId: prepared.projectId })).toMatchObject({ added: ['ci'] });
+  expect(await readTeamOrigin(target, 'ci')).toBeNull();
 });

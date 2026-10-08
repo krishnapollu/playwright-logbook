@@ -1230,3 +1230,12 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
   VSIX inspection found the renamed command in the view toolbar. VS Code CLI
   lists `.13`, and its installed command manifest contains the new title.
+
+### README and unit test cleanup
+
+- [x] Clarify local defaults, optional team-store setup, and manual ZIP import
+  behavior in the root and extension READMEs. Remove the obsolete sidebar
+  screenshot and scaffold test, and check that manual import assigns no team
+  origin.
+- Done when output: `npx vitest run test/vscode-bundle-import.test.ts` passed
+  with 2 tests; `npm run check` exited 0 with 46 test files and 230 tests.
