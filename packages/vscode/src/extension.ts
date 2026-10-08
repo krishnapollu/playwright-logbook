@@ -32,6 +32,7 @@ import { publishTeamBundle, pullTeamStore, readTeamOrigin, readTeamViewer, teamO
 import { loadTeamSettings } from '../../../src/teamconfig.js';
 import { exportBundle } from '../../../src/bundles/export.js';
 import { inspectBundleZip } from '../../../src/bundles/archive.js';
+import { downloadGitHubArtifact, listGitHubArtifacts, recordGitHubOrigins } from '../../../src/githubartifacts.js';
 
 interface StoreContext {
   folder: vscode.WorkspaceFolder; reader: HistoryReader; storeRoot: string; sourceRoot: string;
@@ -114,6 +115,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       vscode.commands.registerCommand('logbook.expandAll', () => this.expandAll()),
       vscode.commands.registerCommand('logbook.collapseAll', () => this.collapseAll()),
       vscode.commands.registerCommand('logbook.importBundle', () => this.importBundle()),
+      vscode.commands.registerCommand('logbook.fetchCiRuns', () => this.fetchCiRuns()),
       vscode.commands.registerCommand('logbook.refresh', () => this.setup()),
       vscode.commands.registerCommand('logbook.selectStore', () => this.selectFolder('historyPath')),
       vscode.commands.registerCommand('logbook.configureSource', () => this.selectFolder('sourceRoot')),
@@ -977,6 +979,44 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
         finally { subscription.dispose(); }
       });
     } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'Bundle import failed. Retry the same bundle to repair interrupted writes.'); }
+  }
+  private async fetchCiRuns(): Promise<void> {
+    if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage('Trust this workspace before fetching CI runs.'); return; }
+    const stores = [...this.stores.values()].filter(item => !item.parentFolderKey);
+    let store = stores.length === 1 ? stores[0] : undefined;
+    if (!store) store = (await vscode.window.showQuickPick(stores.map(item => ({ label: item.folder.name, store: item })), { title: 'Fetch CI runs for which workspace?' }))?.store;
+    if (!store) return;
+    const repository = vscode.workspace.getConfiguration('logbook', store.folder.uri).get<string>('ciRepository', '').trim();
+    const artifactName = vscode.workspace.getConfiguration('logbook', store.folder.uri).get<string>('ciArtifactName', 'logbook-run').trim();
+    if (!repository) { await vscode.window.showInformationMessage('Set logbook.ciRepository to the GitHub owner/repo for this workspace.'); return; }
+    try {
+      const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: true });
+      if (!session) return;
+      const source = { repository, artifactName, token: session.accessToken };
+      const artifacts = await listGitHubArtifacts(source);
+      if (!artifacts.length) { await vscode.window.showInformationMessage('No unexpired Logbook CI artifacts found.'); return; }
+      const selected = await vscode.window.showQuickPick(artifacts.map(item => ({ label: `Workflow ${item.workflowRunId}`, description: item.createdAt, detail: `Artifact ${item.id}`, artifact: item })), { title: 'Fetch a Logbook CI run', placeHolder: 'Newest artifact first' });
+      if (!selected) return;
+      const target = store;
+      await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Fetch Logbook CI run', cancellable: true }, async (progress, token) => {
+        const abort = new AbortController(), subscription = token.onCancellationRequested(() => abort.abort());
+        try {
+          const { storeRoot } = await this.rootsForStore(target);
+          const projectId = (await readImportCatalog(storeRoot))?.projectId ?? await vscode.window.showInputBox({ title: 'Bind this history store to a project', prompt: 'Use the project ID in the CI bundle.', validateInput: value => projectIdSchema.safeParse(value).success ? null : 'Enter a valid project ID.' });
+          if (!projectId || abort.signal.aborted) return;
+          progress.report({ message: 'Downloading and validating…' });
+          const bundle = await downloadGitHubArtifact({ ...source, signal: abort.signal }, selected.artifact);
+          const preview = await ingestBundles(storeRoot, [bundle], { projectId, dryRun: true, signal: abort.signal });
+          const confirmed = await vscode.window.showInformationMessage('Import this CI run into local history?', { modal: true, detail: `${target.folder.name}\nProject: ${projectId}\n${preview.added.length} new · ${preview.skipped.length} identical · ${preview.conflicts.length} conflicting · ${preview.invalid.length} invalid\n${preview.missingArtifacts} missing/omitted artifact references` }, 'Import');
+          if (confirmed !== 'Import' || abort.signal.aborted) return;
+          const result = await ingestBundles(storeRoot, [bundle], { projectId, signal: abort.signal });
+          await recordGitHubOrigins(storeRoot, bundle, result);
+          await this.refresh(this.folderKey(target.folder));
+          await vscode.window.showInformationMessage(`CI import: ${result.added.length} added · ${result.skipped.length} identical · ${result.conflicts.length} conflicting · ${result.invalid.length} invalid`);
+        } catch (error) { if (!abort.signal.aborted) await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'CI fetch failed.'); }
+        finally { subscription.dispose(); }
+      });
+    } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'CI fetch failed.'); }
   }
   private async selectFolder(setting: 'historyPath' | 'sourceRoot'): Promise<void> {
     const stores = [...this.stores.values()];

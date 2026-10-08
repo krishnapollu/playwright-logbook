@@ -150,11 +150,12 @@ export async function recordLocalTeamOrigin(localRoot: string, runId: string, vi
   await recordTeamOrigin(localRoot, runId, { type: 'local', author: viewer.author }, viewer);
 }
 
-export async function recordTeamOrigin(localRoot: string, runId: string, value: TeamOrigin, viewer: TeamViewer): Promise<void> {
+export async function recordTeamOrigin(localRoot: string, runId: string, value: TeamOrigin, viewer?: TeamViewer): Promise<void> {
   if (!id.safeParse(runId).success) throw new BundleError('Invalid local run ID.');
+  if (value.type === 'local' && !viewer) throw new BundleError('Local origin requires a configured viewer.');
   const previous = await readTeamOrigin(localRoot, runId);
   if (previous && canonicalJson(previous) !== canonicalJson(value)) throw new BundleError('Existing local origin conflicts with selected run.');
-  await writeTeamViewer(localRoot, viewer);
+  if (viewer) await writeTeamViewer(localRoot, viewer);
   await atomicStoreFile(localRoot, `team-origins/${runId}.json`, canonicalJson(origin.parse(value)));
 }
 

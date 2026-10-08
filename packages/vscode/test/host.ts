@@ -50,6 +50,7 @@ async function journey(): Promise<void> {
   console.log('Host journey: activated');
   await draftPasteJourney();
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.analyze'), 'Analyze Selected Test must be registered in the editor');
+  assert.ok((await vscode.commands.getCommands(true)).includes('logbook.fetchCiRuns'), 'GitHub CI fetch must be registered in the editor');
   const roots = await logbook.getChildren();
   assert.equal(roots.length, 2, 'Multi-root grouping should appear');
   const first = roots.find((item) => item.label === 'first')!, broken = roots.find((item) => item.label === 'second')!;

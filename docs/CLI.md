@@ -13,6 +13,8 @@ Both `logbook` and `playwright-logbook` invoke the same CLI. Run `npx playwright
 | `analyze` | `--run <id|latest>`, `--test <testId>`, `--project <name>`, `--repeat <index>`, `--scope branch|all`, `--max-words <n>`, `--source`, `--format markdown|json` | Prepare a bounded investigation prompt to review and submit to a coding agent; no model call |
 | `export` | `--run <id...>`, `--history <n>`, `--artifacts`, `--out <file>`, `--project-id <key>` | Export recorded runs and optional evidence as a portable ZIP |
 | `import` | `--from <file...>`, `--dry-run`, `--project-id <key>` | Ingest distinct bundled runs into existing history with duplicate/conflict checks |
+| `ci list` | `--repo <owner/repo>`, `--artifact-name <name>` | List up to 100 recent unexpired matching GitHub Actions artifacts |
+| `ci fetch` | `--repo <owner/repo>`, `--artifact-name <name>`, `--project-id <key>` on first import | Fetch the newest matching artifact and import its Logbook ZIP into local history |
 | `store push` | `--run <id...>` required | Send only selected local runs and available artifacts to the configured team store |
 | `store pull` | none | Bring all published team runs and retained artifacts into local history; repeat pulls skip identical runs |
 | `store ingest` | `--from <file...>` required | Publish downloaded CI bundles to the configured team store |
@@ -25,6 +27,14 @@ Open a suite as its own workspace root when using a custom history path.
 `export` and `import` require 0.3.0 or newer. Bundle import is distinct from shard
 merge. See [portable run bundles](RUN-BUNDLES.md) for project binding, validation,
 limits, interrupted import recovery and CI recipes.
+
+`ci list` and `ci fetch` use one exact artifact name (`logbook-run` by default) in
+the specified GitHub repository. Workflow IDs are discovered automatically.
+Set `GH_TOKEN` or `GITHUB_TOKEN` for a private repository; the token needs
+Actions read permission and is not written to history. `ci fetch` validates
+the GitHub artifact's single enclosed `.logbook.zip`, uses the existing import
+project binding and leaves conflicting runs intact. Artifacts expire according
+to the repository's GitHub Actions retention policy.
 
 Team-store commands are an unreleased prototype. They read `outputDir`, `projectId`,
 `author` and `store: { type: 'filesystem', root: '../logbook-store' }` from the

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased (development)
+
+- Fetch a recent named GitHub Actions Logbook artifact into local history after review, without entering a workflow ID.
+
 ## 0.2.21-monorepo.13 (local preview)
 
 - Clarify that importing a ZIP adds runs to local history, while keeping the toolbar action available without a team store.

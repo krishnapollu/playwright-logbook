@@ -1239,3 +1239,17 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   origin.
 - Done when output: `npx vitest run test/vscode-bundle-import.test.ts` passed
   with 2 tests; `npm run check` exited 0 with 46 test files and 230 tests.
+
+### GitHub Actions CI artifact fetch (C2)
+
+- [x] Fetch one recent named GitHub Actions artifact from an explicit repository
+  into local history. List artifacts without requiring workflow IDs; validate
+  the enclosed Logbook ZIP, preview the import, and retain CI origin. The CLI
+  uses an environment token and VS Code uses GitHub sign-in. Filesystem team
+  sharing remains a development prototype.
+- Done when output: `npm run check` passed with 47 test files and 234 tests;
+  the VS Code 1.140.0 host journey using the installed editor exited 0.
+  A pushed `pw-test` workflow uploaded artifact `11567922876`; authenticated
+  fetch, dry-run preview, import and the VS Code history reader opened run
+  `gh-37818414331-1` with 20 tests and CI origin. The workflow's Playwright
+  step failed on the live suite, while export and upload both succeeded.

@@ -90,6 +90,11 @@
         "icon": "$(filter)"
       },
       {
+        "command": "logbook.fetchCiRuns",
+        "title": "Logbook: Fetch CI Run from GitHub Actions…",
+        "icon": "$(cloud-download)"
+      },
+      {
         "command": "logbook.syncTeam",
         "title": "Logbook: Sync Team Runs",
         "icon": "$(sync)"
@@ -143,6 +148,11 @@
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "logbook.fetchCiRuns",
+          "when": "view == logbook.recentRuns && isWorkspaceTrusted",
+          "group": "navigation"
+        },
         {
           "command": "logbook.syncTeam",
           "when": "view == logbook.recentRuns && isWorkspaceTrusted",
@@ -234,6 +244,18 @@
           "maximum": 100,
           "scope": "resource",
           "description": "Initial history page size."
+        },
+        "logbook.ciRepository": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "GitHub owner/repo containing Logbook CI artifacts. Fetch is always explicit."
+        },
+        "logbook.ciArtifactName": {
+          "type": "string",
+          "default": "logbook-run",
+          "scope": "resource",
+          "description": "Exact GitHub Actions artifact name uploaded by CI."
         }
       }
     }

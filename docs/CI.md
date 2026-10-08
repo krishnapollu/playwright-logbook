@@ -52,14 +52,16 @@ jobs:
       - run: npx playwright-logbook export --out ci-run.logbook.zip --project-id my-project
       - uses: actions/upload-artifact@v7
         with:
-          name: logbook-bundle
+          name: logbook-run
           path: ci-run.logbook.zip
           if-no-files-found: error
 ```
 
 The cache is best-effort: a cache miss means no cross-run trend history. Retain or publish `.logbook/runs` and `.logbook/index.jsonl` separately if history is important. Artifact paths can differ after download; `merge --from` discovers shards recursively.
 
-After the merge job, download the **logbook-bundle** artifact from the workflow run's Artifacts section, then extract the downloaded GitHub artifact ZIP. In a trusted VS Code workspace with the Logbook extension, run **Logbook: Import ZIP to Local History…**, select the contained `ci-run.logbook.zip`, choose the intended project store, enter `my-project`, review the run and missing-evidence counts, and confirm. The CI run then appears in ordinary history; matching recorded test IDs can open local source. Repeating the import skips the identical run. A different project ID or conflicting bytes for an existing run ID are rejected without replacing that run. For a command-line download, `gh run download RUN_ID --name logbook-bundle --dir ./downloaded-logbook` extracts `downloaded-logbook/ci-run.logbook.zip` directly. [GitHub CLI download reference](https://cli.github.com/manual/gh_run_download).
+After the merge job, set `logbook.ciRepository` to `OWNER/REPO` in the trusted VS Code workspace and run **Logbook: Fetch CI Run from GitHub Actions…**. The default exact artifact name is `logbook-run`; set `logbook.ciArtifactName` only if your workflow uses another name. Sign in to GitHub, select one of the recent unexpired artifacts, enter `my-project` on first import, review the run and missing-evidence counts, and confirm. The CI run then appears in local history. Repeating the import skips an identical run. A different project ID or conflicting bytes for an existing run ID are rejected without replacement. For CLI use, set `GH_TOKEN` or `GITHUB_TOKEN` in your shell and run `logbook ci list --repo OWNER/REPO` then `logbook ci fetch --repo OWNER/REPO --project-id my-project`; fetch chooses the newest matching artifact. For a private repository, the token needs Actions read access. No token belongs in Logbook settings or Playwright config. GitHub artifacts expire; this is a recent CI feed, not durable team storage.
+
+Manual import remains available: download the `logbook-run` artifact from the workflow run, extract GitHub's outer ZIP, then use **Logbook: Import ZIP to Local History…** on `ci-run.logbook.zip`.
 
 The example exports the merged run without external file attachments because shard uploads contain only `.logbook/shards`. To include referenced traces, videos, screenshots and log files, retain each shard's files and restore them under the same project-relative paths recorded by Playwright *before* export, then add `--artifacts`. Export reports included and missing counts; review them before handing the bundle to another machine. The record and any embedded evidence are included either way. See [run bundles](RUN-BUNDLES.md) for limits and import behavior.
 

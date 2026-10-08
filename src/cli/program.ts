@@ -14,6 +14,7 @@ import { debugCommand } from './commands/debug.js';
 import { analyzeCommand } from './commands/analyze.js';
 import { discoverCommand } from './commands/discover.js';
 import { storeIngestCommand, storePullCommand, storePushCommand } from './commands/store.js';
+import { ciFetchCommand, ciListCommand } from './commands/ci.js';
 
 export interface CliDeps {
   env?: Record<string, string | undefined>;
@@ -54,6 +55,11 @@ export function createProgram(deps: CliDeps = {}): Command {
     .action(async () => done(await storePullCommand(context())));
   store.command('ingest').description('Ingest downloaded CI run bundles into the team store')
     .requiredOption('--from <file...>').action(async (options: { from: string[] }) => done(await storeIngestCommand(context(), options.from)));
+  const ci = program.command('ci').description('Fetch GitHub Actions Logbook artifacts into local history');
+  ci.command('list').requiredOption('--repo <owner/repo>').option('--artifact-name <name>', 'artifact name', 'logbook-run')
+    .action(async (options: { repo: string; artifactName: string }) => done(await ciListCommand(context(), options)));
+  ci.command('fetch').requiredOption('--repo <owner/repo>').option('--artifact-name <name>', 'artifact name', 'logbook-run')
+    .option('--project-id <id>').action(async (options: { repo: string; artifactName: string; projectId?: string }) => done(await ciFetchCommand(context(), options)));
   program.command('merge').description('Merge shard files into a run')
     .option('--run-id <id>').option('--from <dir...>').option('--force')
     .option('--no-report').option('--no-history').option('--no-timestamp')

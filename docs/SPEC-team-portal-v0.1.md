@@ -1,6 +1,6 @@
 # Playwright Logbook: multi-suite workspaces and shared run history
 
-Status: revised plan, 2026-10-07. Section 9 records the agreed team-store prototype; none of its new commands or store behavior is implemented yet. This document replaces the earlier team-portal draft. Implement one task card at a time and record results in `docs/PROGRESS.md`.
+Status: revised plan, 2026-10-08. The filesystem team-store prototype is implemented on the development branch. GitHub Actions artifact fetch is under development as a narrower CI history feed. This document replaces the earlier team-portal draft. Implement one task card at a time and record results in `docs/PROGRESS.md`.
 
 ## 1. Product goal and current baseline
 
@@ -79,9 +79,9 @@ Unify CLI/editor default-store discovery, keep configured workspace roots intact
 
 Give one working GitHub Actions example from completed run to bundle download/import in the IDE. Test project mismatch, conflicts, missing artifacts, and repeat import using existing bundle coverage. Done when the recipe is exercised and the full check passes.
 
-### C2 — optional one-provider CI fetch
+### C2 — GitHub Actions CI artifact fetch
 
-Choose the provider and its authentication model in `docs/DECISIONS.md`. Reuse bundle validation and ingestion. Test cancellation, limits, API error, wrong project, duplicate, conflict, and no local mutation before confirmation. Done when a real CI artifact can be fetched and opened locally and the full check passes.
+Use the explicit `owner/repo` and exact artifact name to list recent unexpired GitHub Actions artifacts; users choose a run by date/workflow, without typing a build ID. The CLI uses `GH_TOKEN`/`GITHUB_TOKEN`; the trusted VS Code command uses GitHub sign-in. Use the existing project binding, bundle validation, dry-run review, and ingestion. Test cancellation, limits, API error, wrong project, duplicate, conflict, and no local mutation before confirmation. Done when a real CI artifact can be fetched and opened locally and the full check passes. This feed does not provide local-run Push or permanent retention.
 
 ### S1a — run identity prerequisite
 
