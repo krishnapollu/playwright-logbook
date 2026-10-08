@@ -1220,3 +1220,13 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   inline-field, scoped-query, and existing host assertions. A Chromium check
   verified input events and scope display. VS Code CLI lists `.12`; installed
   CSS, script, and runtime hashes match the tested build.
+
+### Local ZIP import label
+
+- [x] Keep the extension import action visible for users without a shared team
+  store, and label it “Import ZIP to Local History” in the toolbar, welcome
+  action, and documentation. Package and install local preview
+  `0.2.21-monorepo.13`.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  VSIX inspection found the renamed command in the view toolbar. VS Code CLI
+  lists `.13`, and its installed command manifest contains the new title.

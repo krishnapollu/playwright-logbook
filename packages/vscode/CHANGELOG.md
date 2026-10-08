@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.21-monorepo.13 (local preview)
+
+- Clarify that importing a ZIP adds runs to local history, while keeping the toolbar action available without a team store.
+
 ## 0.2.21-monorepo.12 (local preview)
 
 - Put the live run and test filter in the Recent Runs sidebar and remove its toolbar button.

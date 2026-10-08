@@ -90,7 +90,7 @@ Analysis requires Workspace Trust. Supported handoffs and evidence limits are de
 ## Bring CI runs into local history
 
 - Export a portable ZIP using the [bundle guide](https://github.com/krishnapollu/playwright-logbook/blob/main/docs/RUN-BUNDLES.md) (reporter 0.3.0+).
-- Choose **Logbook: Import Run Bundle…**, select ZIPs, enter the matching project ID, review the preview, and import.
+- Choose **Logbook: Import ZIP to Local History…**, select ZIPs, enter the matching project ID, review the preview, and import.
 - Imported runs join local history. Logbook does not fetch artifacts or check out commits.
 
 <img src="media/pw-test-import-review.png" alt="pw-test CI bundle preview with run and artifact counts before import" width="290">
