@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.21-monorepo.9 (local preview)
+
+- Indent nested Recent Runs entries and reduce origin pill size.
+- Show a two-arrow Sync action and distinct run overview and skipped icons.
+
 ## 0.2.21-monorepo.8 (local preview)
 
 - Replace the native Recent Runs tree with a sidebar that shows equal-width Local, Peer and CI pills alongside aligned run names.

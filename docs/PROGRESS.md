@@ -1177,3 +1177,12 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
   `npm run test:vscode -- --vscode-version 1.140.0` exited 0 with sidebar
   markup and icon assertions and the full host journey passing.
+
+### Installed Recent Runs preview
+
+- [x] Package and install `0.2.21-monorepo.9` so the sidebar spacing and icon
+  changes reach the regular VS Code profile.
+- Done when output: `npm run test:vscode -- --vsix --vscode-version 1.140.0`
+  exited 0; VS Code CLI reported successful installation and lists
+  `krishnapollu.playwright-logbook-vscode@0.2.21-monorepo.9`. Installed sidebar
+  CSS and runtime hashes match the packaged source.
