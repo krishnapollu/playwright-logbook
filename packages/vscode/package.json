@@ -84,6 +84,10 @@
         "title": "Logbook: Analyze Selected Test"
       },
       {
+        "command": "logbook.exportTestHtml",
+        "title": "Logbook: Export Test HTML Package…"
+      },
+      {
         "command": "logbook.importBundle",
         "title": "Logbook: Import ZIP to Local History\u2026",
         "icon": "$(cloud-download)"
@@ -146,6 +150,13 @@
       }
     ],
     "menus": {
+      "view/item/context": [
+        {
+          "command": "logbook.exportTestHtml",
+          "when": "view == logbook.tests && viewItem == logbook.test",
+          "group": "inline"
+        }
+      ],
       "view/title": [
         {
           "command": "logbook.chooseImport",

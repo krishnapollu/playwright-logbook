@@ -60,6 +60,8 @@ async function journey(): Promise<void> {
   const indexedReceipt = testEntries.find(item => item.kind === 'test' && item.label === 'renders receipt @critical');
   assert.ok(indexedReceipt, 'Tests view indexes a recorded test across runs');
   assert.equal(indexedReceipt.runId, 'current', 'Tests view opens the newest recorded execution');
+  assert.equal(logbook.getTreeItem(indexedReceipt).contextValue, 'logbook.test', 'Tests view exposes HTML export on the selected test');
+  assert.ok((await vscode.commands.getCommands(true)).includes('logbook.exportTestHtml'), 'Test HTML export command is registered');
   assert.ok(testEntries.some(item => item.kind === 'message' && item.label.includes('3 loaded runs')), 'Tests view states its history coverage');
   const first = roots.find((item) => item.label === 'first')!, broken = roots.find((item) => item.label === 'second')!;
   assert.ok(first); assert.ok(broken);

@@ -1331,6 +1331,11 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   Done when output: `npm run check` passed with 49 test files and 236 tests;
   `npm run test:e2e` passed 8 browser tests, including dated history and
   selected-execution comparison. The report remains offline at 360/768/1440 widths.
-- [ ] H3 Run and test HTML export.
+- [x] H3 Run and test HTML export.
+  Done when output: `npm run check` passed with 50 test files and 239 tests;
+  `npm run test:e2e` passed 9 browser tests; the installed VS Code host journey
+  exited 0. A development VSIX packaged to `/private/tmp/playwright-logbook-vscode-export-dev.vsix`.
+  ZIP tests cover selected runs/tests, retained and missing files, and imported
+  artifact mappings without checkout fallback.
 - [ ] H4 Release preparation and pushed feature branch.
 

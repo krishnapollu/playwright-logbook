@@ -32,6 +32,8 @@ import { AnalysisSession, analysisAction, analysisPrompt, agentKey, renderAnalys
 import { ideAnalysisBackend } from './ideanalysis.js';
 import { readTeamOrigin, readTeamViewer } from '../../../src/teamstore.js';
 import { downloadGitHubArtifact, listGitHubArtifacts, recordGitHubOrigins } from '../../../src/githubartifacts.js';
+import { exportHtml } from '../../../src/htmlexport.js';
+import { writeExport } from '../../../src/bundles/export.js';
 
 interface StoreContext {
   folder: vscode.WorkspaceFolder; reader: HistoryReader; storeRoot: string; sourceRoot: string;
@@ -105,6 +107,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       vscode.commands.registerCommand('logbook.viewComparedSource', (side: unknown) => this.handleComparison({ type: side === 'baseline' ? 'baselineSource' : side === 'selected' ? 'selectedSource' : 'invalid' })),
       vscode.commands.registerCommand('logbook.diffComparedSource', () => this.handleComparison({ type: 'diff' })),
       vscode.commands.registerCommand('logbook.runOverview', (id: unknown) => this.runOverview(id)),
+      vscode.commands.registerCommand('logbook.exportTestHtml', (id: unknown) => this.exportTest(id)),
       vscode.commands.registerCommand('logbook.filterTests', () => this.showTestFilter()),
       vscode.commands.registerCommand('logbook.filterSpecFile', (uri: unknown) => this.filterSpecFile(uri, false)),
       vscode.commands.registerCommand('logbook.filterCurrentTest', (uri: unknown) => this.filterSpecFile(uri, true)),
@@ -372,6 +375,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     const item = new vscode.TreeItem(node.label, collapsible ? (isExpanded ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed) : vscode.TreeItemCollapsibleState.None);
     item.id = node.id; item.description = node.description; item.tooltip = `${node.label}${node.runId ? `\nRun: ${node.runId}` : ''}${node.originBadge ? `\nOrigin: ${node.originBadge}` : ''}${node.description ? `\n${node.description}` : ''}`;
     if (node.kind === 'folder' || node.kind === 'package') item.contextValue = 'logbook.workspaceFolder';
+    if (node.kind === 'test') item.contextValue = 'logbook.test';
     item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'package' ? 'package' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
     if (node.kind === 'result' || node.kind === 'test' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
     if (node.kind === 'overview') item.command = { command: 'logbook.runOverview', title: 'View recorded run overview', arguments: [node.id] };
@@ -503,6 +507,31 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       return nodes;
     } catch (error) { return signal.aborted ? [] : [this.message(node.folderKey, diagnosticMessage(error), 'test-index-error')]; }
   }
+  private async exportTest(id?: unknown): Promise<void> {
+    const node = typeof id === 'string' ? this.nodes.get(id) : undefined;
+    const selected = node?.kind === 'test' ? { folderKey: node.folderKey, runId: node.runId, resultKey: node.resultKey } : this.selection;
+    if (!selected?.runId || !selected.resultKey) return;
+    const store = this.stores.get(selected.folderKey);
+    if (!store) return;
+    try {
+      const run = await store.reader.getRun(selected.runId);
+      const result = run.tests.find(test => executionIdentity(run.runId, test) === selected.resultKey);
+      if (!result || result.repeatEachIndex === null) throw new Error('Selected test identity is unavailable.');
+      await this.saveHtmlPackage(store, run.runId, { testId: result.testId, project: result.project, repeatEachIndex: result.repeatEachIndex });
+    } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'Test export failed.'); }
+  }
+  private async saveHtmlPackage(store: StoreContext, runId: string, test?: { testId: string; project: string; repeatEachIndex: number }): Promise<void> {
+    try {
+      const suffix = test ? `-test-${createHash('sha256').update(JSON.stringify(test)).digest('hex').slice(0, 8)}` : '';
+      const destination = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.join(store.folder.uri.fsPath, `${runId}${suffix}-html.zip`)),
+        filters: { 'Portable HTML package': ['zip'] }, saveLabel: 'Export HTML package' });
+      if (!destination) return;
+      const roots = await this.rootsForStore(store);
+      const result = await exportHtml(roots.sourceRoot, roots.storeRoot, runId, test);
+      await writeExport(destination.fsPath, result.bytes);
+      await vscode.window.showInformationMessage(`HTML package saved. Open index.html after extracting the ZIP. ${result.includedArtifacts} retained, ${result.missingArtifacts} unavailable attachments.`);
+    } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'HTML export failed.'); }
+  }
   private async runOverview(id: unknown): Promise<void> {
     const node = typeof id === 'string' ? this.nodes.get(id) : undefined;
     const store = node ? this.stores.get(node.folderKey) : undefined;
@@ -516,6 +545,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       panel.webview.html = renderRunOverview(run, { css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(), script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource }, origin);
       const listener = panel.webview.onDidReceiveMessage((message: unknown) => {
         const action = overviewAction(message, run.tests.map(test => executionIdentity(run.runId, test)));
+        if (action?.type === 'exportRun') { void this.saveHtmlPackage(store, run.runId); return; }
         if (action?.type === 'openResult') {
           const test = run.tests.find(test => executionIdentity(run.runId, test) === action.key);
           if (!test) return;
@@ -699,6 +729,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     }
     const action = panelAction(message, this.history.items.map((entry) => entry.key)); const selected = this.selection;
     if (!action || !selected) return;
+    if (action.type === 'exportTest') { await this.exportTest(); return; }
     if (action.type === 'compare') { await this.compare(action.key!); return; }
     if (action.type === 'openSource' || action.type === 'openFailure') { await this.openSource(action.type === 'openFailure'); return; }
     if (action.type === 'configureSource') { await this.selectFolder('sourceRoot'); return; }

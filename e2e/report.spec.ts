@@ -7,6 +7,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { buildReportModel } from '../src/model.js';
 import { buildDebugPacket, debugPacketMarkdown } from '../src/debugpacket.js';
 import { renderReport } from '../src/render.js';
+import { renderTestReport } from '../src/testrender.js';
 import { run, testRecord } from '../test/factories.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -90,6 +91,26 @@ test('test detail compares the selected result with a dated earlier execution', 
     await expect(page.locator('.test-comparison')).toContainText('failed');
     await expect(page.locator('.test-comparison')).toContainText('passed');
     await expect(page.locator('.test-comparison')).toContainText('Duration');
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
+test('focused test HTML opens offline with history and selected evidence', async ({ page }) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-test-export-browser-'));
+  const network: string[] = [];
+  page.on('request', request => { if (!request.url().startsWith('file:')) network.push(request.url()); });
+  try {
+    const current = run('selected', '2026-01-03T00:00:00.000Z');
+    current.tests = [testRecord('focused')];
+    const previous = run('earlier', '2026-01-02T00:00:00.000Z');
+    previous.tests = [testRecord('focused', 'unexpected')];
+    const model = buildReportModel({ run: current, summaries: [], recentRuns: [previous] });
+    const file = path.join(directory, 'index.html');
+    await fs.writeFile(file, renderTestReport(model, model.run.tests[0]!, {}));
+    await page.goto(pathToFileURL(file).href);
+    await expect(page.getByRole('heading', { name: 'focused' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Compared with earlier' })).toBeVisible();
+    await expect(page.locator('table')).toContainText('2026-01-02');
+    expect(network).toEqual([]);
   } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });
 

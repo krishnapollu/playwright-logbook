@@ -6,7 +6,7 @@ Status: implementation plan. The existing run record remains schema v1. This wor
 
 - Keep the extension's Recent Runs tree. Add a Tests view indexed by project, canonical test ID, and repeat index. Each entry shows the newest recorded execution and opens its existing detail, history, and pinned comparison. Compare two executions of that test, not two whole runs. Unknown, missing, and incomplete records never count as passes.
 - Keep the report's run overview and run-wide comparison near the top. Give a selected test a full-width detail view with current attempts and evidence, dated execution history, and an explicit baseline selection for comparison. Avoid putting a side-by-side comparison inside the narrow detail drawer.
-- Export a selected run with the same HTML renderer used by the reporter and CLI. Export one test as a standalone HTML snapshot of the selected execution, its recorded history, and an optional pinned comparison. Exports must work outside VS Code and label missing evidence. File attachments need portable companion files; an HTML file alone must not offer broken links.
+- Export a selected run with the same HTML renderer used by the reporter and CLI. Export one test as a standalone HTML snapshot of the selected execution, its recorded history, and the newest available baseline. Exports are ZIPs containing `index.html` and retained artifact files; they work outside VS Code and label missing evidence.
 - History and comparisons are snapshots of available records at export time. Regeneration is not byte-identical to an earlier report if the history or artifacts changed.
 
 ## Task cards
