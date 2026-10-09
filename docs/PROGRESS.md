@@ -1337,5 +1337,14 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   exited 0. A development VSIX packaged to `/private/tmp/playwright-logbook-vscode-export-dev.vsix`.
   ZIP tests cover selected runs/tests, retained and missing files, and imported
   artifact mappings without checkout fallback.
-- [ ] H4 Release preparation and pushed feature branch.
+- [x] H4 Release preparation.
+  Done when output: `npm run check` passed with 50 test files and 239 tests;
+  `npm run test:e2e` passed 9 browser tests; `npm run test:release` passed
+  clean-consumer collection/export/import; `npm run test:release:views` passed
+  four themes at 360/768/1440. The production 0.2.22 VSIX installed and its
+  VS Code host journey exited 0. Tarball 0.3.3 and VSIX contents/versions were
+  inspected, packaged runtime matched the checked build, and
+  `npm run release:publish -- --verify` passed without publishing. SHA-256:
+  reporter `9e0f503bdb9231db9166a13341b717f3871382738bc612f6267db36d84b22b36`,
+  VSIX `11fb25b97945d60a62e0eb8acd1bff055e034061015198f75840bf5b8909ba88`.
 

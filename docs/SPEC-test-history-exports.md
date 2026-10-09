@@ -29,6 +29,6 @@ Add extension actions for selected run and test. Reuse the report renderer for r
 
 ### H4 — Release preparation
 
-Update user docs and changelogs, bump versions only for packages changed, inspect production tarball/VSIX, and report the npm version required. Do not publish. Done when the release checks pass and the feature branch is pushed.
+Update user docs and changelogs, bump versions only for packages changed, inspect production tarball/VSIX, and report the npm version required. Do not publish. Done when the release checks and artifact verification pass. Push the checked branch after committing.
 
 One task per commit. `npm run check` runs before every commit. Keep `test/integration/golden.test.ts` unchanged.

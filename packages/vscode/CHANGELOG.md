@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.22
+
+- Add a Tests view that indexes the latest loaded execution for each project, test, and repeat identity.
+- Export a selected run or test as a portable HTML ZIP with retained attachments and explicit missing-file labels.
+
 ## 0.2.21
 
 - Replace Recent Runs with a compact sidebar showing aligned status icons, Local and CI pills, inline run/test filtering, run counts, and Expand All / Collapse All.
