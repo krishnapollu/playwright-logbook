@@ -1317,3 +1317,14 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   VS Code 1.95.3 and 1.140.0. `npm run release:publish -- --verify` verified
   both artifact hashes and reported no publication attempted. Public `store`
   CLI commands and VSIX Sync/Push contributions are absent.
+
+### Test history and HTML exports
+
+- [x] H0 Scope and plan — see `docs/SPEC-test-history-exports.md`.
+  Done when output: `npm run check` passed with 48 test files and 234 tests
+  when Playwright Chromium was permitted to launch.
+- [ ] H1 Extension Tests view — see `docs/SPEC-test-history-exports.md`.
+- [ ] H2 Report test history and comparison.
+- [ ] H3 Run and test HTML export.
+- [ ] H4 Release preparation and pushed feature branch.
+
