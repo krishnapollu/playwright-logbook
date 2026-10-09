@@ -1,13 +1,9 @@
 # Changelog
 
-## 0.2.21-monorepo.4 (local preview)
+## 0.2.21
 
-- Group default Logbook stores in direct child suites and `packages/*` under the workspace.
-- Rescan suites on refresh and store creation or removal; retain root history messages and pagination.
-- Always show the workspace root folder, including a single-suite workspace.
-- Route spec and test filters to the nearest package source root in a monorepo.
-- Show saved run counts on package folders and totals on workspace folders.
-- Hide the parent missing-history hint when child suites have history; show filtered `shown` counts.
+- Replace Recent Runs with a compact sidebar showing aligned status icons, Local and CI pills, inline run/test filtering, run counts, and Expand All / Collapse All.
+- Use one Import action for local ZIPs or recent GitHub Actions artifacts. Fetch validates and reviews the bundle, adds it to local history with CI origin, and ends progress when complete.
 
 ## 0.2.20
 

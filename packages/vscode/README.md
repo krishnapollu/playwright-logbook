@@ -45,16 +45,15 @@ window and updates the counts.
 
 ## Explore runs
 
-- **One live filter:** Search run ID, date, title, status, branch, commit, test name, ID, project, or path. **Search older runs** extends the loaded window; **Clear** resets it.
+- **One live filter:** Use the field above Recent Runs to search run ID, date, title, status, branch, commit, test name, ID, project, or path. **Search older runs** extends the loaded window; **Clear** resets it.
 - **Spec shortcut:** Right-click a `.spec.*` or `.test.*` file in Explorer to filter to that file. Right-click inside a test in the editor to filter to that test.
-- **Expand All:** Open visible runs and their recorded-error groups; VS Code's Collapse All closes them.
+- **Expand All / Collapse All:** Open or close visible folders and runs in Recent Runs.
 - **Run overview:** Select a run's overview to see counts, project breakdown, and clickable cases. Run overviews and results open as ordinary tabs in the active editor group.
+- **Run origin:** Recent Runs and run overviews show Local for runs outside the import catalog, CI for fetched GitHub runs, and Peer for runs from another configured tester. Imported ZIPs without recorded origin remain unmarked. Run overviews show the recorded tester or CI provider/build/attempt when available.
 
-<img src="media/pw-test-live-filter.png" alt="Live filter for pw-test runs and tests" width="880">
+<img src="media/pw-test-runs.png" alt="Recent Runs sidebar for pw-test with Local and CI runs and an expanded CI run" width="565">
 
 <img src="media/pw-test-context-menu.png" alt="Filter This Test action in a pw-test spec editor context menu" width="1000">
-
-<img src="media/pw-test-runs.png" alt="Cropped Logbook sidebar showing an expanded pw-test run and recorded cases" width="360">
 
 <img src="media/pw-test-overview.png" alt="Current pw-test run overview showing status, duration, result distribution, project breakdown, and case table" width="820">
 
@@ -89,9 +88,14 @@ Analysis requires Workspace Trust. Supported handoffs and evidence limits are de
 
 ## Bring CI runs into local history
 
+- For GitHub Actions, set `logbook.ciRepository` to `OWNER/REPO` in the workspace.
+  The artifact name defaults to `logbook-run`; change `logbook.ciArtifactName`
+  only if your workflow uses another name. Choose **Import Runs…** in Recent Runs,
+  then **GitHub Actions**; sign in, select a recent artifact and review the import.
+  No workflow ID or token in settings is needed. GitHub artifacts expire.
 - Export a portable ZIP using the [bundle guide](https://github.com/krishnapollu/playwright-logbook/blob/main/docs/RUN-BUNDLES.md) (reporter 0.3.0+).
-- Choose **Logbook: Import Run Bundle…**, select ZIPs, enter the matching project ID, review the preview, and import.
-- Imported runs join local history. Logbook does not fetch artifacts or check out commits.
+- Choose **Import Runs…** in Recent Runs, then **Local ZIP**; select ZIPs, enter the matching project ID, review the preview, and import.
+- Fetched GitHub runs join local history with a CI origin pill. Manual ZIP imports also join local history; a ZIP without recorded origin stays unmarked. Logbook does not check out commits.
 
 <img src="media/pw-test-import-review.png" alt="pw-test CI bundle preview with run and artifact counts before import" width="290">
 
@@ -119,6 +123,6 @@ Select the history folder containing `index.jsonl` and `runs/`. History refreshe
 
 Desktop local workspaces are supported; Remote SSH, containers, and browser-based VS Code are not yet validated. Results stay in your project. Review logs and screenshots before sharing them. See [Advanced usage](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/ADVANCED.md) for logger setup, agent handoff details, attachment limits, and privacy notes.
 
-The screenshots and video tour above use recorded results from the `pw-test` demo project. The tour presents saved views; it does not run tests or submit an AI request. Images show only test data and project-relative paths.
+The screenshots use recorded results from the `pw-test` demo project. Images show only test data and project-relative paths.
 
 [Reporter options](https://github.com/krishnapollu/playwright-logbook#reporter-options) · [Report an issue](https://github.com/krishnapollu/playwright-logbook/issues) · [Changelog](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/CHANGELOG.md)

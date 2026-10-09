@@ -2,7 +2,7 @@
   "name": "playwright-logbook-vscode",
   "displayName": "Playwright Logbook",
   "description": "Browse Playwright runs, investigate failures and retries, compare test history, and import CI results.",
-  "version": "0.2.21-monorepo.4",
+  "version": "0.2.21",
   "publisher": "krishnapollu",
   "private": true,
   "license": "MIT",
@@ -62,14 +62,15 @@
       "logbook": [
         {
           "id": "logbook.recentRuns",
-          "name": "Recent Runs"
+          "name": "Recent Runs",
+          "type": "webview"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "logbook.recentRuns",
-        "contents": "Open a local workspace folder to inspect Logbook history or import a CI run bundle. The reporter records local runs; Import Run Bundle adds exported CI runs to that same history.\n[Import Run Bundle\u2026](command:logbook.importBundle)",
+        "contents": "Open a local workspace folder to inspect Logbook history or import a CI run bundle. The reporter records local runs; importing a ZIP adds exported runs to that workspace's local history.\n[Import ZIP to Local History\u2026](command:logbook.importBundle)",
         "when": "!workspaceFolderCount"
       }
     ],
@@ -80,13 +81,23 @@
       },
       {
         "command": "logbook.importBundle",
-        "title": "Logbook: Import Run Bundle\u2026",
+        "title": "Logbook: Import ZIP to Local History\u2026",
         "icon": "$(cloud-download)"
       },
       {
         "command": "logbook.filterTests",
         "title": "Logbook: Filter Runs and Tests",
         "icon": "$(filter)"
+      },
+      {
+        "command": "logbook.fetchCiRuns",
+        "title": "Logbook: Fetch CI Run from GitHub Actions…",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "logbook.chooseImport",
+        "title": "Logbook: Import Runs…",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "logbook.filterSpecFile",
@@ -100,6 +111,11 @@
         "command": "logbook.expandAll",
         "title": "Logbook: Expand All",
         "icon": "$(expand-all)"
+      },
+      {
+        "command": "logbook.collapseAll",
+        "title": "Logbook: Collapse All",
+        "icon": "$(collapse-all)"
       },
       {
         "command": "logbook.clearTestFilter",
@@ -128,17 +144,17 @@
     "menus": {
       "view/title": [
         {
-          "command": "logbook.importBundle",
+          "command": "logbook.chooseImport",
           "when": "view == logbook.recentRuns && isWorkspaceTrusted",
           "group": "navigation"
         },
         {
-          "command": "logbook.filterTests",
+          "command": "logbook.expandAll",
           "when": "view == logbook.recentRuns",
           "group": "navigation"
         },
         {
-          "command": "logbook.expandAll",
+          "command": "logbook.collapseAll",
           "when": "view == logbook.recentRuns",
           "group": "navigation"
         },
@@ -201,6 +217,18 @@
           "maximum": 100,
           "scope": "resource",
           "description": "Initial history page size."
+        },
+        "logbook.ciRepository": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "GitHub owner/repo containing Logbook CI artifacts. Fetch is always explicit."
+        },
+        "logbook.ciArtifactName": {
+          "type": "string",
+          "default": "logbook-run",
+          "scope": "resource",
+          "description": "Exact GitHub Actions artifact name uploaded by CI."
         }
       }
     }

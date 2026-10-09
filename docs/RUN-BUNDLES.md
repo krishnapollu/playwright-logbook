@@ -84,26 +84,11 @@ This is a filesystem workflow for a local machine or server, not a hosted servic
 
 ## CI recipe
 
-After Playwright finishes and, for sharded jobs, after Logbook shard merge:
-
-```yaml
-- name: Export Logbook run
-  if: always()
-  run: npx playwright-logbook export --out ci-run.logbook.zip --artifacts --project-id my-project
-- name: Upload Logbook bundle
-  if: always()
-  uses: actions/upload-artifact@v4
-  with:
-    name: logbook-run
-    path: ci-run.logbook.zip
-    if-no-files-found: warn
-```
-
-Install a Logbook version containing bundle support before these steps. Download
-the uploaded ZIP and import it into your usual local store. If no run was saved,
-export fails clearly instead of creating an empty bundle. Do not let an export
-failure replace your workflow's test-result handling. Preserve test output folders
-until export finishes; a later cleanup cannot be reversed by Logbook.
+See the [GitHub Actions shard, merge, bundle upload, and IDE import walkthrough](CI.md#github-actions).
+Install a Logbook version containing bundle support before the workflow runs.
+If no run was saved, export fails clearly instead of creating an empty bundle.
+Preserve test output folders until export finishes if you use `--artifacts`;
+a later cleanup cannot be reversed by Logbook.
 
 Limits: 100 MiB ZIP, 500 MiB expanded data, 1000 runs, 10000 entries, 32 MiB per run,
 50 MiB per attachment and 100:1 inflation ratio. Limits fail explicitly without

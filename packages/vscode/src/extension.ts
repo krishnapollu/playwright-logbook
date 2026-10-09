@@ -25,9 +25,12 @@ import { comparisonRef, comparisonSide, matchingPair, renderComparison } from '.
 import type { ExecutionRef, ComparisonSide } from './comparison.js';
 import { readHistoricalSource, GitSourceError } from './gitsource.js';
 import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQualifier } from './presentation.js';
+import { runOriginText } from './runorigin.js';
 import type { HistoricalSource } from './gitsource.js';
 import { AnalysisSession, analysisAction, analysisPrompt, agentKey, renderAnalysis } from './analysis.js';
 import { ideAnalysisBackend } from './ideanalysis.js';
+import { readTeamOrigin, readTeamViewer } from '../../../src/teamstore.js';
+import { downloadGitHubArtifact, listGitHubArtifacts, recordGitHubOrigins } from '../../../src/githubartifacts.js';
 
 interface StoreContext {
   folder: vscode.WorkspaceFolder; reader: HistoryReader; storeRoot: string; sourceRoot: string;
@@ -36,7 +39,7 @@ interface StoreContext {
 }
 interface TreeNode {
   id: string; kind: 'folder' | 'package' | 'run' | 'result' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
-  folderKey: string; label: string; description?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string };
+  folderKey: string; label: string; description?: string; sidebarDescription?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string }; originBadge?: string;
 }
 interface Selection {
   folderKey: string; runId: string; resultKey: string | null; errorIndex: number | null; errorKey: string | null;
@@ -57,12 +60,14 @@ async function collectPages<T>(load: (offset: number, limit: number) => Promise<
   }
 }
 
-class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
+class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewProvider, vscode.Disposable {
   private readonly changed = new vscode.EventEmitter<TreeNode | undefined>();
   readonly onDidChangeTreeData = this.changed.event;
   private stores = new Map<string, StoreContext>();
   private readonly nodes = new Map<string, TreeNode>();
-  private treeView: vscode.TreeView<TreeNode> | undefined;
+  private sidebar: vscode.WebviewView | undefined;
+  private sidebarGeneration = 0;
+  private focusFilterOnRender = false;
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private comparisonPanel: vscode.WebviewPanel | undefined;
@@ -72,7 +77,6 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   private testFilter: TestTreeFilter = emptyTestFilter();
   private expandedIds = new Set<string>();
   private collapsedIds = new Set<string>();
-  private filterInput: vscode.InputBox | undefined;
   private history: Page<RecordedExecution> = { items: [], nextOffset: null, diagnostics: [] };
   private generation = 0;
   private setupGeneration = 0;
@@ -94,6 +98,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
 
   constructor(private readonly extension: vscode.ExtensionContext) {
     this.disposables.push(
+      this.changed.event(() => { void this.renderSidebar(); }),
       vscode.workspace.registerTextDocumentContentProvider('logbook-history', { provideTextDocumentContent: (uri) => this.historicalDocuments.get(uri.toString()) ?? 'Historical source is no longer available.' }),
       vscode.workspace.onDidCloseTextDocument((document) => { if (document.uri.scheme === 'logbook-history') this.historicalDocuments.delete(document.uri.toString()); }),
       vscode.commands.registerCommand('logbook.viewComparedSource', (side: unknown) => this.handleComparison({ type: side === 'baseline' ? 'baselineSource' : side === 'selected' ? 'selectedSource' : 'invalid' })),
@@ -102,9 +107,16 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       vscode.commands.registerCommand('logbook.filterTests', () => this.showTestFilter()),
       vscode.commands.registerCommand('logbook.filterSpecFile', (uri: unknown) => this.filterSpecFile(uri, false)),
       vscode.commands.registerCommand('logbook.filterCurrentTest', (uri: unknown) => this.filterSpecFile(uri, true)),
-      vscode.commands.registerCommand('logbook.clearTestFilter', () => { this.filterInput?.hide(); this.setTestFilter(emptyTestFilter()); }),
+      vscode.commands.registerCommand('logbook.clearTestFilter', () => this.setTestFilter(emptyTestFilter())),
       vscode.commands.registerCommand('logbook.expandAll', () => this.expandAll()),
+      vscode.commands.registerCommand('logbook.collapseAll', () => this.collapseAll()),
       vscode.commands.registerCommand('logbook.importBundle', () => this.importBundle()),
+      vscode.commands.registerCommand('logbook.fetchCiRuns', () => this.fetchCiRuns()),
+      vscode.commands.registerCommand('logbook.chooseImport', async () => {
+        const source = await vscode.window.showQuickPick(['Local ZIP', 'GitHub Actions'], { title: 'Import to Local History' });
+        if (source === 'Local ZIP') await this.importBundle();
+        else if (source === 'GitHub Actions') await this.fetchCiRuns();
+      }),
       vscode.commands.registerCommand('logbook.refresh', () => this.setup()),
       vscode.commands.registerCommand('logbook.selectStore', () => this.selectFolder('historyPath')),
       vscode.commands.registerCommand('logbook.configureSource', () => this.selectFolder('sourceRoot')),
@@ -136,12 +148,63 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     for (const timer of this.timers.values()) clearTimeout(timer);
     for (const store of this.stores.values()) store.watchers.forEach((watcher) => watcher.dispose());
     this.historicalDocuments.clear(); this.disposables.forEach((item) => item.dispose()); this.panel?.dispose(); this.comparisonPanel?.dispose(); this.changed.dispose();
-    this.filterInput?.dispose();
     this.collapsedIds.clear();
   }
   private folderKey(folder: vscode.WorkspaceFolder): string { return folder.uri.toString(); }
   private register(node: TreeNode): TreeNode { this.nodes.set(node.id, node); return node; }
-  attachTreeView(view: vscode.TreeView<TreeNode>): void { this.treeView = view; }
+  resolveWebviewView(view: vscode.WebviewView): void {
+    this.sidebar = view;
+    const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
+    view.webview.options = { enableScripts: true, localResourceRoots: [media] };
+    const css = view.webview.asWebviewUri(vscode.Uri.joinPath(media, 'sidebar.css'));
+    const script = view.webview.asWebviewUri(vscode.Uri.joinPath(media, 'sidebar.js'));
+    this.disposables.push(view.webview.onDidReceiveMessage((message: unknown) => { void this.sidebarAction(message); }));
+    view.webview.html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${view.webview.cspSource}; script-src ${view.webview.cspSource}"><link rel="stylesheet" href="${css}"></head><body><div id="filter-bar"><input id="filter" type="search" maxlength="256" placeholder="Filter runs and tests" aria-label="Filter runs and tests"><small id="filter-scope" hidden></small></div><div id="runs" role="tree" aria-label="Recent Runs"></div><script src="${script}"></script></body></html>`;
+  }
+  private async sidebarAction(message: unknown): Promise<void> {
+    if (!message || typeof message !== 'object' || !('type' in message)) return;
+    if (message.type === 'ready') { await this.renderSidebar(); return; }
+    if (message.type === 'filter' && 'query' in message && typeof message.query === 'string') {
+      this.setTestFilter({ ...this.testFilter, query: message.query.slice(0, 256) }); return;
+    }
+    if (!('id' in message) || typeof message.id !== 'string') return;
+    const node = this.nodes.get(message.id);
+    if (!node) return;
+    if (message.type === 'toggle' && ['folder', 'package', 'run', 'runErrors'].includes(node.kind)) {
+      this.noteTreeExpansion(node, !this.expandedIds.has(node.id) && (node.kind !== 'folder' || this.collapsedIds.has(node.id)));
+      await this.renderSidebar();
+    } else if (message.type === 'open') {
+      if (node.kind === 'result' || node.kind === 'runError') await this.inspect(node.id);
+      else if (node.kind === 'overview') await this.runOverview(node.id);
+      else if (node.kind === 'more') await this.moreRuns(node.id);
+    }
+  }
+  private async renderSidebar(): Promise<void> {
+    const view = this.sidebar;
+    if (!view || this.disposed) return;
+    const generation = ++this.sidebarGeneration;
+    try {
+      const render = async (nodes: TreeNode[]): Promise<string> => (await Promise.all(nodes.map(async (node) => {
+        const expandable = ['folder', 'package', 'run', 'runErrors'].includes(node.kind);
+        const expanded = expandable && (this.expandedIds.has(node.id) || (node.kind === 'folder' && !this.collapsedIds.has(node.id)));
+        const action = expandable ? 'toggle' : ['result', 'runError', 'overview', 'more'].includes(node.kind) ? 'open' : '';
+        const icon = node.statusIcon?.id === 'pass' ? '✓' : node.statusIcon?.id === 'error' ? '×' : node.statusIcon?.id === 'warning' ? '!' : node.statusIcon?.id === 'circle-slash' ? '⊘' : expandable ? expanded ? '⌄' : '›' : node.kind === 'overview' ? '▤' : '·';
+        const pill = node.kind === 'run' && node.originBadge ? `<span class="origin-pill ${node.originBadge.toLowerCase()}">${escapeHtml(node.originBadge)}</span>` : '';
+        const id = escapeHtml(node.id);
+        const title = escapeHtml(`${node.label}${node.description ? ` · ${node.description}` : ''}`);
+        const chevron = node.kind === 'run' ? `<span class="chevron" aria-hidden="true">${expanded ? '⌄' : '›'}</span>` : '';
+        const content = `${chevron}<span class="icon ${node.statusIcon?.id === 'pass' ? 'passed' : node.statusIcon?.id === 'error' ? 'failed' : ''}" aria-hidden="true">${icon}</span>${pill}<span class="label">${escapeHtml(node.label)}</span>`;
+        const description = node.sidebarDescription ?? node.description;
+        const row = `<div class="row ${node.kind}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}"${node.kind === 'result' ? ` aria-label="${title}"` : ''} aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${description && node.kind !== 'run' ? `<small>${escapeHtml(description)}</small>` : ''}</div>`;
+        return `<div role="treeitem" aria-expanded="${expandable ? expanded : ''}">${row}${expanded ? `<div role="group">${await render(await this.getChildren(node))}</div>` : ''}</div>`;
+      }))).join('');
+      const html = await render(await this.getChildren());
+      if (generation === this.sidebarGeneration && view === this.sidebar) {
+        const scope = this.testFilter.title ? `Test: ${this.testFilter.title}` : this.testFilter.file ? `File: ${this.testFilter.file}` : '';
+        if (await view.webview.postMessage({ type: 'render', html, query: this.testFilter.query, scope, focusFilter: this.focusFilterOnRender })) this.focusFilterOnRender = false;
+      }
+    } catch { /* A workspace refresh can cancel a sidebar read. */ }
+  }
   getParent(node: TreeNode): TreeNode | undefined {
     if (node.kind === 'folder') return undefined;
     if (node.kind === 'package') {
@@ -306,7 +369,8 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     const defaultExpanded = node.kind === 'folder';
     const isExpanded = this.expandedIds.has(node.id) || (defaultExpanded && !this.collapsedIds.has(node.id));
     const item = new vscode.TreeItem(node.label, collapsible ? (isExpanded ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed) : vscode.TreeItemCollapsibleState.None);
-    item.id = node.id; item.description = node.description; item.tooltip = `${node.label}${node.runId ? `\nRun: ${node.runId}` : ''}${node.description ? `\n${node.description}` : ''}`;
+    item.id = node.id; item.description = node.description; item.tooltip = `${node.label}${node.runId ? `\nRun: ${node.runId}` : ''}${node.originBadge ? `\nOrigin: ${node.originBadge}` : ''}${node.description ? `\n${node.description}` : ''}`;
+    if (node.kind === 'folder' || node.kind === 'package') item.contextValue = 'logbook.workspaceFolder';
     item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'package' ? 'package' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
     if (node.kind === 'result' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
     if (node.kind === 'overview') item.command = { command: 'logbook.runOverview', title: 'View recorded run overview', arguments: [node.id] };
@@ -359,9 +423,13 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       const showRun = matchesRunFilter(run, filter);
       const results = hasTestFilter(filter) && !showRun ? run.tests.filter(test => matchesTestFilter(test, filter, run)) : run.tests;
       if (filter !== this.testFilter) return [];
-      const children = results.map((test) => this.register({ id: JSON.stringify([node.folderKey, executionIdentity(run.runId, test)]), kind: 'result', folderKey: node.folderKey,
-        runId: run.runId, resultKey: executionIdentity(run.runId, test), label: test.title, statusIcon: statusIcon(test),
-        description: `${statusText(test.status)}${outcomeQualifier(test) ? ` · ${outcomeQualifier(test)}` : ''} · ${test.project || 'Project unknown'}${test.repeatEachIndex === 0 ? '' : ` · Repeat ${test.repeatEachIndex ?? 'unknown'}`}` }));
+      const children = results.map((test) => {
+        const qualifier = outcomeQualifier(test);
+        const detail = `${qualifier ? `${qualifier} · ` : ''}${test.project || 'Project unknown'}${test.repeatEachIndex === 0 ? '' : ` · Repeat ${test.repeatEachIndex ?? 'unknown'}`}`;
+        return this.register({ id: JSON.stringify([node.folderKey, executionIdentity(run.runId, test)]), kind: 'result', folderKey: node.folderKey,
+          runId: run.runId, resultKey: executionIdentity(run.runId, test), label: test.title, statusIcon: statusIcon(test),
+          sidebarDescription: detail, description: `${statusText(test.status)} · ${detail}` });
+      });
       if (node.kind === 'run' && (!hasTestFilter(filter) || showRun)) {
         children.unshift(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'overview']), kind: 'overview', folderKey: node.folderKey, runId: run.runId, label: 'Run overview', description: `${run.tests.length} recorded results`, statusIcon: { id: 'graph', color: 'textLink.foreground' } }));
         if (run.globalErrors?.length) children.push(this.register({ id: JSON.stringify([node.folderKey, run.runId, 'errors']), kind: 'runErrors', folderKey: node.folderKey, runId: run.runId, label: `Recorded run errors (${run.globalErrors.length})` }));
@@ -389,9 +457,14 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
         visible.push(run);
       }
       if (filter !== this.testFilter) return [];
-      const nodes = visible.map((run) => this.register({ id: JSON.stringify([key, run.runId]), kind: 'run', folderKey: key, runId: run.runId,
-        label: `${displayTime(run.startedAt)} · ${run.title ?? shortRunId(run.runId)} · ${run.runId.slice(-8)}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'),
-        description: `${run.status ?? 'Status unknown'} · ${run.summary ? `${run.summary.failed} unexpected, ${run.summary.flaky} retry-flaky` : 'Counts unknown'} · ${completionLabel(run.complete)}` }));
+      const viewer = await readTeamViewer(store.storeRoot).catch(() => null);
+      const catalog = await readImportCatalog(store.storeRoot).catch(() => null);
+      const nodes = await Promise.all(visible.map(async (run) => {
+        const origin = runOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), viewer, Object.hasOwn(catalog?.runs ?? {}, run.runId));
+        return this.register({ id: JSON.stringify([key, run.runId]), kind: 'run', folderKey: key, runId: run.runId,
+          label: `${displayTime(run.startedAt)} · ${run.title ?? shortRunId(run.runId)} · ${run.runId.slice(-8)}`, statusIcon: toneIcon(run.complete !== true ? 'warning' : run.status === 'passed' ? 'success' : run.status === 'failed' ? 'failure' : 'neutral'), originBadge: origin.badge ?? undefined,
+          description: `${run.status ?? 'Status unknown'} · ${run.summary ? `${run.summary.failed} unexpected, ${run.summary.flaky} retry-flaky` : 'Counts unknown'} · ${completionLabel(run.complete)}` });
+      }));
       if (page.nextOffset !== null) nodes.push(this.register({ id: JSON.stringify([key, 'more', store.runLimit]), kind: 'more', folderKey: key, label: hasTestFilter(filter) ? 'Search older runs' : 'Load more runs' }));
       nodes.push(...page.diagnostics.map((entry) => this.message(key, `${entry.record}: ${entry.message}`)));
       if (hasTestFilter(filter) && !visible.length) nodes.unshift(this.message(key, page.nextOffset !== null ? 'No matches in loaded runs. Search older runs to continue.' : 'No recorded runs or tests match this filter.', 'filter-empty'));
@@ -412,7 +485,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       const run = await store.reader.getRun(node.runId);
       const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
       const panel = vscode.window.createWebviewPanel('logbook.run', 'Logbook run overview', vscode.ViewColumn.Active, { enableScripts: true, localResourceRoots: [media] });
-      panel.webview.html = renderRunOverview(run, { css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(), script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource });
+      const catalog = await readImportCatalog(store.storeRoot).catch(() => null);
+      const origin = runOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), await readTeamViewer(store.storeRoot).catch(() => null), Object.hasOwn(catalog?.runs ?? {}, run.runId));
+      panel.webview.html = renderRunOverview(run, { css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(), script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource }, origin);
       const listener = panel.webview.onDidReceiveMessage((message: unknown) => {
         const action = overviewAction(message, run.tests.map(test => executionIdentity(run.runId, test)));
         if (action?.type === 'openResult') {
@@ -441,17 +516,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     }
   }
   private async showTestFilter(): Promise<void> {
+    this.focusFilterOnRender = true;
     await vscode.commands.executeCommand('workbench.view.extension.logbook');
-    this.filterInput?.dispose();
-    const input = vscode.window.createInputBox();
-    this.filterInput = input;
-    input.title = this.testFilter.title ? `Filter recorded test: ${this.testFilter.title}` : this.testFilter.file ? `Filter recorded tests in ${this.testFilter.file}` : 'Filter recorded runs and tests';
-    input.placeholder = 'Run ID, date, status, branch, test name, project or path';
-    input.value = this.testFilter.query;
-    input.onDidChangeValue(value => this.setTestFilter({ ...this.testFilter, query: value.slice(0, 256) }));
-    input.onDidAccept(() => input.hide());
-    input.onDidHide(() => { if (this.filterInput === input) this.filterInput = undefined; input.dispose(); });
-    input.show();
+    await this.renderSidebar();
   }
   private async filterSpecFile(argument: unknown, fromEditor: boolean): Promise<void> {
     const uri = argument instanceof vscode.Uri ? argument : vscode.window.activeTextEditor?.document.uri;
@@ -479,23 +546,21 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   }
   async expandAll(): Promise<void> {
     const operation = this.operation;
-    const view = this.treeView;
-    if (!view) return;
     const runs: TreeNode[] = [];
     for (const top of await this.getChildren()) {
       if (top.kind === 'folder') {
         if (operation !== this.operation || this.disposed) return;
-        await view.reveal(top, { expand: 1, select: false, focus: false });
+        this.noteTreeExpansion(top, true);
         for (const child of await this.getChildren(top)) {
           if (child.kind === 'package') {
-            await view.reveal(child, { expand: 1, select: false, focus: false });
+            this.noteTreeExpansion(child, true);
             runs.push(...(await this.getChildren(child)).filter(c => c.kind === 'run'));
           } else if (child.kind === 'run') {
             runs.push(child);
           }
         }
       } else if (top.kind === 'package') {
-        await view.reveal(top, { expand: 1, select: false, focus: false });
+        this.noteTreeExpansion(top, true);
         runs.push(...(await this.getChildren(top)).filter(child => child.kind === 'run'));
       } else if (top.kind === 'run') {
         runs.push(top);
@@ -503,8 +568,15 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
     }
     for (const run of runs) {
       if (operation !== this.operation || this.disposed) return;
-      await view.reveal(run, { expand: 2, select: false, focus: false });
+      this.noteTreeExpansion(run, true);
     }
+    await this.renderSidebar();
+  }
+  async collapseAll(): Promise<void> {
+    const folders = (await this.getChildren()).filter(node => node.kind === 'folder');
+    this.expandedIds.clear();
+    this.collapsedIds = new Set(folders.map(node => node.id));
+    await this.renderSidebar();
   }
   private async moreRuns(id: unknown): Promise<void> {
     const node = typeof id === 'string' ? this.nodes.get(id) : undefined;
@@ -557,8 +629,10 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       this.analysis.reset(result ? createHash('sha256').update(JSON.stringify([selected.folderKey, store.storeRoot, store.sourceRoot, run.runId, run.startedAt, run.complete, run.env, result, selected.scope])).digest('hex') : '');
       const media = vscode.Uri.joinPath(this.extension.extensionUri, 'media');
       const relative = (root: string) => path.relative(store.folder.uri.fsPath, root).split(path.sep).join('/') || '.';
+      const catalog = await readImportCatalog(store.storeRoot).catch(() => null);
+      const origin = runOriginText(await readTeamOrigin(store.storeRoot, run.runId).catch(() => null), await readTeamViewer(store.storeRoot).catch(() => null), Object.hasOwn(catalog?.runs ?? {}, run.runId));
       panel.webview.html = renderDetail({ run, result: result ?? null, runError: errorIndex, runErrorKey: selected.errorKey, history, scope: selected.scope, anchorRunId: selected.anchorRunId,
-        storeLabel: relative(store.storeRoot), sourceLabel: relative(store.sourceRoot), newHistory,
+        storeLabel: relative(store.storeRoot), sourceLabel: relative(store.sourceRoot), newHistory, origin,
         analysis: { identity: this.analysis.identity, state: this.analysis.state } }, {
         css: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.css')).toString(),
         script: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'detail.js')).toString(), cspSource: panel.webview.cspSource,
@@ -854,6 +928,45 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
       });
     } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'Bundle import failed. Retry the same bundle to repair interrupted writes.'); }
   }
+  private async fetchCiRuns(): Promise<void> {
+    if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage('Trust this workspace before fetching CI runs.'); return; }
+    const stores = [...this.stores.values()].filter(item => !item.parentFolderKey);
+    let store = stores.length === 1 ? stores[0] : undefined;
+    if (!store) store = (await vscode.window.showQuickPick(stores.map(item => ({ label: item.folder.name, store: item })), { title: 'Fetch CI runs for which workspace?' }))?.store;
+    if (!store) return;
+    const repository = vscode.workspace.getConfiguration('logbook', store.folder.uri).get<string>('ciRepository', '').trim();
+    const artifactName = vscode.workspace.getConfiguration('logbook', store.folder.uri).get<string>('ciArtifactName', 'logbook-run').trim();
+    if (!repository) { await vscode.window.showInformationMessage('Set logbook.ciRepository to the GitHub owner/repo for this workspace.'); return; }
+    try {
+      const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: true });
+      if (!session) return;
+      const source = { repository, artifactName, token: session.accessToken };
+      const artifacts = await listGitHubArtifacts(source);
+      if (!artifacts.length) { await vscode.window.showInformationMessage('No unexpired Logbook CI artifacts found.'); return; }
+      const selected = await vscode.window.showQuickPick(artifacts.map(item => ({ label: `Workflow ${item.workflowRunId}`, description: item.createdAt, detail: `Artifact ${item.id}`, artifact: item })), { title: 'Fetch a Logbook CI run', placeHolder: 'Newest artifact first' });
+      if (!selected) return;
+      const target = store;
+      const result = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Fetch Logbook CI run', cancellable: true }, async (progress, token) => {
+        const abort = new AbortController(), subscription = token.onCancellationRequested(() => abort.abort());
+        try {
+          const { storeRoot } = await this.rootsForStore(target);
+          const projectId = (await readImportCatalog(storeRoot))?.projectId ?? await vscode.window.showInputBox({ title: 'Bind this history store to a project', prompt: 'Use the project ID in the CI bundle.', validateInput: value => projectIdSchema.safeParse(value).success ? null : 'Enter a valid project ID.' });
+          if (!projectId || abort.signal.aborted) return null;
+          progress.report({ message: 'Downloading and validating…' });
+          const bundle = await downloadGitHubArtifact({ ...source, signal: abort.signal }, selected.artifact);
+          const preview = await ingestBundles(storeRoot, [bundle], { projectId, dryRun: true, signal: abort.signal });
+          const confirmed = await vscode.window.showInformationMessage('Import this CI run into local history?', { modal: true, detail: `${target.folder.name}\nProject: ${projectId}\n${preview.added.length} new · ${preview.skipped.length} identical · ${preview.conflicts.length} conflicting · ${preview.invalid.length} invalid\n${preview.missingArtifacts} missing/omitted artifact references` }, 'Import');
+          if (confirmed !== 'Import' || abort.signal.aborted) return null;
+          const result = await ingestBundles(storeRoot, [bundle], { projectId, signal: abort.signal });
+          await recordGitHubOrigins(storeRoot, bundle, result);
+          await this.refresh(this.folderKey(target.folder));
+          return result;
+        } catch (error) { if (!abort.signal.aborted) throw error; return null; }
+        finally { subscription.dispose(); }
+      });
+      if (result) await vscode.window.showInformationMessage(`CI import: ${result.added.length} added · ${result.skipped.length} identical · ${result.conflicts.length} conflicting · ${result.invalid.length} invalid`);
+    } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'CI fetch failed.'); }
+  }
   private async selectFolder(setting: 'historyPath' | 'sourceRoot'): Promise<void> {
     const stores = [...this.stores.values()];
     let store = this.selection ? this.stores.get(this.selection.folderKey) : undefined;
@@ -878,11 +991,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
 
 export async function activate(context: vscode.ExtensionContext): Promise<Logbook> {
   const logbook = new Logbook(context);
-  const view = vscode.window.createTreeView('logbook.recentRuns', { treeDataProvider: logbook, showCollapseAll: true });
-  logbook.attachTreeView(view);
-  context.subscriptions.push(logbook, view,
-    view.onDidExpandElement(({ element }) => logbook.noteTreeExpansion(element, true)),
-    view.onDidCollapseElement(({ element }) => logbook.noteTreeExpansion(element, false)));
+  context.subscriptions.push(logbook, vscode.window.registerWebviewViewProvider('logbook.recentRuns', logbook));
   await logbook.setup();
   return logbook;
 }

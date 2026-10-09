@@ -321,6 +321,11 @@ body.vscode-high-contrast .source-diff, body.vscode-high-contrast-light .source-
 .change-summary .badge.failure { color: var(--failure); }
 .change-summary .badge.success { color: var(--success); }
 .change-summary .badge.warning { color: var(--warning); }
+.origin-pill { display: inline-block; border: 1px solid currentColor; border-radius: 999px; padding: 1px 8px; margin-right: 6px; font-size: .8em; font-weight: 700; vertical-align: baseline; }
+.origin-pill.local { color: var(--success); background: color-mix(in srgb, var(--success) 12%, var(--vscode-editor-background)); }
+.origin-pill.peer { color: var(--vscode-textLink-foreground); background: color-mix(in srgb, var(--vscode-textLink-foreground) 12%, var(--vscode-editor-background)); }
+.origin-pill.ci { color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, var(--vscode-editor-background)); }
+body.vscode-high-contrast .origin-pill, body.vscode-high-contrast-light .origin-pill { background: var(--vscode-editor-background); }
 .change-arrow { display: inline-block; margin: 0 10px; color: var(--vscode-descriptionForeground); }
 .skip-reasons { margin: 0; padding-left: 20px; }
 .skip-reasons li + li { margin-top: 6px; }

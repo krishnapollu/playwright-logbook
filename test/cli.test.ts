@@ -16,6 +16,11 @@ async function execute(root: string, args: string[]): Promise<{ code: number; ou
 }
 
 describe('CLI', () => {
+  it('exposes CI fetch without the unfinished team-store commands', () => {
+    const commands = createProgram().commands.map(command => command.name());
+    expect(commands).toContain('ci');
+    expect(commands).not.toContain('store');
+  });
   it('merges shard files, writes expected output, and re-merges idempotently', async () => {
     const root = await fixture(); const sink = new FileShardSink(path.join(root, '.logbook'));
     await sink.write(shard(1, 2, [testRecord('a')])); await sink.write(shard(2, 2, [testRecord('b')]));

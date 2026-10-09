@@ -27,7 +27,7 @@ It works with the Playwright setup you already have. There is no hosted service,
 - See flaky tests and recent run history instead of investigating one run at a time.
 - Review results across projects and CI shards in a single HTML report.
 - Get copyable rerun commands and bounded, redacted debug context for AI-assisted investigation.
-- Keep reports local and offline. Logbook does not change Playwright's exit code or send data anywhere.
+- Keep reports local and offline by default. Logbook does not change Playwright's exit code or upload data automatically.
 
 ![Playwright Logbook light report](docs/img/report-light.png)
 
@@ -87,6 +87,13 @@ The merge creates `.logbook/report/index.html` and updates local history. Persis
 
 See [CI recipes](docs/CI.md) for GitHub Actions, Azure DevOps, artifact retention, and Playwright blob-report workflows.
 
+## Portable CI run bundles
+
+Export a saved run as a ZIP and import runs from other machines into existing local
+history. Optional file attachments include screenshots, videos, traces and custom
+logs. See [setup, CI recipe and import behavior](docs/RUN-BUNDLES.md). Bundle support
+requires **playwright-logbook 0.3.0 or newer**.
+
 ## Review runs from the terminal
 
 ```sh
@@ -137,7 +144,7 @@ If you enable `captureDetails`, Logbook can store sanitized steps, output tails,
 
 ## What happens to your data?
 
-Everything stays in your project under `.logbook/`. This release makes no network requests, has no hosted retention policy, and performs no automatic AI or test-management upload. Remove `.logbook/` when you no longer need the local history.
+By default, the reporter writes history under your project's `.logbook/`. Logbook has no hosted retention policy and performs no automatic AI or test-management upload. CI fetches and manual ZIP imports add runs to local history. Remove `.logbook/` when you no longer need it.
 
 ## Documentation
 
@@ -150,10 +157,3 @@ Everything stays in your project under `.logbook/`. This release makes no networ
 ## License
 
 MIT
-
-### Portable CI run bundles
-
-Export a saved run as a ZIP and import runs from other machines into existing local
-history. Optional file attachments include screenshots, videos, traces and custom
-logs. See [setup, CI recipe and import behavior](docs/RUN-BUNDLES.md). Bundle support
-requires **playwright-logbook 0.3.0 or newer**.

@@ -3,6 +3,7 @@ import { analysisPrompt } from '../../../src/analyze.js';
 import { createBundle } from '../../../src/bundles/archive.js';
 import { run as makeRun, testRecord } from '../../../test/factories.js';
 import type { ReaderRun } from '../../../src/historyreader.js';
+import { recordTeamOrigin } from '../../../src/teamstore.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -32,13 +33,25 @@ async function waitForActiveDocumentText(expected: string): Promise<void> {
   assert.fail(`Expected active document text ${expected}; active=${JSON.stringify(vscode.window.activeTextEditor?.document.getText())}; tabs=${JSON.stringify(vscode.window.tabGroups.all.flatMap(group => group.tabs.map(tab => ({ label: tab.label, active: tab.isActive }))))}`);
 }
 
+async function waitForActiveSource(suffix: string): Promise<vscode.TextEditor> {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const editor = vscode.window.activeTextEditor;
+    if (editor?.document.uri.path.endsWith(suffix)) return editor;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  assert.fail(`Expected active source ${suffix}; active=${vscode.window.activeTextEditor?.document.uri.path}`);
+}
+
 async function journey(): Promise<void> {
   const extension = vscode.extensions.getExtension<Awaited<ReturnType<typeof activate>>>('krishnapollu.playwright-logbook-vscode');
   assert.ok(extension, 'Development extension must be discoverable');
   const logbook = await extension.activate();
   console.log('Host journey: activated');
+  await vscode.commands.executeCommand('logbook.recentRuns.focus');
   await draftPasteJourney();
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.analyze'), 'Analyze Selected Test must be registered in the editor');
+  assert.ok((await vscode.commands.getCommands(true)).includes('logbook.fetchCiRuns'), 'GitHub CI fetch must be registered in the editor');
+  assert.ok((await vscode.commands.getCommands(true)).includes('logbook.chooseImport'), 'Unified import action must be registered in the editor');
   const roots = await logbook.getChildren();
   assert.equal(roots.length, 2, 'Multi-root grouping should appear');
   const first = roots.find((item) => item.label === 'first')!, broken = roots.find((item) => item.label === 'second')!;
@@ -47,14 +60,51 @@ async function journey(): Promise<void> {
   const runs = await logbook.getChildren(first);
   const current = runs.find((item) => item.runId === 'current')!;
   assert.ok(current, 'Real compatible store should load');
-  const view = (logbook as unknown as { treeView: vscode.TreeView<{ id: string }> }).treeView;
-  const expanded = new Set<string>();
-  const expansion = view.onDidExpandElement(({ element }) => expanded.add(element.id));
+  assert.equal(current.originBadge, 'Local', 'Unimported history shows Local without a team store');
+  assert.equal(logbook.getTreeItem(current).contextValue, undefined, 'Local origin has no team action');
+  const localStore = path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, '.logbook');
+  await recordTeamOrigin(localStore, 'current', { type: 'local', author: 'Alice' }, { projectId: 'pw-test', author: 'Bob' });
+  await recordTeamOrigin(localStore, 'previous', { type: 'ci', provider: 'github', buildId: '42', attempt: '2' }, { projectId: 'pw-test', author: 'Bob' });
+  await recordTeamOrigin(localStore, 'feature', { type: 'local', author: 'Bob' }, { projectId: 'pw-test', author: 'Bob' });
+  const origins = await logbook.getChildren(first);
+  assert.ok(origins.every(item => /^\d{4}-\d{2}-\d{2}/.test(item.label)), 'Run labels begin with aligned timestamps');
+  assert.equal(origins.find(item => item.runId === 'current')?.originBadge, 'Peer');
+  assert.equal(origins.find(item => item.runId === 'previous')?.originBadge, 'CI');
+  assert.equal(origins.find(item => item.runId === 'feature')?.originBadge, 'Local');
+  const sidebarHarness = logbook as unknown as { sidebar: { webview: { postMessage(message: { html: string; query: string; scope: string }): Promise<boolean> } } | undefined; renderSidebar(): Promise<void>; sidebarAction(message: unknown): Promise<void> };
+  const actualSidebar = sidebarHarness.sidebar;
+  let sidebarHtml = '', sidebarQuery = '', sidebarScope = '';
+  const captureSidebar = { webview: { postMessage: async (message: { html: string; query: string; scope: string }) => { sidebarHtml = message.html; sidebarQuery = message.query; sidebarScope = message.scope; return true; } } };
+  sidebarHarness.sidebar = captureSidebar;
+  await sidebarHarness.renderSidebar();
+  sidebarHarness.sidebar = actualSidebar;
+  assert.equal(sidebarQuery, '', 'Sidebar starts with an empty inline filter');
+  for (const badge of ['local', 'peer', 'ci']) assert.ok(sidebarHtml.includes(`class="origin-pill ${badge}"`), `Sidebar renders a ${badge} pill`);
+  assert.ok(!sidebarHtml.includes('🟢') && !sidebarHtml.includes('【'), 'Old origin markers are absent');
+  assert.ok(!sidebarHtml.includes('data-action="push"') && !sidebarHtml.includes('data-action="sync"'), 'Team actions stay out of the release sidebar');
+  const runRows = sidebarHtml.match(/<div class="row run">.*?<\/div>/g) ?? [];
+  assert.ok(runRows.every(row => row.includes('class="chevron" aria-hidden="true">›</span>')), 'Collapsed runs show a chevron beside their status icon');
+  assert.ok(sidebarHtml.includes('class="row folder"'), 'Folder rows have their own styling hook');
+  assert.ok(sidebarHtml.includes('<div role="group">') && !sidebarHtml.includes('style="--depth:'), 'Nested rows use stylesheet indentation');
+  assert.equal(logbook.getTreeItem(origins.find(item => item.runId === 'feature')!).contextValue, undefined, 'Local run has no Push action');
+  assert.equal(logbook.getTreeItem(origins.find(item => item.runId === 'current')!).contextValue, undefined, 'Peer run has no Push action');
+  assert.ok(!(await vscode.commands.getCommands(true)).includes('logbook.syncTeam'), 'Team Sync stays unavailable');
+  assert.ok(!(await vscode.commands.getCommands(true)).includes('logbook.pushRun'), 'Team Push stays unavailable');
   await vscode.commands.executeCommand('logbook.expandAll');
-  expansion.dispose();
-  assert.ok(expanded.has(current.id), 'Expand All visibly expands the recorded run');
   assert.equal(logbook.getTreeItem(first).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens workspace folders');
   assert.equal(logbook.getTreeItem(current).collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Expand All opens recorded runs');
+  sidebarHarness.sidebar = captureSidebar;
+  await sidebarHarness.renderSidebar();
+  sidebarHarness.sidebar = actualSidebar;
+  assert.ok(sidebarHtml.includes('>▤</span><span class="label">Run overview</span>'), 'Overview has a list icon');
+  assert.ok(sidebarHtml.includes('>⊘</span><span class="label">'), 'Skipped result has a circle-slash icon');
+  assert.ok(sidebarHtml.includes('class="chevron" aria-hidden="true">⌄</span>'), 'Expanded runs show a downward chevron');
+  assert.ok(sidebarHtml.includes('<small>chromium-ui</small>') && !sidebarHtml.includes('<small>Passed ·') && !sidebarHtml.includes('<small>Failed ·'), 'Result rows omit repeated status words');
+  assert.ok(sidebarHtml.includes('aria-label="') && sidebarHtml.includes('Failed ·'), 'Result buttons retain status in accessible labels');
+  await vscode.commands.executeCommand('logbook.collapseAll');
+  assert.equal(logbook.getTreeItem(first).collapsibleState, vscode.TreeItemCollapsibleState.Collapsed, 'Collapse All closes workspace folders');
+  assert.equal(logbook.getTreeItem(current).collapsibleState, vscode.TreeItemCollapsibleState.Collapsed, 'Collapse All resets recorded runs');
+  await vscode.commands.executeCommand('logbook.expandAll');
   await vscode.commands.executeCommand('logbook.filterSpecFile', vscode.Uri.file(path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, 'tests/ui.spec.ts')));
   const filteredFolders = await logbook.getChildren();
   assert.equal(filteredFolders.length, 1, 'Spec context menu scopes the left tree to its mapped workspace');
@@ -64,6 +114,15 @@ async function journey(): Promise<void> {
   assert.ok(filteredResults.some(item => item.label === 'renders receipt @critical'));
   assert.ok(!filteredResults.some(item => item.label === 'validates an API payload without a browser @contract'));
   assert.ok(!filteredResults.some(item => item.kind === 'overview'), 'Filtered run shows matching tests only');
+  const openedSidebar = sidebarHarness.sidebar;
+  assert.ok((openedSidebar as unknown as { webview: { html: string } }).webview.html.includes('id="filter" type="search"'), 'Recent Runs contains the inline search field');
+  sidebarHarness.sidebar = captureSidebar;
+  await sidebarHarness.renderSidebar();
+  sidebarHarness.sidebar = openedSidebar;
+  assert.equal(sidebarScope, 'File: tests/ui.spec.ts', 'Inline filter shows its file scope');
+  await sidebarHarness.sidebarAction({ type: 'filter', query: 'receipt' });
+  assert.deepEqual((await logbook.getChildren(current)).map(item => item.label), ['renders receipt @critical'], 'Inline filter narrows results within the file scope');
+  await sidebarHarness.sidebarAction({ type: 'filter', query: '' });
   const source = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, 'tests/ui.spec.ts')));
   const sourceEditor = await vscode.window.showTextDocument(source);
   const cursor = source.getText().indexOf("page.click('receipt')");
@@ -152,7 +211,7 @@ async function journey(): Promise<void> {
   console.log('Host journey: pinned comparison survives selection changes and refresh');
   await vscode.commands.executeCommand('logbook.openSource');
   console.log('Host journey: current source opened');
-  let editor = vscode.window.activeTextEditor;
+  let editor = await waitForActiveSource('/tests/ui.spec.ts');
   assert.ok(editor); assert.equal(editor.selection.start.line, 2, 'Current execution opens its recorded third line');
   assert.ok(editor.document.uri.path.endsWith('/tests/ui.spec.ts'));
   await vscode.commands.executeCommand('logbook.openFailure');

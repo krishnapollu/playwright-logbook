@@ -1027,3 +1027,293 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   comparison and attachment navigation. The host runner now honors an explicit
   `--vscode-executable`. Cached editor binaries were killed during installation;
   the installed editor completed the same packaged journey.
+
+### Team-store prototype
+
+- [x] S1a Run identity prerequisite
+  New local IDs use base36 UTC milliseconds and 12 hex characters derived from
+  injected randomness. CI IDs use provider, build/run ID and attempt where
+  available; explicit overrides and saved IDs remain valid. Tests cover stable
+  CI identity across shards and changed local time/randomness.
+- Done when: `npm run check` passed: 45 files, 222 tests, including the unchanged
+  golden test. The sandboxed Chromium scenario initially failed; the focused
+  scenario and full check passed with browser access. No team-store transfer yet.
+
+- [x] S1b Immutable filesystem core
+  `publishTeamBundle` verifies project binding and writes content-addressed run
+  and artifact objects before an immutable per-run manifest. `pullTeamStore`
+  validates each object and imports through the existing bundle path, records
+  origin in a local sidecar, skips identical runs and continues after damaged
+  records. The three focused tests cover two workspaces, artifact retention,
+  later delta, same-ID conflict, project isolation, interrupted object writes
+  and partial success. CLI/editor wiring remains in S1.
+- Done when: `npm run check` passed with browser access: 46 files, 225 tests,
+  including the unchanged golden test. No new dependencies or publication.
+
+- [x] S1c Explicit transfer CLI
+  `store push --run` sends selected runs with available evidence; `store pull`
+  brings the full project partition into local history; `store ingest --from`
+  publishes downloaded CI bundles. Commands load reporter options from the
+  Playwright config, report each run and continue after individual failures.
+  The two-workspace CLI test covers partial success, later pull, CI origin,
+  wrong project and ambiguous tilde spelling. Editor labels remain in S1.
+- Done when: `npm run check` passed with browser access: 47 files, 227 tests,
+  including unchanged golden. No publication attempted.
+
+- [x] S1d Viewer-relative IDE provenance
+  The configured reporter and explicit CLI actions write bounded local origin
+  and viewer sidecars, leaving schema-v1 run JSON unchanged. The extension
+  reads those files without evaluating workspace config, keeps the recorded
+  status icon and adds CI/Local/Peer text to run rows. Result detail shows
+  escaped full origin metadata. Old runs have no guessed label. Concurrent
+  manifest writers, missing evidence, author preservation and mismatched
+  origins have focused coverage. The installed VS Code host journey checked
+  Peer/CI labels in the actual Recent Runs tree.
+- Done when: `npm run check` passed with browser access: 47 files, 230 tests,
+  including the unchanged golden test. The disposable installed VS Code host
+  journey exited 0 and asserted Peer/CI run-tree labels. No publication.
+
+- [x] S1 Central filesystem store prototype
+  An end-to-end smoke used two disposable copies of real `pw-test` records,
+  explicit authors Alice and Bob, six retained evidence files, one temporary
+  team store and a downloaded-style CI ZIP. Alice and Bob each pushed one
+  selected run; Bob's first pull added Alice's run and skipped his own, then a
+  repeat pull skipped both. CI ingest added `ci-github-4242-1`; final pulls
+  added it to both workspaces. All commands exited 0 with no missing evidence.
+  The source `pw-test` workspace and proposed permanent store were untouched.
+- Done when: `npm run check` passed with 47 files, 230 tests (unchanged golden
+  included). The installed VS Code host journey exited 0 and checked Peer/CI
+  labels in the actual tree. Same-ID conflict, concurrent writers, interrupted
+  objects, partial success, project isolation and retained artifacts have
+  focused passing tests. Permanent path spelling awaits user confirmation.
+
+### CI bundle handoff
+
+- [x] C1 Document the existing CI bundle path
+  The GitHub Actions shard/merge example now exports and uploads a project-bound
+  bundle, with steps to download and review it in the IDE. Existing bundle tests
+  cover project mismatch, conflicts, missing evidence and repeat import. A
+  disposable CI workspace ran two Playwright shards under simulated GitHub
+  metadata, merged `ci-github-4242-1`, exported one retained attachment, and
+  copied the ZIP to a separate IDE workspace. Dry-run preview and import each
+  added one run with no missing evidence; repeat import skipped it. The saved
+  run retained GitHub CI origin and both tests. GitHub artifact transfer itself
+  was represented by a local copy; no remote workflow was triggered.
+- Done when: `npx vitest run test/bundle-cli.test.ts test/bundle-ingest.test.ts`
+  passed (2 files, 9 tests). `npm run check` passed with browser access:
+  47 files, 230 tests, including the unchanged golden test.
+
+### Persistent local team-store demo
+
+- [x] Set up the confirmed `~/Projects/logbook-store` path with three sibling
+  `pw-test` workspace copies under `../pw-test-team-demo/`. The setup script and
+  local guide preserve source mapping, separate histories and selected push.
+  Alice and Bob each ran two offline smoke tests and pushed one local run. A
+  third workspace simulated GitHub run `ci-github-4243-1` across two populated
+  shards, merged and exported one retained attachment, then ingested the bundle.
+  Both workspaces pulled all three runs. A repeated pull skipped all three in
+  each workspace. Reader-side origin checks returned Local, Peer and CI for
+  each viewer, and both imported CI attachments matched their source bytes.
+  The original sibling `pw-test` project was untouched. No remote CI job ran.
+- Done when: `npm run check` passed with browser access: 47 files, 230 tests,
+  including the unchanged golden test. The generated `team.code-workspace`
+  points to both author workspaces; actual editor inspection remains a manual
+  step when opening it.
+
+### Development VSIX and demo workspace placement
+
+- [x] Moved the three demo workspaces to sibling `../pw-test-team-demo/`,
+  preserving their histories and the shared store. Removed the repository's
+  `.local/` directory. Built extension preview `0.2.21-monorepo.5` as a local
+  VSIX and confirmed its packaged runtime hash matches the checked build.
+  The installed VSIX host journey passed in a disposable profile using local
+  VS Code 1.140.0. `.logbook-demo/` is older generated report demo data and
+  remains separate from this team-store workflow.
+
+### Team-store actions in the local extension preview
+
+- [x] Highlight viewer-relative Local/Peer/CI on run rows while retaining status
+  icons. Run overviews show a colored origin pill and escaped author or CI
+  provider/build/attempt details. Recent Runs exposes explicit Sync (pull) on
+  the toolbar and workspace folders, and Push on selected local runs only. The
+  first transfer selects a shared filesystem folder; a command can change it.
+  Push reviews run, project, author, target and artifact counts before upload.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  `npm run test:vscode -- --vscode-version 1.140.0` exited 0; packaged
+  `npm run test:vscode -- --vsix --vscode-version 1.140.0` exited 0. The local
+  `0.2.21-monorepo.6` VSIX was packaged and installed in the user's VS Code.
+  Host checks cover prominent origin labels, command registration and scoped
+  Push/Sync contexts; existing team-store tests cover transfer semantics.
+
+### Config-backed team actions and aligned origin tags
+
+- [x] Use equal-width colored tags in the native Recent Runs tree, keep the
+  existing status icons, and call the displayed person a Tester. Sync and Push
+  now resolve the shared filesystem destination, project ID, tester and local
+  output directory from each workspace's trusted Playwright config. Removed the
+  separate folder picker and its saved choice. Transfers still operate on whole
+  immutable runs; selecting tests inside a run would misstate its completeness,
+  counts and history.
+- Done when output: `npm run check` passed with 47 test files and 231 tests;
+  the VS Code 1.140.0 host journey exited 0 and pulled a new run from the
+  configured shared store without a picker. The packaged VSIX host journey
+  also exited 0. No run JSON or CLI transfer format changed.
+
+### Origin pills in Recent Runs
+
+- [x] Replace the native Recent Runs tree with a custom sidebar so Local, Peer
+  and CI can use equal-width colored pills matching the run overview. Remove
+  the prior circle and boxed tags. Retain navigation, filtering, pagination,
+  Sync, Push, status marks and keyboard-operable row buttons.
+- Done when output: `npm run check` passed with 47 test files and 230 tests;
+  the VS Code 1.140.0 host journey passed and verified all three rendered
+  pills, aligned timestamp labels and the absence of prior markers.
+
+### Recent Runs sidebar spacing and icons
+
+- [x] Indent nested folders, runs and results using tree groups; reduce origin
+  pills; show a two-arrow Sync action; distinguish run overview and skipped
+  result icons.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  `npm run test:vscode -- --vscode-version 1.140.0` exited 0 with sidebar
+  markup and icon assertions and the full host journey passing.
+
+### Installed Recent Runs preview
+
+- [x] Package and install `0.2.21-monorepo.9` so the sidebar spacing and icon
+  changes reach the regular VS Code profile.
+- Done when output: `npm run test:vscode -- --vsix --vscode-version 1.140.0`
+  exited 0; VS Code CLI reported successful installation and lists
+  `krishnapollu.playwright-logbook-vscode@0.2.21-monorepo.9`. Installed sidebar
+  CSS and runtime hashes match the packaged source.
+
+### Recent Runs alignment and Collapse All
+
+- [x] Align result status descriptions, reserve a right-side action slot for
+  every run, distinguish folder rows, and restore Collapse All in the toolbar.
+  Package and install local preview `0.2.21-monorepo.10`.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  `npm run test:vscode -- --vsix --vscode-version 1.140.0` exited 0 with
+  action-slot and collapse assertions. A Chromium layout preview placed Passed
+  and Failed descriptions at the same x-coordinate (594 px at 810 px width).
+  VS Code CLI lists `.10`; installed runtime and CSS hashes match the build.
+
+### Recent Runs status text and run chevrons
+
+- [x] Remove repeated status words from visible result descriptions while
+  retaining project and outcome details; add a separate expand/collapse
+  chevron to run rows while keeping status icons. Keep folder shading as the
+  visual layer cue. Package and install local preview `0.2.21-monorepo.11`.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  `npm run test:vscode -- --vsix --vscode-version 1.140.0` exited 0 with
+  result-description, accessible-status, and run-chevron assertions. Chromium
+  sidebar-width preview was inspected. VS Code CLI lists `.11`; installed CSS
+  and runtime hashes match the build.
+
+### Inline Recent Runs filter
+
+- [x] Place the live run/test filter above the sidebar tree, preserve file and
+  test scopes from context actions, and remove the toolbar filter button and
+  generic input box. Package and install local preview `0.2.21-monorepo.12`.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  `npm run test:vscode -- --vsix --vscode-version 1.140.0` exited 0 with
+  inline-field, scoped-query, and existing host assertions. A Chromium check
+  verified input events and scope display. VS Code CLI lists `.12`; installed
+  CSS, script, and runtime hashes match the tested build.
+
+### Local ZIP import label
+
+- [x] Keep the extension import action visible for users without a shared team
+  store, and label it “Import ZIP to Local History” in the toolbar, welcome
+  action, and documentation. Package and install local preview
+  `0.2.21-monorepo.13`.
+- Done when output: `npm run check` exited 0 with 47 test files and 230 tests;
+  VSIX inspection found the renamed command in the view toolbar. VS Code CLI
+  lists `.13`, and its installed command manifest contains the new title.
+
+### README and unit test cleanup
+
+- [x] Clarify local defaults, optional team-store setup, and manual ZIP import
+  behavior in the root and extension READMEs. Remove the obsolete sidebar
+  screenshot and scaffold test, and check that manual import assigns no team
+  origin.
+- Done when output: `npx vitest run test/vscode-bundle-import.test.ts` passed
+  with 2 tests; `npm run check` exited 0 with 46 test files and 230 tests.
+
+### GitHub Actions CI artifact fetch (C2)
+
+- [x] Fetch one recent named GitHub Actions artifact from an explicit repository
+  into local history. List artifacts without requiring workflow IDs; validate
+  the enclosed Logbook ZIP, preview the import, and retain CI origin. The CLI
+  uses an environment token and VS Code uses GitHub sign-in. Filesystem team
+  sharing remains a development prototype.
+- Done when output: `npm run check` passed with 47 test files and 234 tests;
+  the VS Code 1.140.0 host journey using the installed editor exited 0.
+  A pushed `pw-test` workflow uploaded artifact `11567922876`; authenticated
+  fetch, dry-run preview, import and the VS Code history reader opened run
+  `gh-37818414331-1` with 20 tests and CI origin. The workflow's Playwright
+  step failed on the live suite, while export and upload both succeeded.
+
+### GitHub CI fetch VSIX preview
+
+- [x] Package local preview `0.2.21-monorepo.14` with the GitHub Actions CI
+  fetch command and repository/artifact settings for manual installation.
+- Done when output: `vsce package --no-dependencies` produced the 2.81 MB
+  VSIX; ZIP inspection found version `.14`, `logbook.fetchCiRuns`, and both CI
+  settings. Packaged and built runtime SHA-256 hashes match. `npm run check`
+  passed with 47 test files and 234 tests. The VSIX installed and activated in
+  a disposable VS Code 1.140.0 profile; the longer host journey has an existing
+  active-editor assertion failure also reproduced from the unpackaged source.
+
+### Unified Recent Runs import action
+
+- [x] Replace the two Recent Runs import toolbar icons with one Import action
+  that offers Local ZIP and GitHub Actions. Retain the direct commands in the
+  Command Palette and package local preview `0.2.21-monorepo.15`.
+- Done when output: `npm run check` passed with 47 test files and 234 tests;
+  VSIX manifest inspection found only `logbook.chooseImport` among import
+  toolbar contributions, and its runtime hash matches the tested build. The
+  separate direct import commands remain registered.
+
+### CI fetch progress completion
+
+- [x] End the CI fetch progress task after saving and refreshing the imported
+  run, then show the completion message outside that task. Package local
+  preview `0.2.21-monorepo.16`.
+- Done when output: `npm run check` passed with 47 test files and 234 tests;
+  `vsce package --no-dependencies` produced the `.16` VSIX, whose version and
+  bundled runtime hash match the checked source.
+
+### Storeless Local origin pills
+
+- [x] Show Local for history runs outside the import catalog even without a
+  team store, keep explicit CI and Peer provenance, and keep inferred Local
+  runs ineligible for team Push. Package local preview `0.2.21-monorepo.17`.
+- Done when output: `npm run check` passed with 48 test files and 235 tests;
+  VSIX manifest inspection confirmed `.17`, and its runtime hash matches the
+  checked build. The packaged editor host passed the new storeless Local and
+  no-Push assertions before later unrelated workspace-rescan timing failure.
+
+### Release surface: UI and CI import only
+
+- [x] Remove filesystem team-store Sync/Push from the editor toolbar, sidebar,
+  command palette and context menus; remove `store` CLI commands and reporter
+  options from the public release surface. Keep local history, Local/CI pills,
+  manual ZIP import and GitHub Actions fetch.
+- Done when output: `npm run check` passed with 48 test files and 234 tests;
+  VS Code 1.140.0 host journey exited 0 after explicitly opening Recent Runs,
+  including import and absent team-action assertions. Release-surface tests
+  found `ci` but no `store` CLI command and no Sync/Push VSIX contributions.
+
+### Reporter 0.3.2 and extension 0.2.21 release candidate
+
+- [x] Prepare public changelogs and release notes for the shipped Recent Runs UI,
+  Local/CI labels, GitHub Actions import and `ci` CLI commands. Package and
+  inspect the production reporter tarball and VSIX.
+- Done when output: `npm run check` passed with 48 test files and 234 tests;
+  `npm run test:e2e` passed 7 tests, `npm run test:release` passed the packed
+  reporter smoke, and `npm run test:release:views` passed its theme, width,
+  keyboard and accessibility checks. Packaged VSIX host journeys exited 0 on
+  VS Code 1.95.3 and 1.140.0. `npm run release:publish -- --verify` verified
+  both artifact hashes and reported no publication attempted. Public `store`
+  CLI commands and VSIX Sync/Push contributions are absent.

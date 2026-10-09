@@ -49,9 +49,21 @@ jobs:
           name: logbook-report
           path: .logbook/report
           include-hidden-files: true
+      - run: npx playwright-logbook export --out ci-run.logbook.zip --project-id my-project
+      - uses: actions/upload-artifact@v7
+        with:
+          name: logbook-run
+          path: ci-run.logbook.zip
+          if-no-files-found: error
 ```
 
 The cache is best-effort: a cache miss means no cross-run trend history. Retain or publish `.logbook/runs` and `.logbook/index.jsonl` separately if history is important. Artifact paths can differ after download; `merge --from` discovers shards recursively.
+
+After the merge job, set `logbook.ciRepository` to `OWNER/REPO` in the trusted VS Code workspace and run **Logbook: Fetch CI Run from GitHub Actions…**. The default exact artifact name is `logbook-run`; set `logbook.ciArtifactName` only if your workflow uses another name. Sign in to GitHub, select one of the recent unexpired artifacts, enter `my-project` on first import, review the run and missing-evidence counts, and confirm. The CI run then appears in local history. Repeating the import skips an identical run. A different project ID or conflicting bytes for an existing run ID are rejected without replacement. For CLI use, set `GH_TOKEN` or `GITHUB_TOKEN` in your shell and run `logbook ci list --repo OWNER/REPO` then `logbook ci fetch --repo OWNER/REPO --project-id my-project`; fetch chooses the newest matching artifact. For a private repository, the token needs Actions read access. No token belongs in Logbook settings or Playwright config. GitHub artifacts expire; this is a recent CI feed, not durable team storage.
+
+Manual import remains available: download the `logbook-run` artifact from the workflow run, extract GitHub's outer ZIP, then use **Logbook: Import ZIP to Local History…** on `ci-run.logbook.zip`.
+
+The example exports the merged run without external file attachments because shard uploads contain only `.logbook/shards`. To include referenced traces, videos, screenshots and log files, retain each shard's files and restore them under the same project-relative paths recorded by Playwright *before* export, then add `--artifacts`. Export reports included and missing counts; review them before handing the bundle to another machine. The record and any embedded evidence are included either way. See [run bundles](RUN-BUNDLES.md) for limits and import behavior.
 
 Trace ZIPs, screenshots and videos are Playwright artifacts, not part of Logbook's shard JSON or standalone HTML. Retain the relevant `test-results/` tree (or the Playwright blob artifacts when using blob merge) alongside the report, with paths matching the recorded project-relative references. If those files expire, regenerated reports label them **File not retained** and do not offer dead links. The default report never copies trace contents. Treat retained traces/videos as potentially sensitive; they can contain page snapshots, network data and input values. Use unique run IDs for separately invoked jobs: writing a different shard/run under an existing ID now warns or fails instead of silently replacing it. Repeating identical bytes is safe; an explicit `logbook merge` remains a replacement operation so an incomplete shard set can be re-merged.
 
@@ -69,4 +81,4 @@ The offline integration test performs this flow against a copy of the sample pro
 
 ## History limitation
 
-Logbook has only a file-backed store. CI jobs are ephemeral, so history survives only if you persist `.logbook/` via cache, artifacts or a data branch. A server sink is not part of the current reporter milestone.
+CI jobs are ephemeral, so history survives only if you persist `.logbook/` via cache, artifacts or a data branch. Portable bundles carry a selected saved run to a local IDE.
