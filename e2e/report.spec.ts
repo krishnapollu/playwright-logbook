@@ -73,6 +73,26 @@ test('attempt panel distinguishes a trace from another ZIP and labels missing sc
   } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });
 
+test('test detail compares the selected result with a dated earlier execution', async ({ page }) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-history-browser-'));
+  try {
+    const current = run('current', '2026-01-03T00:00:00.000Z');
+    current.tests = [testRecord('case')];
+    const earlier = run('earlier', '2026-01-02T00:00:00.000Z');
+    earlier.tests = [testRecord('case', 'unexpected')];
+    earlier.complete = false;
+    const file = path.join(directory, 'index.html');
+    await fs.writeFile(file, renderReport(buildReportModel({ run: current, summaries: [], recentRuns: [earlier] })));
+    await page.goto(pathToFileURL(file).href);
+    await page.locator('#lb-tests-body tr[data-test-id]').click();
+    await expect(page.locator('#lb-panel-content')).toContainText('earlier · main · incomplete');
+    await page.getByRole('button', { name: 'Compare' }).click();
+    await expect(page.locator('.test-comparison')).toContainText('failed');
+    await expect(page.locator('.test-comparison')).toContainText('passed');
+    await expect(page.locator('.test-comparison')).toContainText('Duration');
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
 test('offline report navigation and debugging', async ({ page }) => {
   const errors: string[] = [];
   const network: string[] = [];

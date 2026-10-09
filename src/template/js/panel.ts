@@ -1,12 +1,12 @@
 export const PANEL_JS = `
-let panelShown='';
+let panelShown='',comparisonBaseline='';
 function renderPanel(){
   const panel=document.getElementById('lb-panel'),backdrop=document.getElementById('lb-backdrop');
   const content=document.getElementById('lb-panel-content'),test=byId.get(state.test);
   panel.hidden=!test;backdrop.hidden=!test;if(!test){panelShown='';return}
   clear(content);
   const heading=document.getElementById('lb-panel-heading');heading.textContent=test.title;
-  const fresh=panelShown!==test.testId;panelShown=test.testId;
+  const fresh=panelShown!==test.testId;panelShown=test.testId;if(fresh)comparisonBaseline='';
   content.appendChild(chip(statusKind(test)));
   content.appendChild(h('p',{class:'muted',text:test.titlePath.join(' › ')}));
   content.appendChild(h('p',{},test.file+':'+test.line+' · '+(test.project||'(default)')+' · '+formatDuration(test.durationMs)));
@@ -70,9 +70,24 @@ function renderPanel(){
     content.appendChild(tabs);content.appendChild(output);
   }
   if(!test.attempts.some(item=>item.steps?.length||item.stdout||item.stderr||item.attachments?.some(a=>a.dataUri)))content.appendChild(h('p',{class:'muted',text:'Enable captureDetails to see steps, output and screenshots.'}));
-  content.appendChild(h('h3',{text:'Last 10 results'}));content.appendChild(recentStrip(model.recent?.[test.testId]));
-  const previous=model.recent?.[test.testId]?.at(-1);
-  content.appendChild(h('p',{class:'muted',text:'Previous run: '+({'p':'passed','f':'failed','k':'flaky','s':'skipped','-':'absent'}[previous]||'absent')}));
+  const history=[...(model.testHistory?.[test.testId]||[])].reverse();
+  content.appendChild(h('h3',{text:'Recorded history · '+history.length}));
+  content.appendChild(h('p',{class:'muted',text:'Available matching executions in the last 10 loaded runs. Missing runs and incomplete records do not establish a pass.'}));
+  if(!history.length)content.appendChild(h('p',{class:'muted',text:'No earlier matching execution is available.'}));
+  for(const entry of history){const button=h('button',{class:'button',type:'button','aria-pressed':String(comparisonBaseline===entry.runId),text:'Compare'});
+    button.addEventListener('click',()=>{comparisonBaseline=entry.runId;renderPanel()});
+    content.appendChild(h('div',{class:'test-history-row'},h('span',{},chip(entry.outcome==='flaky'?'flaky':entry.status==='timedOut'?'failed':entry.status)),
+      h('span',{text:entry.startedAt.replace('T',' ').slice(0,19)+' UTC · '+entry.runId+(entry.branch?' · '+entry.branch:'')+(entry.complete?'':' · incomplete')}),
+      h('span',{text:formatDuration(entry.durationMs)}),button));
+  }
+  const baseline=history.find(entry=>entry.runId===comparisonBaseline);
+  if(baseline){content.appendChild(h('h3',{text:'Compared with '+baseline.runId}));
+    const currentError=test.firstError?.message.split('\\n')[0]||'No recorded error',previousError=baseline.firstError||'No recorded error';
+    content.appendChild(h('div',{class:'test-comparison'},
+      ...[['Status',baseline.status,test.status],['Attempts',baseline.attemptCount,test.attemptCount],['Duration',formatDuration(baseline.durationMs),formatDuration(test.durationMs)],['Error',previousError,currentError]].map(([label,before,after])=>
+        h('div',{},h('strong',{text:label}),h('span',{text:String(before)}),h('span',{text:'→'}),h('span',{text:String(after)})))));
+    content.appendChild(h('p',{class:'muted',text:'Recorded values only. Duration changes and similar errors do not establish a cause.'}));
+  }
   content.appendChild(h('button',{class:'button',type:'button',onclick:()=>copyText(location.href)},icon('link'),'Copy link'));
   if(fresh)heading.focus();
 }

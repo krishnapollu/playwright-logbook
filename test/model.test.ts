@@ -28,10 +28,19 @@ describe('buildReportModel', () => {
     const current = sample();
     const failed = current.tests[1]!;
     failed.firstError = { message: 'Error: locator.click: Timeout 30000ms exceeded.', stack: null, snippet: null, location: null };
-    const old = { ...run('old'), tests: [{ ...testRecord('pass', 'unexpected') }, testRecord('failure')] };
+    const old = { ...run('old', '2025-01-01T00:00:00.000Z'), tests: [{ ...testRecord('pass', 'unexpected') }, testRecord('failure')] };
     const model = buildReportModel({ run: current, summaries: [], recentRuns: [old], comparison });
     expect(model.recent).toMatchObject({ pass: 'f', failure: 'p', flaky: '-' });
     expect(model.errorGroups[0]).toMatchObject({ signature: 'Error: locator.click: Timeout N ms exceeded.', count: 1, newCount: 1, testIds: ['failure'] });
+  });
+  it('keeps dated history for the same project and repeat without treating absent tests as passes', () => {
+    const current = run('current', '2026-01-04T00:00:00.000Z');
+    current.tests = [testRecord('same')];
+    const matching = { ...run('matching', '2026-01-02T00:00:00.000Z'), complete: false, tests: [{ ...testRecord('same', 'unexpected'), firstError: { message: 'Earlier failure\nprivate detail', stack: null, snippet: null, location: null } }] };
+    const otherProject = { ...run('other-project', '2026-01-03T00:00:00.000Z'), tests: [{ ...testRecord('same'), project: 'beta' }] };
+    const model = buildReportModel({ run: current, summaries: [], recentRuns: [matching, otherProject, run('absent'), run('future', '2026-01-05T00:00:00.000Z')] });
+    expect(model.testHistory.same).toEqual([{ runId: 'matching', startedAt: matching.startedAt, branch: 'main', complete: false,
+      status: 'failed', outcome: 'unexpected', durationMs: 1, attemptCount: 0, firstError: 'Earlier failure' }]);
   });
   it('slims clean single-attempt passes only', () => {
     const base = sample();

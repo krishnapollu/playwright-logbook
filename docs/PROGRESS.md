@@ -1327,7 +1327,10 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   Done when output: `npm run check` passed with 49 test files and 235 tests;
   the installed VS Code host journey exited 0 with Tests view navigation and
   coverage assertions. Development VSIX packaged to `/private/tmp/playwright-logbook-vscode-tests-dev.vsix`.
-- [ ] H2 Report test history and comparison.
+- [x] H2 Report test history and comparison.
+  Done when output: `npm run check` passed with 49 test files and 236 tests;
+  `npm run test:e2e` passed 8 browser tests, including dated history and
+  selected-execution comparison. The report remains offline at 360/768/1440 widths.
 - [ ] H3 Run and test HTML export.
 - [ ] H4 Release preparation and pushed feature branch.
 
