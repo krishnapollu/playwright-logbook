@@ -1348,3 +1348,15 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   reporter `9e0f503bdb9231db9166a13341b717f3871382738bc612f6267db36d84b22b36`,
   VSIX `11fb25b97945d60a62e0eb8acd1bff055e034061015198f75840bf5b8909ba88`.
 
+- [x] H5 Review fixes — see `docs/SPEC-test-history-exports.md`.
+  Done when output: `npm run check` passed with 50 test files and 239 tests;
+  `npm run test:e2e` passed 11 browser tests, including visible comparison,
+  linked screenshot, aligned steps, and a single-file offline export.
+  `npm run test:release` and `npm run test:release:views` passed. The clean-profile
+  packaged 0.2.22 VS Code host journey exited 0 with the Recent Runs Tests entry.
+  Development VSIX: `/private/tmp/playwright-logbook-vscode-review-dev.vsix`.
+  Production VSIX: `packages/vscode/dist/playwright-logbook-vscode-0.2.22.vsix`.
+  `npm run release:publish -- --verify` passed without publishing. SHA-256:
+  reporter `0b443005cd682d889bcd87669c2430c251c28a935e95ae8e5e535573d1797a53`,
+  VSIX `6bc1ceaddfd4452c4ac5b532a476bc5fdf18dbdb6072dfe7c148beeb0b36940a`.
+

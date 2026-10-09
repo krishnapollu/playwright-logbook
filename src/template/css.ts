@@ -14,4 +14,18 @@ export const REPORT_CSS = `:root{${tokensToCss('light')}font-family:system-ui,-a
 @media(max-width:640px){.container{padding:16px 12px}.topbar-inner{padding:8px 12px}.topbar-actions .optional{display:none}.hero{grid-template-columns:1fr;gap:12px}.donut{width:110px;height:110px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-panel{width:100vw;top:0;bottom:0;border:0;border-radius:0}.test-history-row{grid-template-columns:1fr auto}.test-comparison>div{grid-template-columns:1fr 1fr}.toolbar input{min-width:100%}.run-facts{gap:6px}.run-facts div{flex:1 1 135px}.run-facts dd{max-width:100%}.comparison-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.comparison-head{align-items:flex-start;flex-direction:column}.pagination{flex-direction:column;align-items:stretch}}
 @media(max-width:640px){.run-facts div{flex:1 1 100%}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+.detail-panel{padding:0;background:var(--bg);border:2px solid var(--accent);box-shadow:0 24px 80px var(--shadow)}
+.detail-panel[data-status="failed"],.detail-panel[data-status="timedout"]{border-color:var(--failed)}
+.detail-panel[data-status="passed"]{border-color:var(--passed)}
+.panel-head{top:0;padding:14px 20px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+#lb-panel-content{padding:8px 24px 28px}
+#lb-panel-content>h3{margin-top:24px;border-top:1px solid var(--border);padding-top:16px}
+#lb-panel-content>.status-chip{margin-top:8px}
+.steps{list-style:none;padding:0;margin:8px 0}
+.steps li{display:grid;grid-template-columns:minmax(0,1fr) 90px;column-gap:16px;align-items:center;padding:7px 8px;border-bottom:1px solid var(--border)}
+.steps .step-title{padding-left:calc(var(--depth)*16px);overflow-wrap:anywhere}
+.steps .step-duration{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.steps .heat{grid-column:1/-1;margin:4px 0 0}
+.test-comparison{border:1px solid var(--accent);border-radius:8px;background:var(--surface);padding:8px 16px}
+@media(max-width:640px){#lb-panel-content{padding:8px 16px 24px}}
 @media print{:root,:root[data-theme="dark"]{${tokensToCss('light')}color-scheme:light}body{background:var(--surface)}.topbar-actions,.tabs,.toolbar,.button,.chip-button,.panel-head button,.toast,.skip-link{display:none!important}.panel[hidden]{display:block!important}.detail-panel{position:static;width:auto;box-shadow:none;border:0}.panel-backdrop{display:none}.container{max-width:none}.section-card,tr{break-inside:avoid}a{color:var(--text)}}`;

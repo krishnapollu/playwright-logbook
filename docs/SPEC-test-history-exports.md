@@ -6,7 +6,7 @@ Status: implementation plan. The existing run record remains schema v1. This wor
 
 - Keep the extension's Recent Runs tree. Add a Tests view indexed by project, canonical test ID, and repeat index. Each entry shows the newest recorded execution and opens its existing detail, history, and pinned comparison. Compare two executions of that test, not two whole runs. Unknown, missing, and incomplete records never count as passes.
 - Keep the report's run overview and run-wide comparison near the top. Give a selected test a full-width detail view with current attempts and evidence, dated execution history, and an explicit baseline selection for comparison. Avoid putting a side-by-side comparison inside the narrow detail drawer.
-- Export a selected run with the same HTML renderer used by the reporter and CLI. Export one test as a standalone HTML snapshot of the selected execution, its recorded history, and the newest available baseline. Exports are ZIPs containing `index.html` and retained artifact files; they work outside VS Code and label missing evidence.
+- Export a selected run with the same HTML renderer used by the reporter and CLI. Export one test as a standalone HTML snapshot of the selected execution, its recorded history, and the newest available baseline. Exports are single HTML files with retained artifacts embedded as downloads; they work outside VS Code and label missing evidence.
 - History and comparisons are snapshots of available records at export time. Regeneration is not byte-identical to an earlier report if the history or artifacts changed.
 
 ## Task cards
@@ -32,3 +32,7 @@ Add extension actions for selected run and test. Reuse the report renderer for r
 Update user docs and changelogs, bump versions only for packages changed, inspect production tarball/VSIX, and report the npm version required. Do not publish. Done when the release checks and artifact verification pass. Push the checked branch after committing.
 
 One task per commit. `npm run check` runs before every commit. Keep `test/integration/golden.test.ts` unchanged.
+
+### H5 — Review fixes
+
+Make the Tests view discoverable from Recent Runs, move export actions to a quiet header control, and export one portable HTML file. In the report, reveal selected comparisons, link inline screenshots, align steps, and visually distinguish test details. Done when focused tests, `npm run check`, browser checks, and development and production VSIX inspection pass.

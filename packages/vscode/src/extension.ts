@@ -163,11 +163,12 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     const css = view.webview.asWebviewUri(vscode.Uri.joinPath(media, 'sidebar.css'));
     const script = view.webview.asWebviewUri(vscode.Uri.joinPath(media, 'sidebar.js'));
     this.disposables.push(view.webview.onDidReceiveMessage((message: unknown) => { void this.sidebarAction(message); }));
-    view.webview.html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${view.webview.cspSource}; script-src ${view.webview.cspSource}"><link rel="stylesheet" href="${css}"></head><body><div id="filter-bar"><input id="filter" type="search" maxlength="256" placeholder="Filter runs and tests" aria-label="Filter runs and tests"><small id="filter-scope" hidden></small></div><div id="runs" role="tree" aria-label="Recent Runs"></div><script src="${script}"></script></body></html>`;
+    view.webview.html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${view.webview.cspSource}; script-src ${view.webview.cspSource}"><link rel="stylesheet" href="${css}"></head><body><div id="filter-bar"><input id="filter" type="search" maxlength="256" placeholder="Filter runs and tests" aria-label="Filter runs and tests"><button id="show-tests" type="button" title="Open Tests view">Tests ↗</button><small id="filter-scope" hidden></small></div><div id="runs" role="tree" aria-label="Recent Runs"></div><script src="${script}"></script></body></html>`;
   }
   private async sidebarAction(message: unknown): Promise<void> {
     if (!message || typeof message !== 'object' || !('type' in message)) return;
     if (message.type === 'ready') { await this.renderSidebar(); return; }
+    if (message.type === 'showTests') { await vscode.commands.executeCommand('logbook.tests.focus'); return; }
     if (message.type === 'filter' && 'query' in message && typeof message.query === 'string') {
       this.setTestFilter({ ...this.testFilter, query: message.query.slice(0, 256) }); return;
     }
@@ -523,13 +524,13 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
   private async saveHtmlPackage(store: StoreContext, runId: string, test?: { testId: string; project: string; repeatEachIndex: number }): Promise<void> {
     try {
       const suffix = test ? `-test-${createHash('sha256').update(JSON.stringify(test)).digest('hex').slice(0, 8)}` : '';
-      const destination = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.join(store.folder.uri.fsPath, `${runId}${suffix}-html.zip`)),
-        filters: { 'Portable HTML package': ['zip'] }, saveLabel: 'Export HTML package' });
+      const destination = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.join(store.folder.uri.fsPath, `${runId}${suffix}.html`)),
+        filters: { 'Portable HTML report': ['html'] }, saveLabel: 'Export HTML report' });
       if (!destination) return;
       const roots = await this.rootsForStore(store);
       const result = await exportHtml(roots.sourceRoot, roots.storeRoot, runId, test);
       await writeExport(destination.fsPath, result.bytes);
-      await vscode.window.showInformationMessage(`HTML package saved. Open index.html after extracting the ZIP. ${result.includedArtifacts} retained, ${result.missingArtifacts} unavailable attachments.`);
+      await vscode.window.showInformationMessage(`HTML report saved. ${result.includedArtifacts} embedded, ${result.missingArtifacts} unavailable attachments.`);
     } catch (error) { await vscode.window.showWarningMessage(error instanceof Error ? error.message : 'HTML export failed.'); }
   }
   private async runOverview(id: unknown): Promise<void> {

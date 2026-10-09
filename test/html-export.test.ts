@@ -3,29 +3,12 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import * as yauzl from 'yauzl';
 import { exportHtml } from '../src/htmlexport.js';
 import { FileHistoryStore } from '../src/store.js';
 import { run, testRecord } from './factories.js';
 
 const temporary: string[] = [];
 afterEach(async () => { for (const directory of temporary.splice(0)) await fs.rm(directory, { recursive: true, force: true }); });
-
-async function entries(bytes: Buffer): Promise<Map<string, string>> {
-  const zip = await new Promise<yauzl.ZipFile>((resolve, reject) => yauzl.fromBuffer(bytes, { lazyEntries: true }, (error, value) => error || !value ? reject(error) : resolve(value)));
-  const found = new Map<string, string>();
-  return new Promise((resolve, reject) => {
-    zip.on('error', reject); zip.on('end', () => resolve(found));
-    zip.on('entry', (entry: yauzl.Entry) => zip.openReadStream(entry, (error, stream) => {
-      if (error || !stream) { reject(error); return; }
-      const chunks: Buffer[] = [];
-      stream.on('data', (chunk: Buffer) => chunks.push(chunk));
-      stream.on('error', reject);
-      stream.on('end', () => { found.set(entry.fileName, Buffer.concat(chunks).toString('utf8')); zip.readEntry(); });
-    }));
-    zip.readEntry();
-  });
-}
 
 it('exports the selected run through the report renderer with portable retained evidence', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-html-export-')); temporary.push(root);
@@ -38,11 +21,11 @@ it('exports the selected run through the report renderer with portable retained 
   await new FileHistoryStore(storeRoot).saveRun(old);
   await new FileHistoryStore(storeRoot).saveRun(current);
   const exported = await exportHtml(root, storeRoot, 'selected');
-  const files = await entries(exported.bytes);
-  expect(files.get('index.html')).toContain('id="lb-data"');
-  expect(files.get('index.html')).toContain('earlier');
-  expect([...files.keys()].some(name => name.startsWith('artifacts/') && files.get(name) === 'retained evidence')).toBe(true);
-  expect(files.get('index.html')).not.toContain(root);
+  const html = exported.bytes.toString('utf8');
+  expect(html).toContain('id="lb-data"');
+  expect(html).toContain('earlier');
+  expect(html).toContain(`data:application/octet-stream;base64,${Buffer.from('retained evidence').toString('base64')}`);
+  expect(html).not.toContain(root);
   expect(exported).toMatchObject({ includedArtifacts: 1, missingArtifacts: 0 });
 });
 
@@ -50,21 +33,22 @@ it('exports one test with dated history and labels missing evidence without a br
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-test-html-')); temporary.push(root);
   const storeRoot = path.join(root, '.logbook');
   const current = run('selected', '2026-01-03T00:00:00.000Z');
-  current.tests = [{ ...testRecord('case'), attempts: [{ retry: 0, status: 'passed', durationMs: 1, startedAt: current.startedAt, workerIndex: 0, errors: [], attachments: [{ name: 'lost', contentType: 'text/plain', path: 'test-results/lost.txt', inline: false, sizeBytes: null }] }], attemptCount: 1 },
+  current.tests = [{ ...testRecord('case'), attempts: [{ retry: 0, status: 'passed', durationMs: 1, startedAt: current.startedAt, workerIndex: 0, errors: [], attachments: [{ name: 'lost', contentType: 'text/plain', path: 'test-results/lost.txt', inline: false, sizeBytes: null }, { name: 'screenshot', contentType: 'image/png', path: null, inline: true, sizeBytes: 1, dataUri: 'data:image/png;base64,YQ==' }] }], attemptCount: 1 },
     { ...testRecord('other'), attempts: [{ retry: 0, status: 'passed', durationMs: 1, startedAt: current.startedAt, workerIndex: 0, errors: [], attachments: [] }], attemptCount: 1 }];
   const old = run('earlier', '2026-01-02T00:00:00.000Z'); old.tests = [testRecord('case', 'unexpected')];
   await new FileHistoryStore(storeRoot).saveRun(old);
   await new FileHistoryStore(storeRoot).saveRun(current);
   const exported = await exportHtml(root, storeRoot, 'selected', { testId: 'case', project: 'alpha', repeatEachIndex: 0 });
-  const html = (await entries(exported.bytes)).get('index.html')!;
+  const html = exported.bytes.toString('utf8');
   expect(html).toContain('Logbook / test export');
   expect(html).toContain('Compared with earlier');
   expect(html).toContain('File not retained in this export');
+  expect(html).toContain('Download screenshot');
   expect(html).not.toContain('href="test-results/lost.txt"');
   expect(html).not.toContain('>other<');
   expect(exported).toMatchObject({ includedArtifacts: 0, missingArtifacts: 1 });
   const clean = await exportHtml(root, storeRoot, 'selected', { testId: 'other', project: 'alpha', repeatEachIndex: 0 });
-  expect((await entries(clean.bytes)).get('index.html')).toContain('Attempt 1');
+  expect(clean.bytes.toString('utf8')).toContain('Attempt 1');
 });
 
 it('uses imported artifact mappings and never substitutes a checkout file for missing CI evidence', async () => {
@@ -85,8 +69,8 @@ it('uses imported artifact mappings and never substitutes a checkout file for mi
   await fs.writeFile(path.join(storeRoot, mapped), bytes);
   await fs.writeFile(path.join(storeRoot, 'imports.json'), JSON.stringify({ projectId: 'demo', runs: { imported: { bundles: [], artifacts: { 'test-results/mapped.txt': mapped } } } }));
   const exported = await exportHtml(root, storeRoot, 'imported');
-  const files = await entries(exported.bytes);
-  expect([...files.values()]).toContain('CI proof');
-  expect([...files.values()]).not.toContain('wrong source');
+  const html = exported.bytes.toString('utf8');
+  expect(html).toContain(`data:application/octet-stream;base64,${bytes.toString('base64')}`);
+  expect(html).not.toContain('wrong source');
   expect(exported).toMatchObject({ includedArtifacts: 1, missingArtifacts: 1 });
 });

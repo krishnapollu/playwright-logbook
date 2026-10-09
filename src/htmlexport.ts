@@ -1,9 +1,8 @@
 import fs from 'node:fs/promises';
-import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { FileHistoryStore } from './store.js';
 import { readImportCatalog } from './bundles/ingest.js';
-import { BUNDLE_LIMITS, writeBundleZip } from './bundles/archive.js';
+import { BUNDLE_LIMITS } from './bundles/archive.js';
 import { resolveRecordedFile } from './historyfiles.js';
 import { previousRun, compareRuns, computeFlaky } from './history.js';
 import { buildReportModel } from './model.js';
@@ -13,7 +12,7 @@ import { renderTestReport } from './testrender.js';
 export interface HtmlExportSelection { testId: string; project: string; repeatEachIndex: number }
 export interface HtmlExport { bytes: Buffer; missingArtifacts: number; includedArtifacts: number }
 
-/** Package the normal run report or one focused test as portable offline HTML. */
+/** Export the normal run report or one focused test as portable offline HTML. */
 export async function exportHtml(root: string, storeRoot: string, runId: string, selection?: HtmlExportSelection): Promise<HtmlExport> {
   const store = new FileHistoryStore(storeRoot);
   const record = await resolveRecordedFile(storeRoot, `runs/${runId}.json`);
@@ -32,11 +31,12 @@ export async function exportHtml(root: string, storeRoot: string, runId: string,
     catch { /* An unavailable older run is a gap, never a pass. */ }
   }
   const previousRecord = previous ? recentRuns.find(item => item.runId === previous.runId) ?? null : null;
-  const files = new Map<string, Buffer>();
   const links: Record<string, string> = {}, availability: Record<string, 'present' | 'missing'> = {};
   const catalog = await readImportCatalog(storeRoot);
   const imported = catalog && Object.hasOwn(catalog.runs, runId) ? catalog.runs[runId] : undefined;
   let missingArtifacts = 0;
+  let includedArtifacts = 0;
+  let embeddedBytes = 0;
   const attachments = (selected ? [selected] : run.tests).flatMap(test => test.attempts.flatMap(attempt => attempt.attachments));
   for (const recordedPath of [...new Set(attachments.flatMap(item => item.path ? [item.path] : []))].sort()) {
     try {
@@ -45,17 +45,16 @@ export async function exportHtml(root: string, storeRoot: string, runId: string,
       const target = await resolveRecordedFile(mapped ? storeRoot : root, mapped ?? recordedPath);
       if ((await fs.stat(target)).size > BUNDLE_LIMITS.artifact) throw new Error('Artifact exceeds the export limit.');
       const bytes = await fs.readFile(target);
+      // shortcut: cap embedded evidence at the existing archive limit; split exports if larger runs need sharing.
+      if (embeddedBytes + bytes.length > BUNDLE_LIMITS.archive) throw new Error('Embedded evidence exceeds the export limit.');
       const digest = createHash('sha256').update(bytes).digest('hex');
       if (mapped && mapped.split('/')[1] !== digest) throw new Error('Imported artifact digest mismatch.');
-      let basename = path.posix.basename(recordedPath).replace(/[^A-Za-z0-9._-]/g, '_').replace(/[. ]+$/, '').slice(0, 120);
-      if (!basename || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(basename)) basename = 'artifact.bin';
-      const file = `artifacts/${digest}/${basename}`;
-      files.set(file, bytes); links[recordedPath] = file; availability[recordedPath] = 'present';
+      links[recordedPath] = `data:application/octet-stream;base64,${bytes.toString('base64')}`;
+      availability[recordedPath] = 'present'; includedArtifacts++; embeddedBytes += bytes.length;
     } catch { availability[recordedPath] = 'missing'; missingArtifacts++; }
   }
   const model = buildReportModel({ run, summaries, previous: previousRecord ? previous : null, comparison: compareRuns(run, previousRecord), flaky: computeFlaky(recentRuns), recentRuns, generatedAt: null, attachmentAvailability: availability });
   const html = selected ? renderTestReport(model, selected, links)
     : renderReport(model, { attachmentLinks: links });
-  files.set('index.html', Buffer.from(html));
-  return { bytes: await writeBundleZip(files), missingArtifacts, includedArtifacts: files.size - 1 };
+  return { bytes: Buffer.from(html), missingArtifacts, includedArtifacts };
 }

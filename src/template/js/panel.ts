@@ -6,6 +6,7 @@ function renderPanel(){
   panel.hidden=!test;backdrop.hidden=!test;if(!test){panelShown='';return}
   clear(content);
   const heading=document.getElementById('lb-panel-heading');heading.textContent=test.title;
+  panel.dataset.status=statusKind(test);
   const fresh=panelShown!==test.testId;panelShown=test.testId;if(fresh)comparisonBaseline='';
   content.appendChild(chip(statusKind(test)));
   content.appendChild(h('p',{class:'muted',text:test.titlePath.join(' › ')}));
@@ -40,11 +41,11 @@ function renderPanel(){
   if(test.annotations?.length){content.appendChild(h('h3',{text:'Annotations'}));for(const item of test.annotations)content.appendChild(h('p',{text:item.type+(item.description?' · '+item.description:'')}))}
   if(attempt?.attachments?.length){content.appendChild(h('h3',{text:'Attachments'}));for(const attachment of attempt.attachments){
     const availability=attachment.path?(model.attachmentAvailability?.[attachment.path]||'unknown'):'inline';
-    const href=availability==='missing'?null:attachment.path&&links[attachment.path];
+    const href=attachment.path&&availability!=='missing'?links[attachment.path]:attachment.dataUri;
     const traceAttachment=attachment.name==='trace'&&attachment.contentType==='application/zip';
     const kind=traceAttachment?'Trace':attachment.contentType?.startsWith('image/')?'Screenshot':attachment.contentType?.startsWith('video/')?'Video':'Attachment';
-    content.appendChild(h('p',{},h('strong',{text:kind+' · '}),link(attachment.name,href),h('small',{text:availability==='missing'?'File not retained':availability==='unknown'?'Link unverified':availability==='inline'?'Inline attachment':''})));
-    if(traceAttachment&&attachment.path&&availability!=='missing'){
+    content.appendChild(h('p',{},h('strong',{text:kind+' · '}),link(attachment.name,href,attachment.path?.split('/').pop()||attachment.name),h('small',{text:availability==='missing'?(attachment.dataUri?'Inline copy available':'File not retained'):availability==='unknown'?'Link unverified':availability==='inline'?'Inline attachment':''})));
+    if(traceAttachment&&attachment.path&&availability!=='missing'&&!href?.startsWith('data:')){
       const trace=traceCommand(attachment.path||'');content.appendChild(h('pre',{text:trace}));
       content.appendChild(h('button',{class:'button',type:'button',onclick:()=>copyText(trace),text:'Copy trace command'}));
     }
@@ -55,8 +56,8 @@ function renderPanel(){
   }content.appendChild(h('p',{class:'muted',text:'Traces and attachments may contain page data or secrets. Review before sharing.'}))}
   if(attempt?.steps?.length){content.appendChild(h('h3',{text:'Steps'}));const list=h('ol',{class:'steps'});
     const max=Math.max(1,...attempt.steps.map(step=>step.durationMs));let failedStep=null;
-    for(const step of attempt.steps){const item=h('li',{class:step.failed?'failed':'',style:'margin-left:'+(step.depth*12)+'px'},
-      h('span',{text:step.title+' · '+formatDuration(step.durationMs)}),h('span',{class:'heat'+(step.failed?' hot':'')},h('span',{style:'width:'+Math.max(2,Math.round(step.durationMs/max*100))+'%'})));
+    for(const step of attempt.steps){const item=h('li',{class:step.failed?'failed':'',style:'--depth:'+Math.max(0,step.depth)},
+      h('span',{class:'step-title',text:step.title}),h('span',{class:'step-duration',text:formatDuration(step.durationMs)}),h('span',{class:'heat'+(step.failed?' hot':'')},h('span',{style:'width:'+Math.max(2,Math.round(step.durationMs/max*100))+'%'})));
       if(step.failed&&!failedStep)failedStep=item;list.appendChild(item)}content.appendChild(list);
     if(fresh&&failedStep)requestAnimationFrame(()=>failedStep.scrollIntoView({block:'nearest'}));
   }
@@ -75,13 +76,13 @@ function renderPanel(){
   content.appendChild(h('p',{class:'muted',text:'Available matching executions in the last 10 loaded runs. Missing runs and incomplete records do not establish a pass.'}));
   if(!history.length)content.appendChild(h('p',{class:'muted',text:'No earlier matching execution is available.'}));
   for(const entry of history){const button=h('button',{class:'button',type:'button','aria-pressed':String(comparisonBaseline===entry.runId),text:'Compare'});
-    button.addEventListener('click',()=>{comparisonBaseline=entry.runId;renderPanel()});
+    button.addEventListener('click',()=>{comparisonBaseline=entry.runId;renderPanel();document.getElementById('lb-test-comparison')?.scrollIntoView({block:'center'})});
     content.appendChild(h('div',{class:'test-history-row'},h('span',{},chip(entry.outcome==='flaky'?'flaky':entry.status==='timedOut'?'failed':entry.status)),
       h('span',{text:entry.startedAt.replace('T',' ').slice(0,19)+' UTC · '+entry.runId+(entry.branch?' · '+entry.branch:'')+(entry.complete?'':' · incomplete')}),
       h('span',{text:formatDuration(entry.durationMs)}),button));
   }
   const baseline=history.find(entry=>entry.runId===comparisonBaseline);
-  if(baseline){content.appendChild(h('h3',{text:'Compared with '+baseline.runId}));
+  if(baseline){content.appendChild(h('h3',{id:'lb-test-comparison',tabindex:'-1',text:'Compared with '+baseline.runId}));
     const currentError=test.firstError?.message.split('\\n')[0]||'No recorded error',previousError=baseline.firstError||'No recorded error';
     content.appendChild(h('div',{class:'test-comparison'},
       ...[['Status',baseline.status,test.status],['Attempts',baseline.attemptCount,test.attemptCount],['Duration',formatDuration(baseline.durationMs),formatDuration(test.durationMs)],['Error',previousError,currentError]].map(([label,before,after])=>

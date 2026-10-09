@@ -48,13 +48,16 @@ async function journey(): Promise<void> {
   const logbook = await extension.activate();
   console.log('Host journey: activated');
   await vscode.commands.executeCommand('logbook.recentRuns.focus');
+  const sidebarEntry = logbook as unknown as { sidebar?: { webview: { html: string } }; sidebarAction(message: unknown): Promise<void> };
+  for (let attempt = 0; attempt < 40 && !sidebarEntry.sidebar?.webview.html.includes('id="show-tests"'); attempt++) await new Promise(resolve => setTimeout(resolve, 50));
+  assert.match(sidebarEntry.sidebar?.webview.html ?? '', /id="show-tests"[^>]*>Tests ↗<\/button>/, 'Recent Runs exposes the Tests view');
   await draftPasteJourney();
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.analyze'), 'Analyze Selected Test must be registered in the editor');
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.fetchCiRuns'), 'GitHub CI fetch must be registered in the editor');
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.chooseImport'), 'Unified import action must be registered in the editor');
   const roots = await logbook.getChildren();
   assert.equal(roots.length, 2, 'Multi-root grouping should appear');
-  await vscode.commands.executeCommand('logbook.tests.focus');
+  await sidebarEntry.sidebarAction({ type: 'showTests' });
   const testFolders = await logbook.getTestChildren();
   const testEntries = await logbook.getTestChildren(testFolders.find(item => item.label === 'first'));
   const indexedReceipt = testEntries.find(item => item.kind === 'test' && item.label === 'renders receipt @critical');

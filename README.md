@@ -72,7 +72,7 @@ Install [Playwright Logbook for VS Code](https://marketplace.visualstudio.com/it
 
 - **Find a run or test:** Filter Recent Runs by status, branch, test name, ID, project, or path. You can also filter to a spec or test from the editor. Open a run overview for counts and project breakdowns.
 - **Browse tests across runs:** The extension's Tests view opens the newest loaded execution for each test, then its history and comparison.
-- **Share an offline snapshot:** Export a run or one test as an HTML package ZIP from the extension. Extract it to keep `index.html` beside retained attachments.
+- **Share an offline snapshot:** Export a run or one test as a single HTML file from the extension. Available attachments are embedded as downloadable links.
 - **Investigate a failure:** Read the recorded error, retries, steps, logs, and available attachments. Jump to the failure location or test definition in the current checkout.
 - **Compare history:** Select an earlier execution to see what changed, including a source diff when the recorded revisions are available locally.
 - **Bring CI evidence home:** Fetch a recent GitHub Actions artifact or import a [portable run bundle](docs/RUN-BUNDLES.md) to inspect its recorded results in the same history view.

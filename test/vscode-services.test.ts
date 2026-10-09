@@ -51,6 +51,7 @@ it('renders failure beside scoped history with escaped hostile content and expli
   expect(html).toContain('History alongside this error'); expect(html).toContain('Selected run&#39;s branch: main');
   expect(html).toContain('Open test definition'); expect(html).toContain('Exact historical source alignment is unknown');
   expect(html).toContain('data-action="exportTest"');
+  expect(html).toContain('class="export-action" data-action="exportTest"');
   expect(html).toContain('does not establish a first-ever failure'); expect(html).toContain('Shard completeness unknown');
   expect(html).toContain("default-src 'none'"); expect(html).toContain('Selected execution preserved');
   const withOrigin = renderDetail({ run: current, result: current.tests[0]!, runError: null, history, scope, anchorRunId: 'current', storeLabel: '.logbook', sourceLabel: '.', newHistory: false,
@@ -84,6 +85,7 @@ it('shows recorded skip reasons and omits empty diagnosis and run-error sections
   expect(detail(1)).not.toContain('<environment unavailable>');
   const overview = renderRunOverview(record, resources);
   expect(overview).toContain('data-action="exportRun"');
+  expect(overview).toContain('class="export-action" data-action="exportRun"');
   expect(overviewAction({ type: 'exportRun' }, [])).toEqual({ type: 'exportRun' });
   expect(overview).toContain('<dt>Status</dt>'); expect(overview).toContain('<dt>Duration</dt>');
   const withOrigin = renderRunOverview(record, resources, { badge: 'Peer', detail: 'Tester: <Alice>' });

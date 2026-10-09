@@ -3,6 +3,7 @@ const root = document.getElementById('runs');
 const filter = document.getElementById('filter');
 const scope = document.getElementById('filter-scope');
 filter.addEventListener('input', () => vscode.postMessage({ type: 'filter', query: filter.value }));
+document.getElementById('show-tests').addEventListener('click', () => vscode.postMessage({ type: 'showTests' }));
 root.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-action]');
   if (button && root.contains(button)) vscode.postMessage({ type: button.dataset.action, id: button.dataset.id });

@@ -85,7 +85,7 @@
       },
       {
         "command": "logbook.exportTestHtml",
-        "title": "Logbook: Export Test HTML Package…"
+        "title": "Logbook: Export Test HTML Report…"
       },
       {
         "command": "logbook.importBundle",

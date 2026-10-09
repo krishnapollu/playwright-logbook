@@ -2,7 +2,7 @@
 
 The packages are independently versioned. Reporter 0.3.3 adds dated test
 history and comparison to the offline report. Extension 0.2.22 adds the Tests
-view and portable run/test HTML packages. Earlier bundle and GitHub Actions
+view and portable single-file run/test HTML reports. Earlier bundle and GitHub Actions
 import features remain available. See [release notes](RELEASE-NOTES-0.3.3.md).
 
 Desktop local workspaces on macOS, Windows and Linux remain the release scope.

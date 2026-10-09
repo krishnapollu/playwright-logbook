@@ -8,6 +8,8 @@ import { buildReportModel } from '../src/model.js';
 import { buildDebugPacket, debugPacketMarkdown } from '../src/debugpacket.js';
 import { renderReport } from '../src/render.js';
 import { renderTestReport } from '../src/testrender.js';
+import { exportHtml } from '../src/htmlexport.js';
+import { FileHistoryStore } from '../src/store.js';
 import { run, testRecord } from '../test/factories.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -91,6 +93,45 @@ test('test detail compares the selected result with a dated earlier execution', 
     await expect(page.locator('.test-comparison')).toContainText('failed');
     await expect(page.locator('.test-comparison')).toContainText('passed');
     await expect(page.locator('.test-comparison')).toContainText('Duration');
+    await expect(page.locator('#lb-test-comparison')).toBeInViewport();
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
+test('inline screenshot has a download link and step columns stay aligned', async ({ page }) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-details-browser-'));
+  try {
+    const source = run('details');
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlT6V8AAAAASUVORK5CYII=';
+    source.tests = [{ ...testRecord('case'), attemptCount: 1, attempts: [{ retry: 0, status: 'passed', durationMs: 6, startedAt: source.startedAt, workerIndex: 0, errors: [], attachments: [{ name: 'screenshot', contentType: 'image/png', path: null, inline: true, sizeBytes: 68, dataUri: png }], steps: [{ title: 'parent', category: 'test.step', durationMs: 6, depth: 0, failed: false }, { title: 'child', category: 'test.step', durationMs: 2, depth: 1, failed: false }] }] }];
+    const file = path.join(directory, 'index.html');
+    await fs.writeFile(file, renderReport(buildReportModel({ run: source, summaries: [] })));
+    await page.goto(pathToFileURL(file).href);
+    await page.locator('#lb-tests-body tr[data-test-id]').click();
+    await expect(page.locator('#lb-panel-content a', { hasText: 'screenshot' })).toHaveAttribute('href', png);
+    const rows = page.locator('.steps li');
+    await expect(rows).toHaveCount(2);
+    const widths = await rows.locator('.step-duration').evaluateAll(items => items.map(item => item.getBoundingClientRect().x));
+    expect(widths[0]).toBe(widths[1]);
+    await expect(page.locator('#lb-panel')).toHaveCSS('border-top-width', '2px');
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
+test('exported run opens as one offline HTML file with embedded evidence', async ({ page }) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-one-file-browser-'));
+  try {
+    const source = run('portable');
+    const artifact = 'test-results/proof.txt';
+    source.tests = [{ ...testRecord('case'), attemptCount: 1, attempts: [{ retry: 0, status: 'passed', durationMs: 1, startedAt: source.startedAt, workerIndex: 0, errors: [], attachments: [{ name: 'proof.txt', contentType: 'text/plain', path: artifact, inline: false, sizeBytes: 5 }] }] }];
+    await fs.mkdir(path.join(directory, 'test-results'));
+    await fs.writeFile(path.join(directory, artifact), 'proof');
+    await new FileHistoryStore(path.join(directory, '.logbook')).saveRun(source);
+    const exported = await exportHtml(directory, path.join(directory, '.logbook'), 'portable');
+    const file = path.join(directory, 'portable.html');
+    await fs.writeFile(file, exported.bytes);
+    await page.goto(pathToFileURL(file).href);
+    await page.locator('#lb-tests-body tr[data-test-id]').click();
+    await expect(page.locator('#lb-panel-content a', { hasText: 'proof.txt' })).toHaveAttribute('href', `data:application/octet-stream;base64,${Buffer.from('proof').toString('base64')}`);
+    await expect(page.locator('#lb-error')).toBeHidden();
   } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });
 
