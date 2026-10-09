@@ -1,15 +1,15 @@
-# Release 0.3.1 reporter and 0.2.15 VS Code extension
+# Release 0.3.2 reporter and 0.2.21 VS Code extension
 
-The packages are independently versioned. Reporter 0.3.1 adds the terminal
-`analyze` command. Extension 0.2.15 adds the compact Analyze with AI action,
-installed-agent selection and unsent prompt/context insertion. The extension
-bundles its task builder; existing reporter 0.3.0 records remain supported.
+The packages are independently versioned. Reporter 0.3.2 adds `logbook ci list`
+and `logbook ci fetch` for recent GitHub Actions artifacts. Extension 0.2.21
+adds the Recent Runs sidebar, Local/CI origin pills and one Import action with
+Local ZIP and GitHub Actions choices. Existing reporter 0.3.1 exports remain
+compatible. Filesystem team-store Sync, Push, CLI commands and reporter options
+are excluded from this release.
 
-Version 0.2.15 follows the local development packages 0.2.11–0.2.14 so those
-installations can update normally. Publish on the regular Marketplace channel.
 Desktop local workspaces on macOS, Windows and Linux remain the release scope.
-Model selection, review, submission and answers remain in the chosen agent UI.
-Full screen-reader review and direct provider integration remain deferred.
+GitHub fetch requires a trusted workspace, a repository setting, GitHub sign-in
+and an unexpired artifact uploaded by CI. It imports to local history only.
 
 ## Validate the exact artifacts
 
@@ -18,51 +18,41 @@ npm run check
 npm run test:e2e
 npm run test:release
 npm run test:release:views
+```
+
+The packed reporter smoke installs the tarball in a clean project, checks the
+CJS/ESM entrypoints, collects real Playwright runs and verifies ZIP export and
+import. The editor host journey checks the packaged VSIX at the minimum and
+current supported editor versions, including import and absent team actions:
+
+```sh
 npm run test:vscode -- --vsix --vscode-version 1.95.3
 npm run test:vscode -- --vsix --vscode-version 1.140.0
 ```
 
-The packed reporter smoke verifies the installed CJS/ESM entrypoints, real
-Playwright collection, retry/trace artifacts, export/import/history and the
-installed `analyze` command, including deterministic full prompt/context and
-unchanged recordings. The panel check covers four themes and three widths.
-The packaged editor journey verifies full task insertion into a webview input,
-zero submissions and unchanged source, as well as the existing investigation
-and CI-import workflows. GitHub Release artifacts CI covers all six packaged
-editor combinations across macOS/Linux/Windows and minimum/stable versions.
-
-Package from `packages/vscode` after rebuilding and refreshing screenshots:
+Package from `packages/vscode` after rebuilding:
 
 ```sh
-npm exec --yes --package=@vscode/vsce@4.0.0 -- vsce package --no-dependencies --out dist/playwright-logbook-vscode-0.2.15.vsix --baseContentUrl https://github.com/krishnapollu/playwright-logbook/tree/main/packages/vscode --baseImagesUrl https://raw.githubusercontent.com/krishnapollu/playwright-logbook/main/packages/vscode
+npx --no-install vsce package --no-dependencies --out dist/playwright-logbook-vscode-0.2.21.vsix --baseContentUrl https://github.com/krishnapollu/playwright-logbook/tree/main/packages/vscode --baseImagesUrl https://raw.githubusercontent.com/krishnapollu/playwright-logbook/main/packages/vscode
 ```
 
-Inspect the tarball/VSIX allowlists and compare packaged runtime bytes to the
-checked build. Store artifact hashes, sizes and validation results in
-`dist/releases/artifacts.json`. Verify before publishing:
+Inspect the tarball and VSIX allowlists and compare packaged runtime bytes to
+the checked build. Record artifact hashes, sizes and validation results in
+`dist/releases/artifacts.json`, then run:
 
 ```sh
 npm run release:publish -- --verify
 ```
 
-## Publish
+## Publish handoff
 
-The repository's default AGENTS.md policy says "Never run `npm publish`."
-For this release, the maintainer explicitly authorized publishing to GitHub,
-npm and the Marketplace. Do not infer that authorization for future releases.
-The publish script reads `npm_pat` from `.env` or the environment without
-printing it or writing a login file. After release code is pushed and both
-GitHub workflows pass, publish the verified tarball:
+The repository's AGENTS.md says never to run `npm publish`; the authorization
+for the earlier 0.3.1/0.2.15 release does not carry over. Publication of this
+release requires a separate maintainer action after release code is pushed and
+GitHub checks pass. The publish script verifies artifact hashes before uploading
+the reporter tarball. Upload the verified `0.2.21` VSIX through the existing
+Marketplace publisher's Update action. Do not publish the development VSIX.
 
-```sh
-npm run release:publish
-```
-
-Upload `packages/vscode/dist/playwright-logbook-vscode-0.2.15.vsix` using the
-existing Playwright Logbook extension's **Update** action on the
-[publisher management page](https://marketplace.visualstudio.com/manage/publishers/krishnapollu).
-Do not publish the development VSIX. Confirm Marketplace validation completes.
-
-Verify npm 0.3.1 and Marketplace 0.2.15 from the public registries, repeat the
-installed-package smoke, and record GitHub release tags/notes with the exact
-verified artifacts. No publication step rebuilds an artifact.
+Verify npm and Marketplace versions from their public registries after release,
+repeat the installed-package smoke, and record release tags and notes with the
+exact verified artifacts. No publication step should rebuild an artifact.

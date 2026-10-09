@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { runOriginText } from '../packages/vscode/src/presentation.js';
+import { runOriginText } from '../packages/vscode/src/runorigin.js';
 
 it('shows storeless local runs and preserves recorded origins', () => {
   expect(runOriginText(null, null, false)).toEqual({ badge: 'Local', detail: null });

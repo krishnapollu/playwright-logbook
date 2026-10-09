@@ -1304,3 +1304,16 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   VS Code 1.140.0 host journey exited 0 after explicitly opening Recent Runs,
   including import and absent team-action assertions. Release-surface tests
   found `ci` but no `store` CLI command and no Sync/Push VSIX contributions.
+
+### Reporter 0.3.2 and extension 0.2.21 release candidate
+
+- [x] Prepare public changelogs and release notes for the shipped Recent Runs UI,
+  Local/CI labels, GitHub Actions import and `ci` CLI commands. Package and
+  inspect the production reporter tarball and VSIX.
+- Done when output: `npm run check` passed with 48 test files and 234 tests;
+  `npm run test:e2e` passed 7 tests, `npm run test:release` passed the packed
+  reporter smoke, and `npm run test:release:views` passed its theme, width,
+  keyboard and accessibility checks. Packaged VSIX host journeys exited 0 on
+  VS Code 1.95.3 and 1.140.0. `npm run release:publish -- --verify` verified
+  both artifact hashes and reported no publication attempted. Public `store`
+  CLI commands and VSIX Sync/Push contributions are absent.

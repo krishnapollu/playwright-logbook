@@ -1,73 +1,9 @@
 # Changelog
 
-## 0.2.21-monorepo.17 (local preview)
+## 0.2.21
 
-- Show Local pills for unimported local history without team-store configuration, while keeping CI imports labeled CI and Push restricted to owned team runs.
-
-## 0.2.21-monorepo.16 (local preview)
-
-- Close the GitHub CI fetch progress notification when the import finishes.
-
-## 0.2.21-monorepo.15 (local preview)
-
-- Offer one Recent Runs Import action with Local ZIP and GitHub Actions choices.
-
-## 0.2.21-monorepo.14 (local preview)
-
-- Fetch a recent named GitHub Actions Logbook artifact into local history after review, without entering a workflow ID.
-
-## 0.2.21-monorepo.13 (local preview)
-
-- Clarify that importing a ZIP adds runs to local history, while keeping the toolbar action available without a team store.
-
-## 0.2.21-monorepo.12 (local preview)
-
-- Put the live run and test filter in the Recent Runs sidebar and remove its toolbar button.
-- Keep file and test filter scopes visible beside the inline search field.
-
-## 0.2.21-monorepo.11 (local preview)
-
-- Remove repeated status words from result rows while retaining project and outcome details.
-- Add expand/collapse chevrons to run rows alongside their status icons.
-
-## 0.2.21-monorepo.10 (local preview)
-
-- Align result statuses and reserve a consistent action slot for run Push and folder Sync.
-- Distinguish folder rows and restore Collapse All in the Recent Runs toolbar.
-
-## 0.2.21-monorepo.9 (local preview)
-
-- Indent nested Recent Runs entries and reduce origin pill size.
-- Show a two-arrow Sync action and distinct run overview and skipped icons.
-
-## 0.2.21-monorepo.8 (local preview)
-
-- Replace the native Recent Runs tree with a sidebar that shows equal-width Local, Peer and CI pills alongside aligned run names.
-- Keep run and test navigation, filtering, pagination, Sync and Push in the sidebar.
-
-## 0.2.21-monorepo.7 (local preview)
-
-- Align colored Local, Peer and CI tags in the native run tree.
-- Show Tester in provenance and push review; read the shared store from Playwright config for Sync and Push.
-
-## 0.2.21-monorepo.6 (local preview)
-
-- Highlight Local, Peer and CI on run rows and show origin details in run overviews.
-- Add explicit team sync and selected local-run push actions to the Recent Runs view.
-
-## 0.2.21-monorepo.5 (local preview)
-
-- Show CI, Local and Peer provenance for shared team-store runs.
-- Package the current team-store preview for local IDE inspection.
-
-## 0.2.21-monorepo.4 (local preview)
-
-- Group default Logbook stores in direct child suites and `packages/*` under the workspace.
-- Rescan suites on refresh and store creation or removal; retain root history messages and pagination.
-- Always show the workspace root folder, including a single-suite workspace.
-- Route spec and test filters to the nearest package source root in a monorepo.
-- Show saved run counts on package folders and totals on workspace folders.
-- Hide the parent missing-history hint when child suites have history; show filtered `shown` counts.
+- Replace Recent Runs with a compact sidebar showing aligned status icons, Local and CI pills, inline run/test filtering, run counts, and Expand All / Collapse All.
+- Use one Import action for local ZIPs or recent GitHub Actions artifacts. Fetch validates and reviews the bundle, adds it to local history with CI origin, and ends progress when complete.
 
 ## 0.2.20
 

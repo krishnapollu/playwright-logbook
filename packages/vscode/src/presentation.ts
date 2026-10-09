@@ -1,13 +1,6 @@
 import { stripVTControlCharacters } from 'node:util';
 import type { ReaderResult } from '../../../src/historyreader.js';
-import { teamOriginText } from '../../../src/teamstore.js';
-import type { TeamOrigin, TeamViewer } from '../../../src/teamstore.js';
 import { escapeHtml, outcomeTone } from './format.js';
-
-export function runOriginText(origin: TeamOrigin | null, viewer: TeamViewer | null, imported: boolean): { badge: string | null; detail: string | null } {
-  const display = teamOriginText(origin, viewer);
-  return { ...display, badge: display.badge ?? (!origin && !imported ? 'Local' : null) };
-}
 
 type RecordedError = NonNullable<ReaderResult['firstError']>;
 export function errorPresentation(error: RecordedError): { headline: string; context: string; message: string; snippet: string; stack: string; browserLaunch: boolean } {

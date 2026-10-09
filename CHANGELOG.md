@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- Add `logbook ci list` and `logbook ci fetch` for recent GitHub Actions run bundles, with repository and artifact-name selection, validation, and CI origin in local history.
+
 ## 0.3.1
 
 - Add `logbook analyze` to prepare a bounded investigation task for an exact test execution, with scoped history, optional current source and verified attachment references.

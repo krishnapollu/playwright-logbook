@@ -24,7 +24,8 @@ import { escapeHtml, panelAction, renderDetail, renderRunOverview } from './deta
 import { comparisonRef, comparisonSide, matchingPair, renderComparison } from './comparison.js';
 import type { ExecutionRef, ComparisonSide } from './comparison.js';
 import { readHistoricalSource, GitSourceError } from './gitsource.js';
-import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQualifier, runOriginText } from './presentation.js';
+import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQualifier } from './presentation.js';
+import { runOriginText } from './runorigin.js';
 import type { HistoricalSource } from './gitsource.js';
 import { AnalysisSession, analysisAction, analysisPrompt, agentKey, renderAnalysis } from './analysis.js';
 import { ideAnalysisBackend } from './ideanalysis.js';
