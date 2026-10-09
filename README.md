@@ -4,7 +4,7 @@
 
 <h1 align="center">Playwright Logbook</h1>
 
-<p align="center">A better local report for Playwright</p>
+<p align="center">Playwright test reports, history, and evidence for AI-assisted debugging</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/playwright-logbook"><img src="https://img.shields.io/npm/v/playwright-logbook?logo=npm" alt="npm version"></a>
@@ -15,9 +15,16 @@
 
 **[Install from npm](https://www.npmjs.com/package/playwright-logbook)** · **[VS Code extension](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode)** · **[View the source on GitHub](https://github.com/krishnapollu/playwright-logbook)**
 
-Playwright Logbook turns every test run into a searchable, self-contained report with failure details, retry history, flaky-test tracking, project views, and CI-friendly summaries.
+Playwright Logbook turns every test run into a searchable, self-contained report with failure details, retry history, flaky-test tracking, project views, and CI-friendly summaries. It also gives coding agents focused evidence from a selected failure and its history, helping them investigate likely causes and evaluate proposed fixes across runs.
 
 It works with the Playwright setup you already have. There is no hosted service, database, or account to configure.
+
+## Contents
+
+- [Why teams use it](#why-teams-use-it) · [Install](#install) · [Add it to Playwright](#add-it-to-playwright)
+- [VS Code extension](#vs-code-extension) · [Investigate with a coding agent](#investigate-with-a-coding-agent)
+- [Use it in CI](#use-it-in-ci) · [Portable CI run bundles](#portable-ci-run-bundles) · [Terminal commands](#terminal-commands)
+- [Reporter options](#reporter-options) · [Attachments and privacy](#attachments-and-privacy) · [What happens to your data?](#what-happens-to-your-data) · [Documentation](#documentation)
 
 ![Playwright Logbook dark report](docs/img/report-dark.png)
 
@@ -26,7 +33,7 @@ It works with the Playwright setup you already have. There is no hosted service,
 - Find the failed test, its attempts, error, code frame, steps, and artifacts in one place.
 - See flaky tests and recent run history instead of investigating one run at a time.
 - Review results across projects and CI shards in a single HTML report.
-- Get copyable rerun commands and bounded, redacted debug context for AI-assisted investigation.
+- Give a coding agent a bounded investigation task with errors, retries, steps, artifact references, and prior outcomes for one test.
 - Keep reports local and offline by default. Logbook does not change Playwright's exit code or upload data automatically.
 
 ![Playwright Logbook light report](docs/img/report-light.png)
@@ -62,7 +69,34 @@ Then open `.logbook/report/index.html`. The report is a single local HTML file a
 
 ## VS Code extension
 
-Investigate results in your editor with [Playwright Logbook for VS Code](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode). Browse saved runs, filter runs or tests from the sidebar or a spec, expand the tree, open recorded attachments, analyze a selected test with your installed AI assistant, compare history, and jump to source. Install it alongside the reporter; see the [extension README](https://github.com/krishnapollu/playwright-logbook/blob/main/packages/vscode/README.md) for setup, screenshots and CI imports.
+Install [Playwright Logbook for VS Code](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode) alongside the reporter. Run your tests, then open **Logbook** in VS Code's activity bar. Open the folder containing your Playwright configuration; the extension reads its `.logbook/` history. It requires desktop VS Code 1.95+.
+
+- **Find a run or test:** Filter Recent Runs by status, branch, test name, ID, project, or path. You can also filter to a spec or test from the editor. Open a run overview for counts and project breakdowns.
+- **Investigate a failure:** Read the recorded error, retries, steps, logs, and available attachments. Jump to the failure location or test definition in the current checkout.
+- **Compare history:** Select an earlier execution to see what changed, including a source diff when the recorded revisions are available locally.
+- **Bring CI evidence home:** Fetch a recent GitHub Actions artifact or import a [portable run bundle](docs/RUN-BUNDLES.md) to inspect its recorded results in the same history view.
+
+<img src="packages/vscode/media/pw-test-runs.png" alt="VS Code Recent Runs sidebar showing recorded tests" width="565">
+
+<img src="packages/vscode/media/pw-test-failure.png" alt="VS Code test failure detail with error, retries, source actions, and history" width="820">
+
+<img src="packages/vscode/media/pw-test-comparison.png" alt="VS Code comparison of a passing and failing execution" width="820">
+
+<img src="packages/vscode/media/pw-test-evidence.png" alt="VS Code retry evidence with attachment links" width="694">
+
+See the [extension README](packages/vscode/README.md) for setup, monorepos, custom history paths, and CI imports.
+
+## Investigate with a coding agent
+
+Prepare a task for one recorded test execution with its errors, retries, steps, available attachment paths, and matching history:
+
+```sh
+npx playwright-logbook analyze --run latest --test <testId> --source
+```
+
+Review the task and submit it to your coding agent. In VS Code, select a test and choose **Analyze with AI** to hand an unsent task to a supported installed assistant. The agent can inspect the evidence and code, propose a fix, and use later test runs to assess it. Logbook does not edit tests, run an agent, or treat a passing retry as proof of a fix. Use `debug` for a compact evidence packet; see the [CLI reference](docs/CLI.md).
+
+<img src="packages/vscode/media/pw-test-analyze-ai.png" alt="Analyze with AI action on a VS Code test result" width="207">
 
 ## Use it in CI
 
@@ -89,12 +123,9 @@ See [CI recipes](docs/CI.md) for GitHub Actions, Azure DevOps, artifact retentio
 
 ## Portable CI run bundles
 
-Export a saved run as a ZIP and import runs from other machines into existing local
-history. Optional file attachments include screenshots, videos, traces and custom
-logs. See [setup, CI recipe and import behavior](docs/RUN-BUNDLES.md). Bundle support
-requires **playwright-logbook 0.3.0 or newer**.
+Export a saved run as a ZIP and import runs from other machines into existing local history. Optional file attachments include screenshots, videos, traces, and custom logs. See [setup, CI recipe, and import behavior](docs/RUN-BUNDLES.md). Bundle support requires **playwright-logbook 0.3.0 or newer**.
 
-## Review runs from the terminal
+## Terminal commands
 
 ```sh
 npx playwright-logbook history
@@ -102,7 +133,6 @@ npx playwright-logbook flaky
 npx playwright-logbook summary --format markdown
 npx playwright-logbook report --run latest
 npx playwright-logbook debug --run latest --test <testId> --format markdown
-npx playwright-logbook analyze --run latest --test <testId> --source --max-words 200
 ```
 
 Use `--root <dir>` when running the CLI outside your Playwright project. See the [CLI reference](docs/CLI.md) for all commands and exit codes.
