@@ -49,7 +49,9 @@ export async function exportHtml(root: string, storeRoot: string, runId: string,
       if (embeddedBytes + bytes.length > BUNDLE_LIMITS.archive) throw new Error('Embedded evidence exceeds the export limit.');
       const digest = createHash('sha256').update(bytes).digest('hex');
       if (mapped && mapped.split('/')[1] !== digest) throw new Error('Imported artifact digest mismatch.');
-      links[recordedPath] = `data:application/octet-stream;base64,${bytes.toString('base64')}`;
+      const contentType = attachments.find((item) => item.path === recordedPath)?.contentType;
+      const mime = /^(?:image\/(?:png|jpeg)|video\/(?:mp4|webm))$/.test(contentType ?? '') ? contentType : 'application/octet-stream';
+      links[recordedPath] = `data:${mime};base64,${bytes.toString('base64')}`;
       availability[recordedPath] = 'present'; includedArtifacts++; embeddedBytes += bytes.length;
     } catch { availability[recordedPath] = 'missing'; missingArtifacts++; }
   }

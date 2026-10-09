@@ -62,12 +62,8 @@
       "logbook": [
         {
           "id": "logbook.recentRuns",
-          "name": "Recent Runs",
+          "name": "Runs & Tests",
           "type": "webview"
-        },
-        {
-          "id": "logbook.tests",
-          "name": "Tests"
         }
       ]
     },
@@ -150,13 +146,6 @@
       }
     ],
     "menus": {
-      "view/item/context": [
-        {
-          "command": "logbook.exportTestHtml",
-          "when": "view == logbook.tests && viewItem == logbook.test",
-          "group": "inline"
-        }
-      ],
       "view/title": [
         {
           "command": "logbook.chooseImport",

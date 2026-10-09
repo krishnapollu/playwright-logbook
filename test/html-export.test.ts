@@ -41,14 +41,15 @@ it('exports one test with dated history and labels missing evidence without a br
   const exported = await exportHtml(root, storeRoot, 'selected', { testId: 'case', project: 'alpha', repeatEachIndex: 0 });
   const html = exported.bytes.toString('utf8');
   expect(html).toContain('Logbook / test export');
-  expect(html).toContain('Compared with earlier');
-  expect(html).toContain('File not retained in this export');
-  expect(html).toContain('Download screenshot');
+  expect(html).toContain('class="focused-report"');
+  expect(html).toContain('earlier');
+  expect(html).toContain('"test-results/lost.txt":"missing"');
+  expect(html).toContain('data:image/png;base64,YQ==');
   expect(html).not.toContain('href="test-results/lost.txt"');
   expect(html).not.toContain('>other<');
   expect(exported).toMatchObject({ includedArtifacts: 0, missingArtifacts: 1 });
   const clean = await exportHtml(root, storeRoot, 'selected', { testId: 'other', project: 'alpha', repeatEachIndex: 0 });
-  expect(clean.bytes.toString('utf8')).toContain('Attempt 1');
+  expect(clean.bytes.toString('utf8')).toContain('class="focused-report"');
 });
 
 it('uses imported artifact mappings and never substitutes a checkout file for missing CI evidence', async () => {

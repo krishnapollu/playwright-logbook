@@ -49,15 +49,16 @@ async function journey(): Promise<void> {
   console.log('Host journey: activated');
   await vscode.commands.executeCommand('logbook.recentRuns.focus');
   const sidebarEntry = logbook as unknown as { sidebar?: { webview: { html: string } }; sidebarAction(message: unknown): Promise<void> };
-  for (let attempt = 0; attempt < 40 && !sidebarEntry.sidebar?.webview.html.includes('id="show-tests"'); attempt++) await new Promise(resolve => setTimeout(resolve, 50));
-  assert.match(sidebarEntry.sidebar?.webview.html ?? '', /id="show-tests"[^>]*>Tests ↗<\/button>/, 'Recent Runs exposes the Tests view');
+  for (let attempt = 0; attempt < 40 && !sidebarEntry.sidebar?.webview.html.includes('data-mode="tests"'); attempt++) await new Promise(resolve => setTimeout(resolve, 50));
+  assert.match(sidebarEntry.sidebar?.webview.html ?? '', /data-mode="runs"[^>]*>Runs<\/button>.*data-mode="tests"[^>]*>Tests<\/button>/, 'The sidebar exposes one Runs/Tests switch');
+  assert.ok(!sidebarEntry.sidebar?.webview.html.includes('id="show-tests"'), 'The redundant Tests link is absent');
   await draftPasteJourney();
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.analyze'), 'Analyze Selected Test must be registered in the editor');
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.fetchCiRuns'), 'GitHub CI fetch must be registered in the editor');
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.chooseImport'), 'Unified import action must be registered in the editor');
   const roots = await logbook.getChildren();
   assert.equal(roots.length, 2, 'Multi-root grouping should appear');
-  await sidebarEntry.sidebarAction({ type: 'showTests' });
+  await sidebarEntry.sidebarAction({ type: 'mode', mode: 'tests' });
   const testFolders = await logbook.getTestChildren();
   const testEntries = await logbook.getTestChildren(testFolders.find(item => item.label === 'first'));
   const indexedReceipt = testEntries.find(item => item.kind === 'test' && item.label === 'renders receipt @critical');
@@ -66,6 +67,7 @@ async function journey(): Promise<void> {
   assert.equal(logbook.getTreeItem(indexedReceipt).contextValue, 'logbook.test', 'Tests view exposes HTML export on the selected test');
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.exportTestHtml'), 'Test HTML export command is registered');
   assert.ok(testEntries.some(item => item.kind === 'message' && item.label.includes('3 loaded runs')), 'Tests view states its history coverage');
+  await sidebarEntry.sidebarAction({ type: 'mode', mode: 'runs' });
   const first = roots.find((item) => item.label === 'first')!, broken = roots.find((item) => item.label === 'second')!;
   assert.ok(first); assert.ok(broken);
   assert.equal(first.description, '3 runs', 'Folder count includes history beyond the visible page');
@@ -89,6 +91,9 @@ async function journey(): Promise<void> {
   const captureSidebar = { webview: { postMessage: async (message: { html: string; query: string; scope: string }) => { sidebarHtml = message.html; sidebarQuery = message.query; sidebarScope = message.scope; return true; } } };
   sidebarHarness.sidebar = captureSidebar;
   await sidebarHarness.renderSidebar();
+  await sidebarEntry.sidebarAction({ type: 'mode', mode: 'tests' });
+  assert.ok(sidebarHtml.includes('class="row test"') && sidebarHtml.includes('data-action="exportTest"'), 'Tests mode renders test entries and their export action in the same sidebar');
+  await sidebarEntry.sidebarAction({ type: 'mode', mode: 'runs' });
   sidebarHarness.sidebar = actualSidebar;
   assert.equal(sidebarQuery, '', 'Sidebar starts with an empty inline filter');
   for (const badge of ['local', 'peer', 'ci']) assert.ok(sidebarHtml.includes(`class="origin-pill ${badge}"`), `Sidebar renders a ${badge} pill`);

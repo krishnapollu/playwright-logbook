@@ -1360,3 +1360,11 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   reporter `0b443005cd682d889bcd87669c2430c251c28a935e95ae8e5e535573d1797a53`,
   VSIX `6bc1ceaddfd4452c4ac5b532a476bc5fdf18dbdb6072dfe7c148beeb0b36940a`.
 
+- [x] H6 Unified investigation view — see `docs/SPEC-test-history-exports.md`.
+  Done when output: `npm run check` passed with 50 test files and 239 tests;
+  `npm run test:e2e` passed 12 browser tests, including failed screenshot preview,
+  logs, same-commit history, and the focused test's interactive HTML view.
+  Development VSIX packaged to `/private/tmp/playwright-logbook-vscode-unified-dev.vsix`;
+  the installed VS Code host journey exited 0 after switching Runs/Tests in the
+  single sidebar.
+

@@ -49,8 +49,8 @@ window and updates the counts.
 - **Spec shortcut:** Right-click a `.spec.*` or `.test.*` file in Explorer to filter to that file. Right-click inside a test in the editor to filter to that test.
 - **Expand All / Collapse All:** Open or close visible folders and runs in Recent Runs.
 - **Run overview:** Select a run's overview to see counts, project breakdown, and clickable cases. Run overviews and results open as ordinary tabs in the active editor group.
-- **Tests view:** Browse each recorded test across the loaded run window. The entry opens its newest execution; history and Compare stay in that execution's detail. Load more runs to extend the window.
-- **HTML export:** Use **Export** in a run overview, or **Export** in a result detail or the Tests view context menu. The single HTML file embeds retained attachments as downloads; missing files are labeled. A run export uses the same report renderer as the reporter, with history available at export time.
+- **Runs / Tests switch:** Use the switch above the filter to browse runs or the newest recorded execution of each test in the loaded window. Open a test for history and comparison, or load more runs to extend coverage.
+- **HTML export:** Use **Export** in a run overview or result detail, or the export icon beside a test in the sidebar. The single HTML file embeds retained attachments; images and videos open in a viewer, and files can be downloaded. A run export uses the reporter's report renderer with history available at export time.
 - **Run origin:** Recent Runs and run overviews show Local for runs outside the import catalog, CI for fetched GitHub runs, and Peer for runs from another configured tester. Imported ZIPs without recorded origin remain unmarked. Run overviews show the recorded tester or CI provider/build/attempt when available.
 
 <img src="media/pw-test-runs.png" alt="Recent Runs sidebar for pw-test with Local and CI runs and an expanded CI run" width="565">

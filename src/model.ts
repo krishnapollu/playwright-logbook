@@ -1,12 +1,12 @@
 import { testResultKind } from './history.js';
 import type { Comparison, FlakyEntry } from './history.js';
-import type { RunRecord, RunSummaryRecord, TestRecord } from './schema.js';
+import type { ErrorRecord, RunRecord, RunSummaryRecord, TestRecord } from './schema.js';
 import { VERSION } from './version.js';
 import type { ArtifactAvailability } from './artifacts.js';
 
 const compare = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
 export type ReportTest = TestRecord & { timing: { startedAt: string; workerIndex: number } | null };
-export interface ReportTestHistoryEntry { runId: string; startedAt: string; branch: string | null; complete: boolean; status: TestRecord['status']; outcome: TestRecord['outcome']; durationMs: number; attemptCount: number; firstError: string | null }
+export interface ReportTestHistoryEntry { runId: string; startedAt: string; branch: string | null; commit: string | null; complete: boolean; status: TestRecord['status']; expectedStatus: TestRecord['expectedStatus']; outcome: TestRecord['outcome']; durationMs: number; attemptCount: number; project: string; file: string; line: number; firstError: ErrorRecord | null; attempts: { retry: number; status: TestRecord['status']; durationMs: number; errors: ErrorRecord[] }[] }
 export interface ReportModel {
   schemaVersion: 1;
   generator: { name: 'playwright-logbook'; version: string };
@@ -97,8 +97,9 @@ export function buildReportModel(input: { run: RunRecord; summaries: RunSummaryR
   }).join('');
   for (const test of run.tests) testHistory[test.testId] = older.flatMap((olderRun) => {
     const prior = olderRun.tests.find((item) => item.testId === test.testId && item.project === test.project && item.repeatEachIndex === test.repeatEachIndex);
-    return prior ? [{ runId: olderRun.runId, startedAt: olderRun.startedAt, branch: olderRun.env.git.branch, complete: olderRun.complete,
-      status: prior.status, outcome: prior.outcome, durationMs: prior.durationMs, attemptCount: prior.attemptCount, firstError: prior.firstError?.message.split(/\r?\n/)[0]?.slice(0, 500) ?? null }] : [];
+    return prior ? [{ runId: olderRun.runId, startedAt: olderRun.startedAt, branch: olderRun.env.git.branch, commit: olderRun.env.git.commit, complete: olderRun.complete,
+      status: prior.status, expectedStatus: prior.expectedStatus, outcome: prior.outcome, durationMs: prior.durationMs, attemptCount: prior.attemptCount, project: prior.project, file: prior.file, line: prior.line,
+      firstError: prior.firstError, attempts: prior.attempts.map(({ retry, status, durationMs, errors }) => ({ retry, status, durationMs, errors })) }] : [];
   });
   const model: ReportModel = { schemaVersion: 1, generator: { name: 'playwright-logbook', version: VERSION }, summaryMarkdown: '', generatedAt: input.generatedAt ?? null, ...(input.attachmentAvailability ? { attachmentAvailability: input.attachmentAvailability } : {}), run: { ...run, tests: run.tests.map((test) => ({ ...slim(test), timing: test.attempts[0] ? { startedAt: test.attempts[0].startedAt, workerIndex: test.attempts[0].workerIndex } : null })) }, history, previous, comparison: input.comparison ?? null, flaky: (input.flaky ?? []).slice(0, 50), slowest: [...run.tests].sort((a, b) => b.durationMs - a.durationMs || compare(a.testId, b.testId)).slice(0, 10).map(({ testId, title, file, project, durationMs }) => ({ testId, title, file, project, durationMs })), files: [...files.values()].sort((a, b) => compare(a.file, b.file)), tags: [...tags].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || compare(a.tag, b.tag)), delta, errorGroups: [...groups.values()].map((group) => ({ ...group, projects: [...group.projects].sort(compare), testIds: group.testIds.sort(compare) })).sort((a, b) => b.count - a.count || compare(a.signature, b.signature)), recent, testHistory, projects: [...projects.values()].sort((a, b) => compare(a.name, b.name)) };
   model.summaryMarkdown = renderMarkdownSummary(model);

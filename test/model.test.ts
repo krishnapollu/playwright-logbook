@@ -39,8 +39,8 @@ describe('buildReportModel', () => {
     const matching = { ...run('matching', '2026-01-02T00:00:00.000Z'), complete: false, tests: [{ ...testRecord('same', 'unexpected'), firstError: { message: 'Earlier failure\nprivate detail', stack: null, snippet: null, location: null } }] };
     const otherProject = { ...run('other-project', '2026-01-03T00:00:00.000Z'), tests: [{ ...testRecord('same'), project: 'beta' }] };
     const model = buildReportModel({ run: current, summaries: [], recentRuns: [matching, otherProject, run('absent'), run('future', '2026-01-05T00:00:00.000Z')] });
-    expect(model.testHistory.same).toEqual([{ runId: 'matching', startedAt: matching.startedAt, branch: 'main', complete: false,
-      status: 'failed', outcome: 'unexpected', durationMs: 1, attemptCount: 0, firstError: 'Earlier failure' }]);
+    expect(model.testHistory.same).toMatchObject([{ runId: 'matching', startedAt: matching.startedAt, branch: 'main', complete: false,
+      status: 'failed', outcome: 'unexpected', durationMs: 1, attemptCount: 0, firstError: { message: 'Earlier failure\nprivate detail' }, attempts: [] }]);
   });
   it('slims clean single-attempt passes only', () => {
     const base = sample();

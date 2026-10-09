@@ -70,6 +70,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
   private readonly nodes = new Map<string, TreeNode>();
   private sidebar: vscode.WebviewView | undefined;
   private sidebarGeneration = 0;
+  private sidebarMode: 'runs' | 'tests' = 'runs';
   private focusFilterOnRender = false;
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
@@ -163,12 +164,14 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     const css = view.webview.asWebviewUri(vscode.Uri.joinPath(media, 'sidebar.css'));
     const script = view.webview.asWebviewUri(vscode.Uri.joinPath(media, 'sidebar.js'));
     this.disposables.push(view.webview.onDidReceiveMessage((message: unknown) => { void this.sidebarAction(message); }));
-    view.webview.html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${view.webview.cspSource}; script-src ${view.webview.cspSource}"><link rel="stylesheet" href="${css}"></head><body><div id="filter-bar"><input id="filter" type="search" maxlength="256" placeholder="Filter runs and tests" aria-label="Filter runs and tests"><button id="show-tests" type="button" title="Open Tests view">Tests ↗</button><small id="filter-scope" hidden></small></div><div id="runs" role="tree" aria-label="Recent Runs"></div><script src="${script}"></script></body></html>`;
+    view.webview.html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${view.webview.cspSource}; script-src ${view.webview.cspSource}"><link rel="stylesheet" href="${css}"></head><body><div id="filter-bar"><div class="view-switch" role="group" aria-label="Logbook view"><button type="button" data-mode="runs" aria-pressed="true">Runs</button><button type="button" data-mode="tests" aria-pressed="false">Tests</button></div><input id="filter" type="search" maxlength="256" placeholder="Filter runs and tests" aria-label="Filter runs and tests"><small id="filter-scope" hidden></small></div><div id="runs" role="tree" aria-label="Runs"></div><script src="${script}"></script></body></html>`;
   }
   private async sidebarAction(message: unknown): Promise<void> {
     if (!message || typeof message !== 'object' || !('type' in message)) return;
     if (message.type === 'ready') { await this.renderSidebar(); return; }
-    if (message.type === 'showTests') { await vscode.commands.executeCommand('logbook.tests.focus'); return; }
+    if (message.type === 'mode' && 'mode' in message && (message.mode === 'runs' || message.mode === 'tests')) {
+      this.sidebarMode = message.mode; await this.renderSidebar(); return;
+    }
     if (message.type === 'filter' && 'query' in message && typeof message.query === 'string') {
       this.setTestFilter({ ...this.testFilter, query: message.query.slice(0, 256) }); return;
     }
@@ -178,8 +181,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     if (message.type === 'toggle' && ['folder', 'package', 'run', 'runErrors'].includes(node.kind)) {
       this.noteTreeExpansion(node, !this.expandedIds.has(node.id) && (node.kind !== 'folder' || this.collapsedIds.has(node.id)));
       await this.renderSidebar();
-    } else if (message.type === 'open') {
-      if (node.kind === 'result' || node.kind === 'runError') await this.inspect(node.id);
+    } else if (message.type === 'exportTest' && node.kind === 'test') await this.exportTest(node.id);
+    else if (message.type === 'open') {
+      if (node.kind === 'result' || node.kind === 'runError' || node.kind === 'test') await this.inspect(node.id);
       else if (node.kind === 'overview') await this.runOverview(node.id);
       else if (node.kind === 'more') await this.moreRuns(node.id);
     }
@@ -190,9 +194,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     const generation = ++this.sidebarGeneration;
     try {
       const render = async (nodes: TreeNode[]): Promise<string> => (await Promise.all(nodes.map(async (node) => {
-        const expandable = ['folder', 'package', 'run', 'runErrors'].includes(node.kind);
+        const expandable = this.sidebarMode === 'tests' ? node.kind === 'folder' : ['folder', 'package', 'run', 'runErrors'].includes(node.kind);
         const expanded = expandable && (this.expandedIds.has(node.id) || (node.kind === 'folder' && !this.collapsedIds.has(node.id)));
-        const action = expandable ? 'toggle' : ['result', 'runError', 'overview', 'more'].includes(node.kind) ? 'open' : '';
+        const action = expandable ? 'toggle' : ['result', 'runError', 'overview', 'more', 'test'].includes(node.kind) ? 'open' : '';
         const icon = node.statusIcon?.id === 'pass' ? '✓' : node.statusIcon?.id === 'error' ? '×' : node.statusIcon?.id === 'warning' ? '!' : node.statusIcon?.id === 'circle-slash' ? '⊘' : expandable ? expanded ? '⌄' : '›' : node.kind === 'overview' ? '▤' : '·';
         const pill = node.kind === 'run' && node.originBadge ? `<span class="origin-pill ${node.originBadge.toLowerCase()}">${escapeHtml(node.originBadge)}</span>` : '';
         const id = escapeHtml(node.id);
@@ -200,13 +204,14 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
         const chevron = node.kind === 'run' ? `<span class="chevron" aria-hidden="true">${expanded ? '⌄' : '›'}</span>` : '';
         const content = `${chevron}<span class="icon ${node.statusIcon?.id === 'pass' ? 'passed' : node.statusIcon?.id === 'error' ? 'failed' : ''}" aria-hidden="true">${icon}</span>${pill}<span class="label">${escapeHtml(node.label)}</span>`;
         const description = node.sidebarDescription ?? node.description;
-        const row = `<div class="row ${node.kind}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}"${node.kind === 'result' ? ` aria-label="${title}"` : ''} aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${description && node.kind !== 'run' ? `<small>${escapeHtml(description)}</small>` : ''}</div>`;
-        return `<div role="treeitem" aria-expanded="${expandable ? expanded : ''}">${row}${expanded ? `<div role="group">${await render(await this.getChildren(node))}</div>` : ''}</div>`;
+        const exportAction = node.kind === 'test' ? `<button class="test-export" data-action="exportTest" data-id="${id}" title="Export test HTML report" aria-label="Export ${escapeHtml(node.label)} HTML report">⇩</button>` : '';
+        const row = `<div class="row ${node.kind}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}"${node.kind === 'result' || node.kind === 'test' ? ` aria-label="${title}"` : ''} aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${exportAction}${description && node.kind !== 'run' ? `<small>${escapeHtml(description)}</small>` : ''}</div>`;
+        return `<div role="treeitem" aria-expanded="${expandable ? expanded : ''}">${row}${expanded ? `<div role="group">${await render(await (this.sidebarMode === 'tests' ? this.getTestChildren(node) : this.getChildren(node)))}</div>` : ''}</div>`;
       }))).join('');
-      const html = await render(await this.getChildren());
+      const html = await render(await (this.sidebarMode === 'tests' ? this.getTestChildren() : this.getChildren()));
       if (generation === this.sidebarGeneration && view === this.sidebar) {
         const scope = this.testFilter.title ? `Test: ${this.testFilter.title}` : this.testFilter.file ? `File: ${this.testFilter.file}` : '';
-        if (await view.webview.postMessage({ type: 'render', html, query: this.testFilter.query, scope, focusFilter: this.focusFilterOnRender })) this.focusFilterOnRender = false;
+        if (await view.webview.postMessage({ type: 'render', html, mode: this.sidebarMode, query: this.testFilter.query, scope, focusFilter: this.focusFilterOnRender })) this.focusFilterOnRender = false;
       }
     } catch { /* A workspace refresh can cancel a sidebar read. */ }
   }
@@ -602,6 +607,10 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     await vscode.window.showInformationMessage('This spec file is outside the mapped Logbook source folders. Configure Source Mapping to filter its recorded tests.');
   }
   async expandAll(): Promise<void> {
+    if (this.sidebarMode === 'tests') {
+      for (const folder of await this.getTestChildren()) this.noteTreeExpansion(folder, true);
+      await this.renderSidebar(); return;
+    }
     const operation = this.operation;
     const runs: TreeNode[] = [];
     for (const top of await this.getChildren()) {
@@ -630,6 +639,10 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     await this.renderSidebar();
   }
   async collapseAll(): Promise<void> {
+    if (this.sidebarMode === 'tests') {
+      for (const folder of await this.getTestChildren()) this.noteTreeExpansion(folder, false);
+      await this.renderSidebar(); return;
+    }
     const folders = (await this.getChildren()).filter(node => node.kind === 'folder');
     this.expandedIds.clear();
     this.collapsedIds = new Set(folders.map(node => node.id));
@@ -1049,9 +1062,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
 
 export async function activate(context: vscode.ExtensionContext): Promise<Logbook> {
   const logbook = new Logbook(context);
-  context.subscriptions.push(logbook, vscode.window.registerWebviewViewProvider('logbook.recentRuns', logbook),
-    vscode.window.createTreeView('logbook.tests', { treeDataProvider: { onDidChangeTreeData: logbook.onDidChangeTreeData,
-      getTreeItem: node => logbook.getTreeItem(node), getChildren: node => logbook.getTestChildren(node) } }));
+  context.subscriptions.push(logbook, vscode.window.registerWebviewViewProvider('logbook.recentRuns', logbook));
   await logbook.setup();
   return logbook;
 }

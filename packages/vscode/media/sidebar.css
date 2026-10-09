@@ -1,9 +1,12 @@
 :root { --success: var(--vscode-testing-iconPassed, #73c991); --warning: var(--vscode-testing-iconQueued, #cca700); }
 body { margin: 0; padding: 4px 0 12px; color: var(--vscode-sideBar-foreground); background: var(--vscode-sideBar-background); font: var(--vscode-font-size) var(--vscode-font-family); }
 #filter-bar { position: sticky; top: 0; z-index: 1; padding: 6px 8px; background: var(--vscode-sideBar-background); }
-#show-tests { display: block; margin: 6px 0 0 auto; padding: 2px 4px; border: 0; background: transparent; color: var(--vscode-textLink-foreground); font: inherit; cursor: pointer; }
-#show-tests:hover { background: var(--vscode-list-hoverBackground); }
-#show-tests:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+.view-switch { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 7px; border: 1px solid var(--vscode-panel-border); border-radius: 4px; overflow: hidden; }
+.view-switch button { padding: 4px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.view-switch button[aria-pressed="true"] { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); font-weight: 600; }
+.view-switch button:focus-visible, .test-export:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+.test-export { flex: 0 0 auto; margin-right: 6px; border: 0; background: transparent; color: var(--vscode-textLink-foreground); cursor: pointer; }
+.test-export:hover { background: var(--vscode-list-hoverBackground); }
 #filter { box-sizing: border-box; width: 100%; height: 26px; padding: 0 7px; border: 1px solid var(--vscode-input-border, transparent); border-radius: 2px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); font: inherit; }
 #filter:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
 #filter-scope { display: block; margin-top: 4px; overflow: hidden; color: var(--vscode-descriptionForeground); text-overflow: ellipsis; white-space: nowrap; }
