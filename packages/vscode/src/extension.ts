@@ -26,6 +26,7 @@ import type { ExecutionRef, ComparisonSide } from './comparison.js';
 import { readHistoricalSource, GitSourceError } from './gitsource.js';
 import { statusIcon, toneIcon, displayTime, shortRunId, statusText, outcomeQualifier } from './presentation.js';
 import { runOriginText } from './runorigin.js';
+import { indexTests } from './testindex.js';
 import type { HistoricalSource } from './gitsource.js';
 import { AnalysisSession, analysisAction, analysisPrompt, agentKey, renderAnalysis } from './analysis.js';
 import { ideAnalysisBackend } from './ideanalysis.js';
@@ -38,7 +39,7 @@ interface StoreContext {
   parentFolderKey?: string;
 }
 interface TreeNode {
-  id: string; kind: 'folder' | 'package' | 'run' | 'result' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
+  id: string; kind: 'folder' | 'package' | 'run' | 'result' | 'test' | 'runErrors' | 'runError' | 'overview' | 'message' | 'more';
   folderKey: string; label: string; description?: string; sidebarDescription?: string; runId?: string; resultKey?: string; errorIndex?: number; errorKey?: string; statusIcon?: { id: string; color: string }; originBadge?: string;
 }
 interface Selection {
@@ -372,7 +373,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     item.id = node.id; item.description = node.description; item.tooltip = `${node.label}${node.runId ? `\nRun: ${node.runId}` : ''}${node.originBadge ? `\nOrigin: ${node.originBadge}` : ''}${node.description ? `\n${node.description}` : ''}`;
     if (node.kind === 'folder' || node.kind === 'package') item.contextValue = 'logbook.workspaceFolder';
     item.iconPath = node.statusIcon ? new vscode.ThemeIcon(node.statusIcon.id, new vscode.ThemeColor(node.statusIcon.color)) : new vscode.ThemeIcon(node.kind === 'run' ? 'history' : node.kind === 'folder' ? 'folder' : node.kind === 'package' ? 'package' : node.kind === 'result' || node.kind === 'runError' ? 'circle-outline' : 'info');
-    if (node.kind === 'result' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
+    if (node.kind === 'result' || node.kind === 'test' || node.kind === 'runError') item.command = { command: 'logbook.inspect', title: 'Inspect recorded result', arguments: [node.id] };
     if (node.kind === 'overview') item.command = { command: 'logbook.runOverview', title: 'View recorded run overview', arguments: [node.id] };
     if (node.kind === 'more') item.command = { command: 'logbook.loadMoreRuns', title: 'Load more runs', arguments: [node.id] };
     return item;
@@ -476,6 +477,31 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
       if (missing && suppressEmpty) return [];
       return [this.message(key, missing ? 'No Logbook history found. Configure the reporter or select a history folder; an HTML report alone is insufficient.' : diagnosticMessage(error))];
     }
+  }
+  async getTestChildren(node?: TreeNode): Promise<TreeNode[]> {
+    const signal = this.operation.signal;
+    if (!node) return [...this.stores.entries()].filter(([key]) => !this.testFilter.folderKey || key === this.testFilter.folderKey)
+      .map(([key, store]) => this.register({ id: JSON.stringify([key, 'tests']), kind: 'folder', folderKey: key, label: store.folder.name }));
+    if (node.kind !== 'folder') return [];
+    const store = this.stores.get(node.folderKey);
+    if (!store) return [];
+    try {
+      const page = await collectPages((offset, limit) => store.reader.listRuns(offset, limit, signal), store.runLimit);
+      const runs: ReaderRun[] = [];
+      for (const summary of page.items) {
+        try { runs.push(await store.reader.getRun(summary.runId, signal)); }
+        catch { if (signal.aborted) return []; }
+      }
+      const filter = this.testFilter;
+      const tests = indexTests(runs).filter(item => matchesTestFilter(item.result, filter));
+      if (signal.aborted || filter !== this.testFilter) return [];
+      const nodes = tests.map(item => this.register({ id: JSON.stringify([node.folderKey, 'test', item.identity]), kind: 'test', folderKey: node.folderKey,
+        runId: item.runId, resultKey: item.executionKey, label: item.result.title, statusIcon: statusIcon(item.result),
+        description: `${item.result.project || 'Project unknown'}${item.result.repeatEachIndex ? ` · Repeat ${item.result.repeatEachIndex}` : ''} · ${statusText(item.result.status)} · ${item.executions} loaded execution${item.executions === 1 ? '' : 's'}` }));
+      nodes.unshift(this.message(node.folderKey, `Latest results across ${runs.length} loaded runs${runs.length < page.items.length ? `; ${page.items.length - runs.length} unreadable` : ''}${page.nextOffset !== null ? '; older runs available' : ''}.`, 'test-coverage'));
+      if (page.nextOffset !== null) nodes.push(this.register({ id: JSON.stringify([node.folderKey, 'tests-more', store.runLimit]), kind: 'more', folderKey: node.folderKey, label: 'Load more runs for Tests' }));
+      return nodes;
+    } catch (error) { return signal.aborted ? [] : [this.message(node.folderKey, diagnosticMessage(error), 'test-index-error')]; }
   }
   private async runOverview(id: unknown): Promise<void> {
     const node = typeof id === 'string' ? this.nodes.get(id) : undefined;
@@ -586,7 +612,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
   }
   private async inspect(id: unknown): Promise<void> {
     const node = typeof id === 'string' ? this.nodes.get(id) : undefined;
-    if (!node?.runId || !['result', 'runError'].includes(node.kind)) return;
+    if (!node?.runId || !['result', 'test', 'runError'].includes(node.kind)) return;
     const store = this.stores.get(node.folderKey); if (!store) return;
     try {
       const run = await store.reader.getRun(node.runId);
@@ -991,7 +1017,9 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
 
 export async function activate(context: vscode.ExtensionContext): Promise<Logbook> {
   const logbook = new Logbook(context);
-  context.subscriptions.push(logbook, vscode.window.registerWebviewViewProvider('logbook.recentRuns', logbook));
+  context.subscriptions.push(logbook, vscode.window.registerWebviewViewProvider('logbook.recentRuns', logbook),
+    vscode.window.createTreeView('logbook.tests', { treeDataProvider: { onDidChangeTreeData: logbook.onDidChangeTreeData,
+      getTreeItem: node => logbook.getTreeItem(node), getChildren: node => logbook.getTestChildren(node) } }));
   await logbook.setup();
   return logbook;
 }

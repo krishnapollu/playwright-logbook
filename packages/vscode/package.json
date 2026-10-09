@@ -64,6 +64,10 @@
           "id": "logbook.recentRuns",
           "name": "Recent Runs",
           "type": "webview"
+        },
+        {
+          "id": "logbook.tests",
+          "name": "Tests"
         }
       ]
     },

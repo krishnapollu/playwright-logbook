@@ -54,6 +54,13 @@ async function journey(): Promise<void> {
   assert.ok((await vscode.commands.getCommands(true)).includes('logbook.chooseImport'), 'Unified import action must be registered in the editor');
   const roots = await logbook.getChildren();
   assert.equal(roots.length, 2, 'Multi-root grouping should appear');
+  await vscode.commands.executeCommand('logbook.tests.focus');
+  const testFolders = await logbook.getTestChildren();
+  const testEntries = await logbook.getTestChildren(testFolders.find(item => item.label === 'first'));
+  const indexedReceipt = testEntries.find(item => item.kind === 'test' && item.label === 'renders receipt @critical');
+  assert.ok(indexedReceipt, 'Tests view indexes a recorded test across runs');
+  assert.equal(indexedReceipt.runId, 'current', 'Tests view opens the newest recorded execution');
+  assert.ok(testEntries.some(item => item.kind === 'message' && item.label.includes('3 loaded runs')), 'Tests view states its history coverage');
   const first = roots.find((item) => item.label === 'first')!, broken = roots.find((item) => item.label === 'second')!;
   assert.ok(first); assert.ok(broken);
   assert.equal(first.description, '3 runs', 'Folder count includes history beyond the visible page');

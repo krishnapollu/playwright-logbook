@@ -1323,7 +1323,10 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
 - [x] H0 Scope and plan — see `docs/SPEC-test-history-exports.md`.
   Done when output: `npm run check` passed with 48 test files and 234 tests
   when Playwright Chromium was permitted to launch.
-- [ ] H1 Extension Tests view — see `docs/SPEC-test-history-exports.md`.
+- [x] H1 Extension Tests view — see `docs/SPEC-test-history-exports.md`.
+  Done when output: `npm run check` passed with 49 test files and 235 tests;
+  the installed VS Code host journey exited 0 with Tests view navigation and
+  coverage assertions. Development VSIX packaged to `/private/tmp/playwright-logbook-vscode-tests-dev.vsix`.
 - [ ] H2 Report test history and comparison.
 - [ ] H3 Run and test HTML export.
 - [ ] H4 Release preparation and pushed feature branch.
