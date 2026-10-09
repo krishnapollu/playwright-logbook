@@ -74,9 +74,6 @@ try {
           assert.ok((await page.locator('main').ariaSnapshot()).includes('heading'));
           await first.blur();
         }
-        if (theme === 'dark' && width === 1440) {
-          await page.screenshot({ path: `packages/vscode/media/${panel === 'detail' ? 'result-detail' : 'run-overview'}.png`, fullPage: true });
-        }
         checks.push(`${theme}/${width}/${panel}`);
       }
       assert.deepEqual(failures, []);
