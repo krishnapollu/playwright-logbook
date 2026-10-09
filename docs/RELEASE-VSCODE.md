@@ -1,8 +1,8 @@
 # Release 0.3.3 reporter and 0.2.22 VS Code extension
 
 The packages are independently versioned. Reporter 0.3.3 adds dated test
-history and comparison to the offline report. Extension 0.2.22 adds the Tests
-view and portable single-file run/test HTML reports. Earlier bundle and GitHub Actions
+history and comparison to the offline report. Extension 0.2.22 adds the Runs/Tests
+switch, folder test counts, and portable single-file run/test HTML reports. Earlier bundle and GitHub Actions
 import features remain available. See [release notes](RELEASE-NOTES-0.3.3.md).
 
 Desktop local workspaces on macOS, Windows and Linux remain the release scope.
@@ -43,9 +43,8 @@ npm run release:publish -- --verify
 
 ## Publish handoff
 
-The repository's AGENTS.md says never to run `npm publish`. Publication of this
-release requires a separate maintainer action after release code is pushed and
-GitHub checks pass. The publish script verifies artifact hashes before uploading
+Publication of this release requires a separate maintainer action after release
+code is pushed and GitHub checks pass. The publish script verifies artifact hashes before uploading
 the reporter tarball. Upload the verified `0.2.22` VSIX through the existing
 Marketplace publisher's Update action. Do not publish the development VSIX.
 

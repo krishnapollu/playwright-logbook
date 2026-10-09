@@ -43,4 +43,4 @@ Replace the extension's stacked Runs and Tests views with one sidebar switch and
 
 ### H7 — Release refresh
 
-Bump the reporter and extension candidate versions, update user docs and release notes, inspect the packed npm artifact and production VSIX, and run the clean consumer, browser, view, and packaged editor checks. Do not publish. Done when artifact verification passes and the checked branch is pushed.
+Refine the Tests sidebar with folder counts and detail-only test export, confirm the unpublished reporter and extension candidate versions, update user docs and release notes, inspect the packed npm artifact and production VSIX, and run the clean consumer, browser, view, and packaged editor checks. Do not publish. Done when artifact verification passes and the checked branch is pushed.

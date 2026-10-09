@@ -61,6 +61,7 @@ async function journey(): Promise<void> {
   await sidebarEntry.sidebarAction({ type: 'mode', mode: 'tests' });
   const testFolders = await logbook.getTestChildren();
   const testEntries = await logbook.getTestChildren(testFolders.find(item => item.label === 'first'));
+  assert.equal(testFolders.find(item => item.label === 'first')?.description, `${testEntries.filter(item => item.kind === 'test').length} tests`, 'Tests folder shows its indexed test total');
   const indexedReceipt = testEntries.find(item => item.kind === 'test' && item.label === 'renders receipt @critical');
   assert.ok(indexedReceipt, 'Tests view indexes a recorded test across runs');
   assert.equal(indexedReceipt.runId, 'current', 'Tests view opens the newest recorded execution');
@@ -92,7 +93,7 @@ async function journey(): Promise<void> {
   sidebarHarness.sidebar = captureSidebar;
   await sidebarHarness.renderSidebar();
   await sidebarEntry.sidebarAction({ type: 'mode', mode: 'tests' });
-  assert.ok(sidebarHtml.includes('class="row test"') && sidebarHtml.includes('data-action="exportTest"'), 'Tests mode renders test entries and their export action in the same sidebar');
+  assert.ok(sidebarHtml.includes('class="row test"') && !sidebarHtml.includes('data-action="exportTest"'), 'Tests mode renders test entries without per-test download icons');
   await sidebarEntry.sidebarAction({ type: 'mode', mode: 'runs' });
   sidebarHarness.sidebar = actualSidebar;
   assert.equal(sidebarQuery, '', 'Sidebar starts with an empty inline filter');

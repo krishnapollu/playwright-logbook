@@ -181,8 +181,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
     if (message.type === 'toggle' && ['folder', 'package', 'run', 'runErrors'].includes(node.kind)) {
       this.noteTreeExpansion(node, !this.expandedIds.has(node.id) && (node.kind !== 'folder' || this.collapsedIds.has(node.id)));
       await this.renderSidebar();
-    } else if (message.type === 'exportTest' && node.kind === 'test') await this.exportTest(node.id);
-    else if (message.type === 'open') {
+    } else if (message.type === 'open') {
       if (node.kind === 'result' || node.kind === 'runError' || node.kind === 'test') await this.inspect(node.id);
       else if (node.kind === 'overview') await this.runOverview(node.id);
       else if (node.kind === 'more') await this.moreRuns(node.id);
@@ -204,8 +203,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
         const chevron = node.kind === 'run' ? `<span class="chevron" aria-hidden="true">${expanded ? '⌄' : '›'}</span>` : '';
         const content = `${chevron}<span class="icon ${node.statusIcon?.id === 'pass' ? 'passed' : node.statusIcon?.id === 'error' ? 'failed' : ''}" aria-hidden="true">${icon}</span>${pill}<span class="label">${escapeHtml(node.label)}</span>`;
         const description = node.sidebarDescription ?? node.description;
-        const exportAction = node.kind === 'test' ? `<button class="test-export" data-action="exportTest" data-id="${id}" title="Export test HTML report" aria-label="Export ${escapeHtml(node.label)} HTML report">⇩</button>` : '';
-        const row = `<div class="row ${node.kind}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}"${node.kind === 'result' || node.kind === 'test' ? ` aria-label="${title}"` : ''} aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${exportAction}${description && node.kind !== 'run' ? `<small>${escapeHtml(description)}</small>` : ''}</div>`;
+        const row = `<div class="row ${node.kind}">${action ? `<button class="main" data-action="${action}" data-id="${id}" title="${title}"${node.kind === 'result' || node.kind === 'test' ? ` aria-label="${title}"` : ''} aria-expanded="${expandable ? expanded : ''}">${content}</button>` : `<span class="main" title="${title}">${content}</span>`}${description && node.kind !== 'run' ? `<small>${escapeHtml(description)}</small>` : ''}</div>`;
         return `<div role="treeitem" aria-expanded="${expandable ? expanded : ''}">${row}${expanded ? `<div role="group">${await render(await (this.sidebarMode === 'tests' ? this.getTestChildren(node) : this.getChildren(node)))}</div>` : ''}</div>`;
       }))).join('');
       const html = await render(await (this.sidebarMode === 'tests' ? this.getTestChildren() : this.getChildren()));
@@ -490,8 +488,13 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
   }
   async getTestChildren(node?: TreeNode): Promise<TreeNode[]> {
     const signal = this.operation.signal;
-    if (!node) return [...this.stores.entries()].filter(([key]) => !this.testFilter.folderKey || key === this.testFilter.folderKey)
-      .map(([key, store]) => this.register({ id: JSON.stringify([key, 'tests']), kind: 'folder', folderKey: key, label: store.folder.name }));
+    if (!node) return Promise.all([...this.stores.entries()].filter(([key]) => !this.testFilter.folderKey || key === this.testFilter.folderKey)
+      .map(async ([key, store]) => {
+        const folder = this.register({ id: JSON.stringify([key, 'tests']), kind: 'folder', folderKey: key, label: store.folder.name });
+        const count = (await this.getTestChildren(folder)).filter(item => item.kind === 'test').length;
+        folder.description = hasTestFilter(this.testFilter) ? `${count} shown` : `${count} ${count === 1 ? 'test' : 'tests'}`;
+        return folder;
+      }));
     if (node.kind !== 'folder') return [];
     const store = this.stores.get(node.folderKey);
     if (!store) return [];

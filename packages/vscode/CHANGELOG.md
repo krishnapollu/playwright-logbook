@@ -2,8 +2,8 @@
 
 ## 0.2.22
 
-- Add a Tests view that indexes the latest loaded execution for each project, test, and repeat identity.
-- Export a selected run or test as a portable HTML ZIP with retained attachments and explicit missing-file labels.
+- Add one Runs/Tests sidebar switch. Tests indexes the latest loaded execution for each project, test, and repeat identity and shows the count at each folder.
+- Export a selected run or test as a single portable HTML file with retained attachments and explicit missing-file labels. Test export stays in the detail view.
 
 ## 0.2.21
 

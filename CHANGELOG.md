@@ -3,7 +3,7 @@
 ## 0.3.3
 
 - Add dated per-test history and execution comparison to the offline HTML report.
-- Widen test details for readable evidence and comparison. Keep report and run records offline and schema v1.
+- Widen test details for readable evidence, attachment previews, logs, and comparison. Export focused test reports with the interactive report renderer. Keep report and run records offline and schema v1.
 
 ## 0.3.2
 

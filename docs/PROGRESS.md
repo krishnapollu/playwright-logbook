@@ -1368,3 +1368,15 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   the installed VS Code host journey exited 0 after switching Runs/Tests in the
   single sidebar.
 
+- [x] H7 Release refresh — see `docs/SPEC-test-history-exports.md`.
+  Done when output: `npm run check` passed 50 files and 239 tests;
+  `npm run test:e2e` passed 12 browser tests; `npm run test:release` passed
+  clean-consumer collection, export and import; `npm run test:release:views`
+  passed four themes and three widths. Production VSIX 0.2.22 installed in a
+  disposable VS Code profile and its host journey exited 0, including Tests
+  folder counts and the sidebar without per-test export icons. The npm tarball
+  contains reporter 0.3.3 and the VSIX contains extension 0.2.22 with runtime
+  bytes matching the checked build. `npm run release:publish -- --verify` passed.
+  SHA-256: reporter `6f939f2e01308fd1a5cf29774fbf270cd570e7945a7b926fb4295a6d100f3492`,
+  VSIX `8f9ef11373a9f9363640cc5b48358c80d52177cdb23e53f091673786c7a8b5aa`.
+
