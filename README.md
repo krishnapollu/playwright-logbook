@@ -36,7 +36,6 @@ It works with the Playwright setup you already have. There is no hosted service,
 - Give a coding agent a bounded investigation task with errors, retries, steps, artifact references, and prior outcomes for one test.
 - Keep reports local and offline by default. Logbook does not change Playwright's exit code or upload data automatically.
 
-![Playwright Logbook light report](docs/img/report-light.png)
 
 ## Install
 
@@ -46,9 +45,9 @@ npm install --save-dev playwright-logbook
 
 Logbook supports Node.js 20+ and Playwright 1.42+.
 
-## Add it to Playwright
+## Add it to Playwright Suite
 
-Add Logbook to your existing reporter list:
+Add Logbook to your existing reporter list in playwright config:
 
 ```ts
 // playwright.config.ts
@@ -76,13 +75,19 @@ Install [Playwright Logbook for VS Code](https://marketplace.visualstudio.com/it
 - **Compare history:** Select an earlier execution to see what changed, including a source diff when the recorded revisions are available locally.
 - **Bring CI evidence home:** Fetch a recent GitHub Actions artifact or import a [portable run bundle](docs/RUN-BUNDLES.md) to inspect its recorded results in the same history view.
 
+
 <img src="packages/vscode/media/pw-test-runs.png" alt="VS Code Recent Runs sidebar showing recorded tests" width="565">
+
+VS Code Recent Runs sidebar showing recorded tests
 
 <img src="packages/vscode/media/pw-test-failure.png" alt="VS Code test failure detail with error, retries, source actions, and history" width="820">
 
+VS Code test failure detail with error, retries, source actions, and history
+
 <img src="packages/vscode/media/pw-test-comparison.png" alt="VS Code comparison of a passing and failing execution" width="820">
 
-<img src="packages/vscode/media/pw-test-evidence.png" alt="VS Code retry evidence with attachment links" width="694">
+VS Code comparison of a passing and failing execution
+
 
 See the [extension README](packages/vscode/README.md) for setup, monorepos, custom history paths, and CI imports.
 
