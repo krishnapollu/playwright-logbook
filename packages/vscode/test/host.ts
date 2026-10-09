@@ -298,10 +298,10 @@ async function journey(): Promise<void> {
   assert.equal(filteredCounts.find(item => item.label === 'first')?.description, '2 shown', 'Root count follows visible filter matches');
   assert.equal((await logbook.getChildren(filteredCounts.find(item => item.label === 'first'))).find(item => item.kind === 'package')?.description, '1 shown', 'Package count follows visible filter matches');
   await vscode.commands.executeCommand('logbook.clearTestFilter');
-  const rootStore = path.join(mappedRoot, '.logbook'), parkedRootStore = path.join(mappedRoot, '.logbook-parked');
-  await fs.rename(rootStore, parkedRootStore);
+  const rootHistory = vscode.workspace.getConfiguration('logbook', vscode.Uri.file(mappedRoot));
+  await rootHistory.update('historyPath', '.logbook-missing', vscode.ConfigurationTarget.WorkspaceFolder);
   await logbook.setup();
-  // The rename also triggers a native watcher rescan, which may supersede the explicit setup.
+  // The setting change also triggers a setup, which may supersede the explicit setup.
   let packagesOnly = (await logbook.getChildren()).find(item => item.label === 'first')!;
   for (let attempt = 0; packagesOnly.description !== '4 runs' && attempt < 100; attempt++) {
     await new Promise(resolve => setTimeout(resolve, 50));
@@ -309,7 +309,7 @@ async function journey(): Promise<void> {
   }
   assert.equal(packagesOnly.description, '4 runs');
   assert.deepEqual((await logbook.getChildren(packagesOnly)).map(item => item.kind), ['package'], 'Missing parent history does not add a message under child suites');
-  await fs.rename(parkedRootStore, rootStore);
+  await rootHistory.update('historyPath', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
   await logbook.setup();
   await vscode.commands.executeCommand('logbook.filterSpecFile', vscode.Uri.file(path.join(suite, 'tests/ui.spec.ts')));
   const filteredMonorepo = await logbook.getChildren(grouped);
