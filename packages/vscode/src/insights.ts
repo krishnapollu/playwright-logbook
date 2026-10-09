@@ -38,8 +38,9 @@ export function renderRunInsights(run: ReaderRun): string {
   }).join('') : '<p>No projects recorded.</p>'}${projectRows.length > 20 ? '<p class="chart-caption">Showing the first 20 recorded projects.</p>' : ''}</section></div><section class="change-summary cases-section"><h2>Cases <span class="section-count">${run.tests.length}</span></h2><p class="chart-caption">${run.tests.length > 100 ? 'First 100 results · ' : ''}Failures and retry issues first</p>${cases.length ? `<div class="cases-scroll"><table class="cases-table"><thead><tr><th>Case / project</th><th>Status</th><th>Duration</th><th>Attempts</th></tr></thead><tbody>${cases.map(({ test }) => `<tr><td><button class="case-link" data-action="openResult" data-key="${escapeHtml(executionIdentity(run.runId, test))}">${escapeHtml(test.title)}</button><small>${escapeHtml(test.project || 'Unknown project')} · ${escapeHtml(test.file ?? 'Source unknown')}</small></td><td><span class="case-status ${chartKind(test)}">${escapeHtml(statusText(test.status))}</span>${outcomeQualifier(test) ? `<small>${escapeHtml(outcomeQualifier(test))}</small>` : ''}</td><td>${duration(test.durationMs)}</td><td>${test.attempts === null ? 'Unknown' : test.attempts.length}</td></tr>`).join('')}</tbody></table></div>` : '<p>No recorded cases.</p>'}</section>`;
 }
 
-export function overviewAction(value: unknown, keys: readonly string[]): { type: 'openResult'; key: string } | null {
+export function overviewAction(value: unknown, keys: readonly string[]): { type: 'openResult'; key: string } | { type: 'exportRun' } | null {
   if (!value || typeof value !== 'object' || !('type' in value)) return null;
+  if (value.type === 'exportRun') return { type: 'exportRun' };
   if (value.type === 'openResult' && 'key' in value && typeof value.key === 'string' && keys.includes(value.key)) return { type: 'openResult', key: value.key };
   return null;
 }

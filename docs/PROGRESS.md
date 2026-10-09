@@ -1317,3 +1317,66 @@ runs need a working networked Playwright environment (see `docs/DECISIONS.md`).
   VS Code 1.95.3 and 1.140.0. `npm run release:publish -- --verify` verified
   both artifact hashes and reported no publication attempted. Public `store`
   CLI commands and VSIX Sync/Push contributions are absent.
+
+### Test history and HTML exports
+
+- [x] H0 Scope and plan — see `docs/SPEC-test-history-exports.md`.
+  Done when output: `npm run check` passed with 48 test files and 234 tests
+  when Playwright Chromium was permitted to launch.
+- [x] H1 Extension Tests view — see `docs/SPEC-test-history-exports.md`.
+  Done when output: `npm run check` passed with 49 test files and 235 tests;
+  the installed VS Code host journey exited 0 with Tests view navigation and
+  coverage assertions. Development VSIX packaged to `/private/tmp/playwright-logbook-vscode-tests-dev.vsix`.
+- [x] H2 Report test history and comparison.
+  Done when output: `npm run check` passed with 49 test files and 236 tests;
+  `npm run test:e2e` passed 8 browser tests, including dated history and
+  selected-execution comparison. The report remains offline at 360/768/1440 widths.
+- [x] H3 Run and test HTML export.
+  Done when output: `npm run check` passed with 50 test files and 239 tests;
+  `npm run test:e2e` passed 9 browser tests; the installed VS Code host journey
+  exited 0. A development VSIX packaged to `/private/tmp/playwright-logbook-vscode-export-dev.vsix`.
+  ZIP tests cover selected runs/tests, retained and missing files, and imported
+  artifact mappings without checkout fallback.
+- [x] H4 Release preparation.
+  Done when output: `npm run check` passed with 50 test files and 239 tests;
+  `npm run test:e2e` passed 9 browser tests; `npm run test:release` passed
+  clean-consumer collection/export/import; `npm run test:release:views` passed
+  four themes at 360/768/1440. The production 0.2.22 VSIX installed and its
+  VS Code host journey exited 0. Tarball 0.3.3 and VSIX contents/versions were
+  inspected, packaged runtime matched the checked build, and
+  `npm run release:publish -- --verify` passed without publishing. SHA-256:
+  reporter `9e0f503bdb9231db9166a13341b717f3871382738bc612f6267db36d84b22b36`,
+  VSIX `11fb25b97945d60a62e0eb8acd1bff055e034061015198f75840bf5b8909ba88`.
+
+- [x] H5 Review fixes — see `docs/SPEC-test-history-exports.md`.
+  Done when output: `npm run check` passed with 50 test files and 239 tests;
+  `npm run test:e2e` passed 11 browser tests, including visible comparison,
+  linked screenshot, aligned steps, and a single-file offline export.
+  `npm run test:release` and `npm run test:release:views` passed. The clean-profile
+  packaged 0.2.22 VS Code host journey exited 0 with the Recent Runs Tests entry.
+  Development VSIX: `/private/tmp/playwright-logbook-vscode-review-dev.vsix`.
+  Production VSIX: `packages/vscode/dist/playwright-logbook-vscode-0.2.22.vsix`.
+  `npm run release:publish -- --verify` passed without publishing. SHA-256:
+  reporter `0b443005cd682d889bcd87669c2430c251c28a935e95ae8e5e535573d1797a53`,
+  VSIX `6bc1ceaddfd4452c4ac5b532a476bc5fdf18dbdb6072dfe7c148beeb0b36940a`.
+
+- [x] H6 Unified investigation view — see `docs/SPEC-test-history-exports.md`.
+  Done when output: `npm run check` passed with 50 test files and 239 tests;
+  `npm run test:e2e` passed 12 browser tests, including failed screenshot preview,
+  logs, same-commit history, and the focused test's interactive HTML view.
+  Development VSIX packaged to `/private/tmp/playwright-logbook-vscode-unified-dev.vsix`;
+  the installed VS Code host journey exited 0 after switching Runs/Tests in the
+  single sidebar.
+
+- [x] H7 Release refresh — see `docs/SPEC-test-history-exports.md`.
+  Done when output: `npm run check` passed 50 files and 239 tests;
+  `npm run test:e2e` passed 12 browser tests; `npm run test:release` passed
+  clean-consumer collection, export and import; `npm run test:release:views`
+  passed four themes and three widths. Production VSIX 0.2.22 installed in a
+  disposable VS Code profile and its host journey exited 0, including Tests
+  folder counts and the sidebar without per-test export icons. The npm tarball
+  contains reporter 0.3.3 and the VSIX contains extension 0.2.22 with runtime
+  bytes matching the checked build. `npm run release:publish -- --verify` passed.
+  SHA-256: reporter `6f939f2e01308fd1a5cf29774fbf270cd570e7945a7b926fb4295a6d100f3492`,
+  VSIX `8f9ef11373a9f9363640cc5b48358c80d52177cdb23e53f091673786c7a8b5aa`.
+

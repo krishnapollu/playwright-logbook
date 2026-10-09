@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.22
+
+- Add one Runs/Tests sidebar switch. Tests indexes the latest loaded execution for each project, test, and repeat identity and shows the count at each folder.
+- Export a selected run or test as a single portable HTML file with retained attachments and explicit missing-file labels. Test export stays in the detail view.
+
 ## 0.2.21
 
 - Replace Recent Runs with a compact sidebar showing aligned status icons, Local and CI pills, inline run/test filtering, run counts, and Expand All / Collapse All.

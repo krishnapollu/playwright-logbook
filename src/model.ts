@@ -1,11 +1,12 @@
 import { testResultKind } from './history.js';
 import type { Comparison, FlakyEntry } from './history.js';
-import type { RunRecord, RunSummaryRecord, TestRecord } from './schema.js';
+import type { ErrorRecord, RunRecord, RunSummaryRecord, TestRecord } from './schema.js';
 import { VERSION } from './version.js';
 import type { ArtifactAvailability } from './artifacts.js';
 
 const compare = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
 export type ReportTest = TestRecord & { timing: { startedAt: string; workerIndex: number } | null };
+export interface ReportTestHistoryEntry { runId: string; startedAt: string; branch: string | null; commit: string | null; complete: boolean; status: TestRecord['status']; expectedStatus: TestRecord['expectedStatus']; outcome: TestRecord['outcome']; durationMs: number; attemptCount: number; project: string; file: string; line: number; firstError: ErrorRecord | null; attempts: { retry: number; status: TestRecord['status']; durationMs: number; errors: ErrorRecord[] }[] }
 export interface ReportModel {
   schemaVersion: 1;
   generator: { name: 'playwright-logbook'; version: string };
@@ -23,6 +24,7 @@ export interface ReportModel {
   delta: { previousRunId: string; passRatePp: number | null; failed: number; flaky: number; durationPct: number | null } | null;
   errorGroups: { signature: string; count: number; projects: string[]; testIds: string[]; newCount: number }[];
   recent: Record<string, string>;
+  testHistory: Record<string, ReportTestHistoryEntry[]>;
   projects: { name: string; total: number; passed: number; failed: number; flaky: number; skipped: number; durationMs: number }[];
 }
 
@@ -85,14 +87,21 @@ export function buildReportModel(input: { run: RunRecord; summaries: RunSummaryR
   const passRate = (summary: RunRecord['summary']): number | null => summary.total ? summary.passed / summary.total : null;
   const currentRate = passRate(run.summary), previousRate = previous && passRate(previous.summary);
   const delta = previous ? { previousRunId: previous.runId, passRatePp: currentRate === null || previousRate === null ? null : Math.round((currentRate - previousRate) * 1000) / 10, failed: run.summary.failed - previous.summary.failed, flaky: run.summary.flaky - previous.summary.flaky, durationPct: previous.durationMs ? Math.round((run.durationMs - previous.durationMs) / previous.durationMs * 100) : null } : null;
-  const older = (input.recentRuns ?? []).filter((item) => item.runId !== run.runId).slice(-10);
+  const older = (input.recentRuns ?? []).filter((item) => item.runId !== run.runId && item.startedAt < run.startedAt).slice(-10);
   const olderTests = older.map((item) => new Map(item.tests.map((test) => [test.testId, test])));
   const recent: Record<string, string> = {};
+  const testHistory: Record<string, ReportTestHistoryEntry[]> = {};
   for (const test of [...run.tests].sort((a, b) => compare(a.testId, b.testId))) recent[test.testId] = olderTests.map((tests) => {
     const prior = tests.get(test.testId);
     return prior ? ({ pass: 'p', fail: 'f', flaky: 'k', skip: 's' })[testResultKind(prior)] : '-';
   }).join('');
-  const model: ReportModel = { schemaVersion: 1, generator: { name: 'playwright-logbook', version: VERSION }, summaryMarkdown: '', generatedAt: input.generatedAt ?? null, ...(input.attachmentAvailability ? { attachmentAvailability: input.attachmentAvailability } : {}), run: { ...run, tests: run.tests.map((test) => ({ ...slim(test), timing: test.attempts[0] ? { startedAt: test.attempts[0].startedAt, workerIndex: test.attempts[0].workerIndex } : null })) }, history, previous, comparison: input.comparison ?? null, flaky: (input.flaky ?? []).slice(0, 50), slowest: [...run.tests].sort((a, b) => b.durationMs - a.durationMs || compare(a.testId, b.testId)).slice(0, 10).map(({ testId, title, file, project, durationMs }) => ({ testId, title, file, project, durationMs })), files: [...files.values()].sort((a, b) => compare(a.file, b.file)), tags: [...tags].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || compare(a.tag, b.tag)), delta, errorGroups: [...groups.values()].map((group) => ({ ...group, projects: [...group.projects].sort(compare), testIds: group.testIds.sort(compare) })).sort((a, b) => b.count - a.count || compare(a.signature, b.signature)), recent, projects: [...projects.values()].sort((a, b) => compare(a.name, b.name)) };
+  for (const test of run.tests) testHistory[test.testId] = older.flatMap((olderRun) => {
+    const prior = olderRun.tests.find((item) => item.testId === test.testId && item.project === test.project && item.repeatEachIndex === test.repeatEachIndex);
+    return prior ? [{ runId: olderRun.runId, startedAt: olderRun.startedAt, branch: olderRun.env.git.branch, commit: olderRun.env.git.commit, complete: olderRun.complete,
+      status: prior.status, expectedStatus: prior.expectedStatus, outcome: prior.outcome, durationMs: prior.durationMs, attemptCount: prior.attemptCount, project: prior.project, file: prior.file, line: prior.line,
+      firstError: prior.firstError, attempts: prior.attempts.map(({ retry, status, durationMs, errors }) => ({ retry, status, durationMs, errors })) }] : [];
+  });
+  const model: ReportModel = { schemaVersion: 1, generator: { name: 'playwright-logbook', version: VERSION }, summaryMarkdown: '', generatedAt: input.generatedAt ?? null, ...(input.attachmentAvailability ? { attachmentAvailability: input.attachmentAvailability } : {}), run: { ...run, tests: run.tests.map((test) => ({ ...slim(test), timing: test.attempts[0] ? { startedAt: test.attempts[0].startedAt, workerIndex: test.attempts[0].workerIndex } : null })) }, history, previous, comparison: input.comparison ?? null, flaky: (input.flaky ?? []).slice(0, 50), slowest: [...run.tests].sort((a, b) => b.durationMs - a.durationMs || compare(a.testId, b.testId)).slice(0, 10).map(({ testId, title, file, project, durationMs }) => ({ testId, title, file, project, durationMs })), files: [...files.values()].sort((a, b) => compare(a.file, b.file)), tags: [...tags].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || compare(a.tag, b.tag)), delta, errorGroups: [...groups.values()].map((group) => ({ ...group, projects: [...group.projects].sort(compare), testIds: group.testIds.sort(compare) })).sort((a, b) => b.count - a.count || compare(a.signature, b.signature)), recent, testHistory, projects: [...projects.values()].sort((a, b) => compare(a.name, b.name)) };
   model.summaryMarkdown = renderMarkdownSummary(model);
   return model;
 }

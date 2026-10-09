@@ -9,8 +9,9 @@ await build({
   external: ['vscode'], minify: true, legalComments: 'none', metafile: true,
 }).then(async (result) => {
   const inputs = Object.keys(result.metafile.inputs);
-  if (inputs.some((name) => /(?:playwright|src\/(?:reporter|collect|cli|render|clientlib))/.test(name))) {
-    throw new Error('Extension bundle imported collection or presentation runtime.');
+  const forbidden = inputs.filter((name) => /(?:playwright|src\/(?:reporter|collect)(?:\.|\/)|src\/cli\/)/.test(name));
+  if (forbidden.length) {
+    throw new Error(`Extension bundle imported collection runtime: ${forbidden.join(', ')}`);
   }
   const dependencies = [...new Set(inputs.flatMap((name) => {
     const match = name.match(/node_modules\/((?:@[^/]+\/)?[^/]+)/);

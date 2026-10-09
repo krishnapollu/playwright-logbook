@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3
+
+- Add dated per-test history and execution comparison to the offline HTML report.
+- Widen test details for readable evidence, attachment previews, logs, and comparison. Export focused test reports with the interactive report renderer. Keep report and run records offline and schema v1.
+
 ## 0.3.2
 
 - Add `logbook ci list` and `logbook ci fetch` for recent GitHub Actions run bundles, with repository and artifact-name selection, validation, and CI origin in local history.
