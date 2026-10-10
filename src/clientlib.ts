@@ -21,12 +21,13 @@ export function sparkPath(values: number[], width: number, height: number, pad: 
 export interface HashState { tab: string; q: string; status: string[]; project: string; tag: string; sort: string; group: string; changed: boolean; test: string; attempt: number }
 export function parseHash(hash: string): HashState {
   const query = new URLSearchParams(hash.replace(/^#/, ''));
-  const tabs = ['tests', 'failures', 'trends', 'flaky', 'run', 'project'];
+  const tabs = ['overview', 'tests', 'failures', 'trends', 'flaky', 'run', 'project'];
   const sorts = ['default', 'slowest', 'fastest', 'title', 'attempts', 'severity'];
   const statuses = ['passed', 'failed', 'flaky', 'skipped'];
   const attempt = Number(query.get('attempt'));
+  const legacyState = ['q', 'status', 'project', 'tag', 'sort', 'group', 'changed', 'test', 'attempt'].some((key) => query.has(key));
   return {
-    tab: tabs.includes(query.get('tab') ?? '') ? query.get('tab')! : 'tests',
+    tab: tabs.includes(query.get('tab') ?? '') ? query.get('tab')! : !query.has('tab') && legacyState ? 'tests' : 'overview',
     q: (query.get('q') ?? '').slice(0, 200),
     status: [...new Set((query.get('status') ?? '').split(',').filter((item) => statuses.includes(item)))],
     project: query.get('project') ?? '', tag: query.get('tag') ?? '',
@@ -39,7 +40,6 @@ export function parseHash(hash: string): HashState {
 
 export function buildHash(state: HashState): string {
   const query = new URLSearchParams();
-  if (state.tab !== 'tests') query.set('tab', state.tab);
   if (state.q) query.set('q', state.q);
   if (state.status.length) query.set('status', state.status.join(','));
   if (state.project) query.set('project', state.project);
@@ -49,6 +49,7 @@ export function buildHash(state: HashState): string {
   if (state.changed) query.set('changed', '1');
   if (state.test) query.set('test', state.test);
   if (state.attempt) query.set('attempt', String(state.attempt));
+  if (state.tab !== 'overview' || query.size) query.set('tab', state.tab);
   return query.size ? `#${query}` : '';
 }
 
