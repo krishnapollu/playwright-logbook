@@ -18,7 +18,7 @@ export function buildStyles(): string {
     .replace(/\.panel-backdrop\{[^}]*\}/g, '')
     .replace(/\.detail-panel\[hidden\],\.panel-backdrop\[hidden\]\{[^}]*\}/g, '')
     .replace(/\.focused-report \.panel-backdrop,/g, '')
-    .replace(/0px/g, '0')
+    .replace(/(^|[:\s,(])0px(?=[;\s,)])/g, '$10')
     .replace(/,\s+/g, ',')
     .replace(/\s+/g, ' ')
     .replace(/\s*([{}:;,>~])\s*/g, '$1')

@@ -222,6 +222,11 @@ dialog.detail-panel #lb-panel-content{max-width:900px;margin:auto}
 .timeline rect{cursor:pointer;transition:filter 120ms,opacity 120ms}
 .timeline rect:hover,.timeline rect:focus{filter:brightness(.9);stroke:var(--text);stroke-width:1.5}
 #tab-run .table-wrap{margin-top:14px}
+@media(max-width:800px){.filter-secondary{display:flex;flex-wrap:nowrap;align-items:end}.filter-secondary .filter-field{flex:1;min-width:0}}
+@media(max-width:700px){.test-filters{padding:12px}.filter-primary{grid-template-columns:repeat(2,minmax(0,1fr))}.status-filter{grid-column:1/-1}.filter-secondary .filter-field{flex:1 1 150px}}
+@media(max-width:420px){.filter-primary{grid-template-columns:minmax(0,1fr)}.status-filter{grid-column:auto}.filter-secondary{flex-wrap:wrap}.filter-secondary .filter-field{flex:1 1 120px}.filter-secondary #lb-group,.filter-secondary #lb-changed{flex:1}.filter-menu{left:auto;right:0;max-width:calc(100vw - 24px);min-width:210px}}
+@media(max-width:700px){.report-shell{display:flex;flex-direction:column}.report-sidebar{position:sticky;top:56px;z-index:10;border-right:0;border-bottom:1px solid var(--border)}.tabs{position:static;flex-direction:row;align-items:center;gap:4px;overflow-x:auto;padding:6px 10px}.tabs .nav-group{display:contents}.tabs .nav-label{display:none}.tabs button{width:auto;min-width:max-content;min-height:38px;padding:7px 9px}.report-content{padding:18px 14px 32px}.overview-grid{grid-template-columns:1fr}.overview-header h1{font-size:23px}}
+@media(max-width:420px){.topbar-inner{gap:8px;padding:8px 10px}.wordmark{font-size:14px}.topbar-title{font-size:12px}.topbar-actions{gap:4px}.topbar-actions button{padding:6px}.topbar-actions .optional{display:none}.brand-links{gap:0}.brand-links a{width:30px;height:32px}}
 body{letter-spacing:-.008em}
 .topbar{background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:blur(14px)}
 .topbar-inner{max-width:1440px}
