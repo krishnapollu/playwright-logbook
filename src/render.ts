@@ -76,7 +76,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
   const statusLabel = !run.complete ? 'INCOMPLETE' : escapeHtml(run.status.toUpperCase());
 
   // Inline script to init theme before first paint (avoids flash)
-  const themeInit = `<script>try{var t=localStorage.getItem('logbook-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>`;
+  const themeInit = `<script>try{var t=localStorage.getItem('logbook-theme'),p=localStorage.getItem('logbook-palette');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark');if(p==='ivory'||p==='github')document.documentElement.setAttribute('data-palette',p)}catch(e){}</script>`;
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title>${themeInit}<style>${buildStyles()}</style></head>
@@ -85,6 +85,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
 <header class="topbar"><div class="topbar-inner">
   <span class="wordmark">logbook</span><span class="topbar-title">${escapeHtml(focus?.title ?? projectName + ' / run ' + run.runId)}</span>
   <div class="topbar-actions">
+    <select id="lb-palette" class="select palette-select" aria-label="Color palette" title="Color palette"><option value="default">Default</option><option value="ivory">Ivory</option><option value="github">GitHub</option></select>
     <button id="lb-theme" class="btn btn-icon" type="button" aria-label="Switch to dark mode"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M20 15a8 8 0 0 1-11-11 8 8 0 1 0 11 11"/></svg></button>
     <div class="export-wrap">
       <button id="lb-export-btn" class="btn optional" type="button" aria-haspopup="true" aria-expanded="false">Export ▾</button>

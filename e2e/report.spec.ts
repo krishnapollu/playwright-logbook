@@ -483,6 +483,29 @@ test('print view uses light colors and remains offline', async ({ page }) => {
   expect(network).toEqual([]);
 });
 
+test('palette choices persist across light and dark modes without network requests', async ({ page }) => {
+  const network: string[] = [];
+  page.on('request', request => { if (!request.url().startsWith('file:')) network.push(request.url()); });
+  await page.goto(report);
+  await page.getByLabel('Color palette').selectOption('ivory');
+  await expect(page.locator('html')).toHaveAttribute('data-palette', 'ivory');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(245, 240, 231)');
+  await page.locator('#lb-theme').click();
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(23, 21, 17)');
+  await page.getByLabel('Color palette').selectOption('github');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(13, 17, 23)');
+  await page.reload();
+  await expect(page.getByLabel('Color palette')).toHaveValue('github');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.locator('#lb-theme').click();
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(246, 248, 250)');
+  await page.setViewportSize({ width: 360, height: 900 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  expect(network).toEqual([]);
+});
+
 test('measures filtering a 10,000-test report', async ({ page }) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-browser-perf-'));
   try {

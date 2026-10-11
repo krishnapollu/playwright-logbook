@@ -22,6 +22,7 @@ function validateState(){if(state.project&&!allTests.some(test=>test.project===s
 function toast(message){const el=document.getElementById('lb-toast');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.hidden=true},2300)}
 async function copyText(value){try{await navigator.clipboard.writeText(value);toast('Copied')}catch{const area=h('textarea',{'aria-label':'Copy text'});area.value=value;document.body.appendChild(area);area.select();try{document.execCommand('copy');toast('Copied')}catch{toast('Select and copy the text')}area.remove()}}
 function applyTheme(theme){document.documentElement.setAttribute('data-theme',theme);const button=document.getElementById('lb-theme');button.replaceChildren(icon(theme==='dark'?'sun':'moon'));button.setAttribute('aria-label',theme==='dark'?'Switch to light mode':'Switch to dark mode');button.setAttribute('title',theme==='dark'?'Switch to light mode':'Switch to dark mode');try{localStorage.setItem('logbook-theme',theme)}catch{}}
+function applyPalette(palette){const value=['ivory','github'].includes(palette)?palette:'default';document.documentElement.setAttribute('data-palette',value);document.getElementById('lb-palette').value=value;try{localStorage.setItem('logbook-palette',value)}catch{}}
 function toggleTheme(){const next=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';applyTheme(next);toast(next==='dark'?'Dark mode on':'Light mode on')}
 function renderAll(){for(const button of tabButtons){const active=button.dataset.tab===state.tab;if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');button.classList.toggle('active',active);button.tabIndex=active?0:-1;document.getElementById('tab-'+button.dataset.tab).hidden=!active}if(state.tab==='overview')renderOverview();else if(state.tab==='tests'){renderTests();renderPagination();decorateTestRows();makeGroupsCollapsible()}else if(state.tab==='failures')renderFailures();else if(state.tab==='trends')renderTrends();else if(state.tab==='flaky')renderFlaky();else if(state.tab==='run')renderRun();else renderProject();renderPanel()}
 function decorateTestRows(){for(const row of document.querySelectorAll('#lb-tests-body tr[data-test-id]')){
@@ -65,9 +66,10 @@ function initShaCopy(){
   for(const btn of document.querySelectorAll('[data-copy-sha]'))btn.addEventListener('click',e=>{e.stopPropagation();copyText(btn.getAttribute('data-copy-sha'))});
 }
 function init(){
-  let saved=null;try{saved=localStorage.getItem('logbook-theme')}catch{}
+  let saved=null,palette=null;try{saved=localStorage.getItem('logbook-theme');palette=localStorage.getItem('logbook-palette')}catch{}
   if(!saved){try{saved=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}catch{saved='light'}}
   applyTheme(saved||'light');
+  applyPalette(palette);
   for(const button of tabButtons){
     button.addEventListener('click',()=>selectTab(button.dataset.tab));
     button.addEventListener('keydown',event=>{if(event.key==='ArrowRight'||event.key==='ArrowLeft'){
@@ -76,6 +78,7 @@ function init(){
     }});
   }
   document.getElementById('lb-theme').addEventListener('click',toggleTheme);
+  document.getElementById('lb-palette').addEventListener('change',event=>applyPalette(event.target.value));
   document.getElementById('lb-copy-summary').addEventListener('click',()=>{copyText(model.summaryMarkdown||'');document.getElementById('lb-export-popover').hidden=true;document.getElementById('lb-export-btn').setAttribute('aria-expanded','false')});
   document.getElementById('lb-download').addEventListener('click',()=>{
     const blob=new Blob([JSON.stringify(model.run,null,2)+'\\n'],{type:'application/json'});

@@ -18,14 +18,14 @@ const ratio = (a: Color, b: Color): number => {
 };
 
 it('keeps report text and status pairs at WCAG AA contrast', () => {
-  for (const theme of [TOKENS.light, TOKENS.dark]) {
+  for (const [name, theme] of Object.entries(TOKENS)) {
     const surface = rgb(theme.surface);
     const pairs: [string, string][] = [['text', 'bg'], ['text', 'surface'], ['muted', 'bg'], ['muted', 'surface'], ['accent', 'surface'], ['accent-contrast', 'accent']];
     for (const status of ['passed', 'failed', 'flaky', 'skipped'] as const) pairs.push([status, 'surface'], [status, `${status}-bg`]);
     for (const [front, back] of pairs) {
       const foreground = composite(theme[front as keyof typeof theme], surface);
       const background = composite(theme[back as keyof typeof theme], surface);
-      expect(ratio(foreground, background), `${front} on ${back}`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(foreground, background), `${name}: ${front} on ${back}`).toBeGreaterThanOrEqual(4.5);
     }
   }
 });
