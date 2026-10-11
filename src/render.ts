@@ -120,7 +120,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
       </div></header>
       <div id="lb-overview-content"></div>${comparison(model)}
     </section>
-    ${panels}<dialog id="lb-panel" class="detail-panel" aria-labelledby="lb-panel-heading"><div class="panel-head"><h2 id="lb-panel-heading" tabindex="-1"></h2><button id="lb-panel-close" class="button" type="button" aria-label="Back to report">Back to report</button></div><div id="lb-panel-content"></div></dialog><footer>${footer}</footer>
+    ${panels}<dialog id="lb-panel" class="detail-panel" aria-labelledby="lb-panel-heading"><div class="panel-head"><h2 id="lb-panel-heading" tabindex="-1"></h2><button id="lb-panel-close" class="button" type="button">Close</button></div><div id="lb-panel-content"></div></dialog><footer>${footer}</footer>
   </div>
 </main>
 <div id="lb-toast" class="toast" role="status" aria-live="polite" hidden></div><dialog id="lb-lightbox" class="lightbox"></dialog>

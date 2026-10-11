@@ -69,8 +69,9 @@ function renderTrends(){
       chart.appendChild(marker);
     }
     const labelEvery=Math.max(1,Math.ceil(points.length/6));
-    points.forEach((point,index)=>{if(index%labelEvery===0||index===points.length-1)chart.appendChild(s('text',{x:point.x,y:226,'text-anchor':index===0?'start':index===points.length-1?'end':'middle',class:'axis-run'},point.item.runId))});
+    points.forEach((point,index)=>{if(index%labelEvery===0||index===points.length-1){const label=s('text',{x:point.x,y:226,'text-anchor':index===0?'start':index===points.length-1?'end':'middle',class:'axis-run'},'#'+(index+1));label.appendChild(s('title',{},point.item.runId));chart.appendChild(label)}});
     card.appendChild(chart);card.appendChild(tooltip);
+    card.appendChild(h('p',{class:'muted trend-axis-note',text:'Run numbers match the data table order; focus or point to a chart mark for its run ID.'}));
     const rows=series.map(item=>[item.runId+(item.runId===model.run.runId?' · current':''),h('time',{datetime:item.startedAt,title:item.startedAt,text:fmtDate(item.startedAt)}),item.branch||'—',item.commit?item.commit.slice(0,7):'—',format(valueOf(item))]);
     const data= h('details',{class:'trend-data'},h('summary',{text:'Show data table'}),table(['Run','Date','Branch','SHA','Value'],rows));
     card.appendChild(data);content.appendChild(card);

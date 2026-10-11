@@ -113,7 +113,7 @@ test('test detail compares the selected result with a dated earlier execution', 
     await expect(page.locator('.comparison-sides')).toContainText('Passed');
     await expect(page.locator('.comparison-changes')).toContainText('Final-attempt duration');
     await expect(page.locator('#lb-test-comparison')).toBeInViewport();
-    await page.getByRole('button', { name: 'Back to report' }).click();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
     await expect(page.locator('#lb-panel')).not.toHaveAttribute('open', '');
     await expect(page.locator('#lb-tests-body tr[data-test-id="case"]')).toBeFocused();
     await page.goto(pathToFileURL(file).href+'#test=case&tab=tests');
@@ -131,7 +131,7 @@ test('inline screenshot has a download link and step columns stay aligned', asyn
   try {
     const source = run('details');
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlT6V8AAAAASUVORK5CYII=';
-    source.tests = [{ ...testRecord('case'), attemptCount: 1, attempts: [{ retry: 0, status: 'passed', durationMs: 6, startedAt: source.startedAt, workerIndex: 0, errors: [], attachments: [{ name: 'screenshot', contentType: 'image/png', path: null, inline: true, sizeBytes: 68, dataUri: png }], steps: [{ title: 'parent', category: 'test.step', durationMs: 6, depth: 0, failed: false }, { title: 'child', category: 'test.step', durationMs: 2, depth: 1, failed: false }] }] }];
+    source.tests = [{ ...testRecord('case'), attemptCount: 1, attempts: [{ retry: 0, status: 'passed', durationMs: 6, startedAt: source.startedAt, workerIndex: 0, errors: [], attachments: [{ name: 'screenshot', contentType: 'image/png', path: null, inline: true, sizeBytes: 68, dataUri: png }], steps: [{ title: 'parent', category: 'test.step', durationMs: 6, depth: 0, failed: false }, { title: 'child', category: 'test.step', durationMs: 2, depth: 1, failed: false }, ...Array.from({ length: 40 }, (_, index) => ({ title: `step ${index}`, category: 'test.step', durationMs: 1, depth: 0, failed: false }))] }] }];
     const file = path.join(directory, 'index.html');
     await fs.writeFile(file, renderReport(buildReportModel({ run: source, summaries: [] })));
     await page.goto(pathToFileURL(file).href);
@@ -142,9 +142,11 @@ test('inline screenshot has a download link and step columns stay aligned', asyn
     await page.getByRole('button', { name: 'View screenshot' }).click();
     await expect(page.locator('#lb-lightbox')).toBeVisible();
     await page.locator('#lb-lightbox button').click();
-    await page.getByRole('tab', { name: 'Steps 2' }).click();
+    await page.getByRole('tab', { name: 'Steps 42' }).click();
     const rows = page.locator('.steps li');
-    await expect(rows).toHaveCount(2);
+    await expect(rows).toHaveCount(42);
+    const evidence = page.locator('[data-evidence="steps"]');
+    expect(await evidence.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true);
     const widths = await rows.locator('.step-duration').evaluateAll(items => items.map(item => item.getBoundingClientRect().x));
     expect(widths[0]).toBe(widths[1]);
     await expect(page.locator('#lb-panel')).toHaveCSS('border-top-width', '1px');
@@ -264,6 +266,7 @@ test('offline report navigation and debugging', async ({ page }) => {
   await page.locator('#lb-status-filter summary').click();
   await page.locator('#lb-active-filters .active-filter').click();
   await expect(page.locator('#lb-result-count')).toHaveText('80 of 80 tests');
+  await page.locator('#lb-status-filter summary').click();
   await expect(page.locator('#lb-project')).toBeVisible();
   await expect(page.locator('#lb-tag')).toBeVisible();
   await page.locator('#lb-project').selectOption({ index: 1 });
@@ -279,6 +282,14 @@ test('offline report navigation and debugging', async ({ page }) => {
   await expect(page.locator('#lb-tests-body')).toContainText('No tests match these filters.');
   await page.locator('#lb-search').fill('');
   await expect(page.locator('#lb-result-count')).toHaveText('80 of 80 tests');
+  const testsTable = page.locator('#tab-tests .table-wrap');
+  expect(await testsTable.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true);
+  expect(await testsTable.locator('th').first().evaluate(element => getComputedStyle(element).top)).toBe('0px');
+  await testsTable.evaluate(element => { element.scrollTop = element.scrollHeight });
+  const tableScrollTop = await testsTable.evaluate(element => element.scrollTop);
+  await page.locator('#lb-tests-body tr[data-test-id]').last().click();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(testsTable).toHaveJSProperty('scrollTop', tableScrollTop);
   await page.locator('#lb-group').click();
   await expect(page.locator('#lb-group')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#lb-tests-body .group-header').first()).toBeVisible();
@@ -296,6 +307,7 @@ test('offline report navigation and debugging', async ({ page }) => {
   await expect(page.locator('#tab-trends .trend-card h3')).toHaveText('Pass rate');
   await expect(page.locator('#tab-trends .trend-card .trend-mean')).toHaveCount(1);
   await expect(page.locator('#tab-trends .trend-card .trend-dot')).toHaveCount(12);
+  expect(await page.locator('#tab-trends .trend-card .axis-run').first().evaluate(element => element.firstChild?.textContent)).toBe('#1');
   await expect(page.locator('#tab-trends .trend-card tbody tr')).toHaveCount(12);
   const firstTrendPoint = page.locator('#tab-trends .trend-card .trend-dot').first();
   await firstTrendPoint.focus();
@@ -432,7 +444,7 @@ test('report stays inside the viewport at mobile and tablet widths', async ({ pa
       const detailBounds = await page.locator('#lb-panel').evaluate(element => ({ left: element.getBoundingClientRect().left, right: element.getBoundingClientRect().right, viewport: window.innerWidth }));
       expect(detailBounds.left, `popup left edge at ${width}px in ${theme}`).toBeGreaterThanOrEqual(-1);
       expect(detailBounds.right, `popup right edge at ${width}px in ${theme}`).toBeLessThanOrEqual(detailBounds.viewport + 1);
-      await page.getByRole('button', { name: 'Back to report' }).click();
+      await page.getByRole('button', { name: 'Close', exact: true }).click();
     }
   }
 });
