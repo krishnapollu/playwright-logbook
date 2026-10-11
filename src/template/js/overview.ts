@@ -7,15 +7,6 @@ function renderOverview(){
   const run=model.run,sum=run.summary,comparison=model.comparison;
   // Verdict band
   const band=h('section',{id:'lb-cards',class:'verdict-band','aria-label':'Run verdict'});
-  // Sentence
-  const parts=[];
-  if(sum.failed)parts.push(h('span',{class:'v-failed',text:sum.failed+' failed'+(comparison?.newFailures?.length?' ('+comparison.newFailures.length+' new)':'')}));
-  if(sum.flaky)parts.push(h('span',{class:'v-flaky',text:sum.flaky+' flaky'}));
-  if(sum.passed)parts.push(h('span',{class:'v-passed',text:sum.passed+' passed'}));
-  if(sum.skipped)parts.push(h('span',{class:'muted',text:sum.skipped+' skipped'}));
-  const sentence=h('p',{class:'verdict-sentence'});
-  parts.forEach((part,i)=>{sentence.appendChild(part);if(i<parts.length-1)sentence.appendChild(document.createTextNode(' · '))});
-  band.appendChild(sentence);
   // Segmented bar
   const bar=h('div',{class:'seg-bar','role':'group','aria-label':'Filter tests by result status'});
   for(const [kind,count] of [['passed',sum.passed],['failed',sum.failed],['flaky',sum.flaky],['skipped',sum.skipped]]){
@@ -94,7 +85,7 @@ function renderOverview(){
     const cur=vals[vals.length-1];
     const prev=vals.length>1?vals[vals.length-2]:null;
     const delta2=prev!==null?cur-prev:null;
-    const W=200,H=48,pad=4;
+    const W=300,H=90,pad=8;
     const minV=Math.max(0,Math.min(...vals)-5),maxV=Math.min(100,Math.max(...vals)+5);
     const range=maxV-minV||1;
     const pts=vals.map((v,i)=>{const x=pad+(vals.length===1?(W-2*pad)/2:i*(W-2*pad)/(vals.length-1));const y=H-pad-(v-minV)/(range)*(H-2*pad);return{x,y,v}});
@@ -104,7 +95,7 @@ function renderOverview(){
     spark.appendChild(s('circle',{cx:last.x,cy:last.y,r:4,fill:'var(--accent)'}));
     const deltaText=delta2===null?'':delta2>0?'+'+delta2+' pp':delta2<0?delta2+' pp':'no change';
     const deltaClass=delta2===null?'delta-neutral':delta2>0?'delta-good':delta2<0?'delta-bad':'delta-neutral';
-    passRate.appendChild(h('div',{class:'sparkline-card'},spark,h('div',{},h('strong',{style:'font-size:22px;font-variant-numeric:tabular-nums',text:cur+'%'}),h('span',{class:'spark-delta '+deltaClass,text:deltaText}))));
+    passRate.appendChild(h('div',{class:'sparkline-card'},spark,h('div',{class:'sparkline-value'},h('strong',{text:cur+'%'}),h('span',{class:'spark-delta '+deltaClass,text:deltaText}))));
   }else{
     passRate.appendChild(h('p',{class:'empty overview-empty',text:'A pass-rate history needs a complete run with recorded tests.'}));
   }

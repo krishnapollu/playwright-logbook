@@ -62,11 +62,16 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
   const missing = Array.from({ length: run.expectedShards ?? 1 }, (_, index) => index + 1).filter((number) => !run.receivedShards.includes(number));
   const banner = run.complete ? '' : `<p class="banner" role="status"><strong>Incomplete run.</strong> Missing shards ${missing.join(', ') || 'unknown'}. Counts and comparisons may be partial.</p>`;
   const projectName = run.project.name || 'Unnamed project';
-  const meta = [run.env.git.branch && `Branch: ${run.env.git.branch}`, run.env.git.commit && `Commit: ${run.env.git.commit.slice(0, 7)}`, run.env.git.prNumber && `PR #${run.env.git.prNumber}`, `Shards: ${run.receivedShards.length}/${run.expectedShards ?? 1}`, `Playwright: ${run.env.playwrightVersion}`, `Workers: ${run.env.workers}`].filter(Boolean).map((item) => `<span>${escapeHtml(String(item))}</span>`).join('');
+  const meta = [
+    run.env.git.branch && `<span class="meta-chip">Branch ${escapeHtml(run.env.git.branch)}</span>`,
+    run.env.git.commit && `<span class="meta-chip mono" title="${escapeHtml(run.env.git.commit)}">Commit ${escapeHtml(run.env.git.commit.slice(0, 7))}<button class="meta-chip-copy" type="button" aria-label="Copy full commit SHA" data-copy-sha="${escapeHtml(run.env.git.commit)}"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M8 5h12v15H8zM4 16V3h12"/></svg></button></span>`,
+    run.env.git.prNumber && `<span class="meta-chip">PR #${run.env.git.prNumber}</span>`,
+    `<span class="meta-chip">Shards ${run.receivedShards.length}/${run.expectedShards ?? 1}</span>`,
+    `<span class="meta-chip">Playwright ${escapeHtml(run.env.playwrightVersion)}</span>`,
+    `<span class="meta-chip">Workers ${run.env.workers}</span>`,
+  ].filter(Boolean).join('');
   const buildUrl = run.env.ci?.buildUrl;
   const ciButton = buildUrl && /^https?:\/\//i.test(buildUrl) && safeHref(buildUrl) ? `<a class="btn btn-secondary" href="${escapeHtml(buildUrl)}" target="_blank" rel="noopener noreferrer">CI build ↗</a>` : '';
-  const branchChip = run.env.git.branch ? `<span class="meta-chip"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9c0 3.31-2.69 6-6 6H6"/></svg>${escapeHtml(run.env.git.branch)}</span>` : '';
-  const shaChip = run.env.git.commit ? `<span class="meta-chip mono" title="${escapeHtml(run.env.git.commit)}">${escapeHtml(run.env.git.commit.slice(0, 7))}<button class="meta-chip-copy" type="button" aria-label="Copy full commit SHA" data-copy-sha="${escapeHtml(run.env.git.commit)}"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M8 5h12v15H8zM4 16V3h12"/></svg></button></span>` : '';
   const footer = `${model.generatedAt ? `Generated ${escapeHtml(fmtDate(model.generatedAt))} · ` : ''}playwright-logbook v${escapeHtml(model.generator?.version ?? '0.1.0')} · Press ? for shortcuts`;
   const startedAt = fmtDate(run.startedAt);
   const statusKind = !run.complete ? 'incomplete' : run.status === 'passed' ? 'passed' : 'failed';
@@ -113,8 +118,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
           <span class="meta-chip">Run ${escapeHtml(run.runId)}</span>
           <span class="meta-chip"><time datetime="${escapeHtml(run.startedAt)}" title="${escapeHtml(run.startedAt)}">${escapeHtml(startedAt)}</time></span>
           <span class="meta-chip">${formatDuration(run.durationMs)}</span>
-          ${branchChip}${shaChip}${ciButton}
-          <details class="env-disclosure"><summary>Environment details</summary><div class="meta">${meta}</div></details>
+          ${meta}${ciButton}
         </div>
       </div></header>
       <div id="lb-overview-content"></div>${comparison(model)}
