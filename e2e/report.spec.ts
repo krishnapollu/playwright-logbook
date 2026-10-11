@@ -23,10 +23,16 @@ test('CommonJS reporter entry renders a fully initialized offline report', async
     const source = run('cjs-browser');
     source.tests = [testRecord('cjs-case')];
     source.summary = { total: 1, passed: 1, failed: 0, flaky: 0, skipped: 0 };
+    source.complete = false;
     const file = path.join(directory, 'index.html');
     await fs.writeFile(file, entry.renderReport(entry.buildReportModel({ run: source, summaries: [] })));
     await page.goto(pathToFileURL(file).href);
     await expect(page.locator('#lb-error')).toBeHidden();
+    await expect(page.locator('#lb-header .status-chip')).toHaveText('INCOMPLETE');
+    await expect(page.locator('.banner')).toContainText('Counts and comparisons may be partial.');
+    await expect(page.getByText('No earlier run is available to compare.')).toBeVisible();
+    await expect(page.getByText('A pass-rate history needs a complete run with recorded tests.')).toBeVisible();
+    await page.locator('[data-tab="tests"]').click();
     await expect(page.locator('#lb-tests-body tr[data-test-id]')).toHaveCount(1);
     await page.locator('#lb-tests-body tr[data-test-id]').click();
     await page.getByText('Rerun and debug context').click();
@@ -67,6 +73,7 @@ test('attempt panel distinguishes a trace from another ZIP and labels missing sc
     await fs.writeFile(output, renderReport(model, { reportDir: 'report' }));
     await page.goto(pathToFileURL(output).href);
     await expect(page.locator('#lb-error')).toBeHidden();
+    await page.locator('[data-tab="tests"]').click();
     await page.locator('#lb-tests-body tr[data-test-id]').click();
     await expect(page.getByRole('button', { name: /Attempt 2/ })).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: /Attempt 1/ }).click();
@@ -90,13 +97,32 @@ test('test detail compares the selected result with a dated earlier execution', 
     const file = path.join(directory, 'index.html');
     await fs.writeFile(file, renderReport(buildReportModel({ run: current, summaries: [], recentRuns: [earlier] })));
     await page.goto(pathToFileURL(file).href);
+    await page.locator('[data-tab="tests"]').click();
     await page.locator('#lb-tests-body tr[data-test-id]').click();
+    await expect(page.locator('#lb-panel')).toHaveAttribute('open', '');
+    await expect(page.locator('#lb-panel')).toHaveAttribute('aria-modal', 'true');
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.locator('.report-sidebar')).toBeVisible();
+    await expect(page.locator('#lb-panel')).toHaveCSS('position', 'fixed');
+    await expect(page.locator('#lb-panel-heading')).toBeFocused();
+    const detailWidth = await page.locator('#lb-panel').evaluate(element => element.getBoundingClientRect().width);
+    expect(detailWidth).toBeGreaterThan(800);
     await expect(page.locator('#lb-panel-content')).toContainText('earlier · main · incomplete');
     await page.getByRole('button', { name: 'Compare' }).click();
     await expect(page.locator('.comparison-sides')).toContainText('Failed');
     await expect(page.locator('.comparison-sides')).toContainText('Passed');
     await expect(page.locator('.comparison-changes')).toContainText('Final-attempt duration');
     await expect(page.locator('#lb-test-comparison')).toBeInViewport();
+    await page.getByRole('button', { name: 'Back to report' }).click();
+    await expect(page.locator('#lb-panel')).not.toHaveAttribute('open', '');
+    await expect(page.locator('#lb-tests-body tr[data-test-id="case"]')).toBeFocused();
+    await page.goto(pathToFileURL(file).href+'#test=case&tab=tests');
+    await expect(page.locator('#lb-panel')).toBeVisible();
+    await expect(page.locator('#lb-panel')).toHaveAttribute('aria-modal', 'true');
+    await expect(page.locator('.report-sidebar')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#lb-panel')).not.toHaveAttribute('open', '');
+    await expect(page.locator('#nav-tests')).toBeFocused();
   } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });
 
@@ -109,6 +135,7 @@ test('inline screenshot has a download link and step columns stay aligned', asyn
     const file = path.join(directory, 'index.html');
     await fs.writeFile(file, renderReport(buildReportModel({ run: source, summaries: [] })));
     await page.goto(pathToFileURL(file).href);
+    await page.locator('[data-tab="tests"]').click();
     await page.locator('#lb-tests-body tr[data-test-id]').click();
     await expect(page.getByRole('button', { name: 'View screenshot' })).toBeVisible();
     await expect(page.locator('[data-evidence="attachments"] a')).toHaveAttribute('href', png);
@@ -141,6 +168,7 @@ test('failed attachment previews, logs, and same-commit history are visible', as
     const file = path.join(directory, 'report/index.html');
     await fs.writeFile(file, renderReport(buildReportModel({ run: current, summaries: [], recentRuns: [older, same], attachmentAvailability: { 'test-results/failure.png': 'present' } }), { reportDir: 'report' }));
     await page.goto(pathToFileURL(file).href);
+    await page.locator('[data-tab="tests"]').click();
     await page.locator('#lb-tests-body tr[data-test-id]').click();
     await expect(page.getByRole('button', { name: 'View screenshot' })).toBeVisible();
     await page.getByRole('button', { name: 'View screenshot' }).click();
@@ -168,6 +196,7 @@ test('exported run opens as one offline HTML file with embedded evidence', async
     const file = path.join(directory, 'portable.html');
     await fs.writeFile(file, exported.bytes);
     await page.goto(pathToFileURL(file).href);
+    await page.locator('[data-tab="tests"]').click();
     await page.locator('#lb-tests-body tr[data-test-id]').click();
     await expect(page.locator('[data-evidence="attachments"] a')).toHaveAttribute('href', `data:application/octet-stream;base64,${Buffer.from('proof').toString('base64')}`);
     await expect(page.locator('#lb-error')).toBeHidden();
@@ -189,7 +218,7 @@ test('focused test HTML opens offline with history and selected evidence', async
     await page.goto(pathToFileURL(file).href);
     await expect(page.locator('.focused-intro h1')).toHaveText('focused');
     await expect(page.getByRole('heading', { name: 'Compared with earlier' })).toBeVisible();
-    await expect(page.locator('.test-history-row')).toContainText('2026-01-02');
+    await expect(page.locator('.test-history-row')).toContainText('02 Jan 2026, 00:00 UTC');
     await expect(page.locator('.detail-evidence')).toBeVisible();
     await expect(page.getByRole('button', { name: 'View screenshot' })).toBeVisible();
     await page.getByRole('tab', { name: 'Logs 1' }).click();
@@ -204,25 +233,99 @@ test('offline report navigation and debugging', async ({ page }) => {
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   page.on('request', (request) => { if (!request.url().startsWith('file:')) network.push(request.url()); });
+  await page.goto(report+'#status=failed');
+  await expect(page.locator('#nav-tests')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('#lb-tests-body tr[data-test-id]')).not.toHaveCount(0);
   await page.goto(report);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(page.locator('#lb-header')).toBeVisible();
   await expect(page.locator('#lb-header .eyebrow')).toContainText('demo');
+  const brandLinks = page.getByRole('navigation', { name: 'Logbook links' }).getByRole('link');
+  await expect(brandLinks).toHaveCount(3);
+  await expect(brandLinks.nth(0)).toHaveAttribute('href', 'https://github.com/krishnapollu/playwright-logbook');
+  await expect(brandLinks.nth(1)).toHaveAttribute('href', 'https://www.npmjs.com/package/playwright-logbook');
+  await expect(brandLinks.nth(2)).toHaveAttribute('href', /marketplace\.visualstudio\.com/);
+  for (const link of await brandLinks.all()) await expect(link.locator('svg')).toHaveCount(1);
   await expect(page.getByRole('region', { name: 'Changes since previous run' })).toBeVisible();
   await expect(page.locator('#lb-cards')).toBeVisible();
-  await expect(page.getByRole('tablist', { name: 'Report sections' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Report sections' })).toBeVisible();
+  await expect(page.locator('#nav-overview')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.overview-test-row').first()).toBeVisible();
+  await expect(page.locator('#lb-theme svg')).toBeVisible();
+  await page.locator('[data-tab="tests"]').click();
   await expect(page.locator('#lb-tests-body tr[data-test-id]')).toHaveCount(80);
+  await expect(page.locator('#tab-tests .test-filters')).toBeVisible();
+  await expect(page.locator('#lb-status-filter summary')).toContainText('Any');
+  await page.locator('#lb-status-filter summary').click();
+  await expect(page.locator('#lb-status-filter [data-status="failed"]')).toBeVisible();
+  await page.locator('#lb-status-filter .filter-option').filter({ hasText: 'Failed' }).click();
+  await expect(page.locator('#lb-result-count')).toHaveText('4 of 80 tests');
+  await expect(page.locator('#lb-active-filters .active-filter')).toHaveText('Failed');
+  await page.locator('#lb-status-filter summary').click();
+  await page.locator('#lb-active-filters .active-filter').click();
+  await expect(page.locator('#lb-result-count')).toHaveText('80 of 80 tests');
+  await expect(page.locator('#lb-project')).toBeVisible();
+  await expect(page.locator('#lb-tag')).toBeVisible();
+  await page.locator('#lb-project').selectOption({ index: 1 });
+  await page.locator('#lb-tag').selectOption({ index: 1 });
+  await expect(page.locator('#lb-active-filters .active-filter')).toHaveCount(2);
+  await page.locator('#lb-active-filters .clear-filters').click();
+  await expect(page.locator('#lb-project')).toHaveValue('');
+  await expect(page.locator('#lb-tag')).toHaveValue('');
+  await expect(page.locator('#lb-result-count')).toHaveText('80 of 80 tests');
   await expect(page.locator('#lb-pagination')).toBeHidden();
-  for (const tab of ['failures', 'trends', 'flaky', 'run', 'project']) {
+  await page.locator('#lb-search').fill('not-a-test');
+  await expect(page.locator('#lb-result-count')).toHaveText('0 of 80 tests');
+  await expect(page.locator('#lb-tests-body')).toContainText('No tests match these filters.');
+  await page.locator('#lb-search').fill('');
+  await expect(page.locator('#lb-result-count')).toHaveText('80 of 80 tests');
+  await page.locator('#lb-group').click();
+  await expect(page.locator('#lb-group')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#lb-tests-body .group-header').first()).toBeVisible();
+  await page.locator('#lb-group').click();
+  await page.locator('[data-tab="failures"]').click();
+  await expect(page.locator('#tab-failures .failure-summary-grid')).toBeVisible();
+  await expect(page.locator('#tab-failures .failure-summary-grid')).toHaveCSS('align-items', 'start');
+  await expect(page.locator('#tab-failures .failure-summary-card .button').first()).toHaveCSS('font-size', '12px');
+  await expect(page.locator('#tab-failures .failure-trend')).toBeVisible();
+  await expect(page.locator('#tab-failures .failure-chart')).toBeVisible();
+  await expect(page.locator('#tab-failures .failure-trend table tbody tr')).toHaveCount(12);
+  await expect(page.locator('#tab-failures .failure-trend')).toContainText('counts do not imply the same tests failed');
+  await page.locator('[data-tab="trends"]').click();
+  await expect(page.locator('#tab-trends .trend-card')).toHaveCount(3);
+  await expect(page.locator('#tab-trends .trend-card').nth(0)).toContainText('Pass rate');
+  await expect(page.locator('#tab-trends .trend-card').nth(1)).toContainText('Failed and flaky tests');
+  await expect(page.locator('#tab-trends .trend-card').nth(2)).toContainText('Run duration');
+  await expect(page.locator('#tab-trends .trend-card').nth(0).locator('tbody tr')).toHaveCount(12);
+  await expect(page.locator('#tab-trends .trend-card').nth(1).locator('tbody tr')).toHaveCount(12);
+  await expect(page.locator('#tab-trends .failure-count-chart rect')).toHaveCount(24);
+  await expect(page.locator('#tab-trends .failure-count-chart rect').first()).toHaveAttribute('aria-label', /total tests/);
+  await page.getByLabel('Runs to show').selectOption('10');
+  await expect(page.locator('#tab-trends .trend-card').nth(1).locator('tbody tr')).toHaveCount(10);
+  await expect(page.locator('#tab-trends .failure-count-chart rect')).toHaveCount(20);
+  await page.locator('[data-tab="flaky"]').click();
+  await expect(page.locator('#tab-flaky .flaky-matrix')).toBeVisible();
+  await expect(page.locator('#tab-flaky .flaky-matrix')).toContainText('P passed');
+  await expect(page.locator('#tab-flaky .flaky-matrix thead')).toContainText('Current run');
+  await page.locator('[data-tab="project"]').click();
+  await expect(page.locator('#tab-project .project-bar').first()).toHaveAttribute('aria-label', /passed, .* failed, .* flaky/);
+  await page.locator('[data-tab="run"]').click();
+  await expect(page.locator('#tab-run')).toContainText('Timeline is unavailable for sharded runs.');
+  for (const tab of ['overview', 'failures', 'trends', 'flaky', 'run', 'project']) {
     await page.locator(`[data-tab="${tab}"]`).click();
     await expect(page.locator(`#tab-${tab}`)).toBeVisible();
   }
-  for (const [index, tab] of ['tests', 'failures', 'trends', 'flaky', 'run', 'project'].entries()) {
+  for (const [index, tab] of ['overview', 'tests', 'failures', 'flaky', 'trends', 'run', 'project'].entries()) {
     await page.keyboard.press(String(index + 1));
     await expect(page.locator(`#tab-${tab}`)).toBeVisible();
   }
-  await page.keyboard.press('1');
+  await page.keyboard.press('2');
   await expect(page.locator('#tab-tests')).toBeVisible();
+  await page.locator('#lb-search').fill('validates api 13');
+  await expect(page.locator('#lb-result-count')).toHaveText('1 of 80 tests');
+  await expect(page.locator('#lb-tests-body tr[data-test-id]')).toHaveCount(1);
+  await page.locator('#lb-search').fill('');
+  await page.locator('#lb-status-filter summary').click();
   await page.locator('[data-status="failed"]').click();
   const count = await page.locator('#lb-tests-body tr[data-test-id]').count();
   expect(count).toBeGreaterThan(0);
@@ -237,12 +340,77 @@ test('offline report navigation and debugging', async ({ page }) => {
   await page.locator('#lb-panel-close').click();
   await page.locator('#lb-theme').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', /light|dark/);
-  await expect(page.locator('#lb-theme')).toHaveText('Light mode');
+  await expect(page.locator('#lb-theme')).toHaveAttribute('title', 'Switch to light mode');
+  await expect(page.locator('#lb-theme')).toHaveAttribute('aria-label', 'Switch to light mode');
   expect(errors).toEqual([]);
   expect(network).toEqual([]);
 });
 
+test('history charts and flaky matrix mark incomplete and sharded data unavailable', async ({ page }) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-chart-states-'));
+  try {
+    const current = run('incomplete-current', '2026-01-03T00:00:00.000Z');
+    current.complete = false;
+    current.expectedShards = 2;
+    current.receivedShards = [1];
+    current.tests = [{ ...testRecord('case', 'flaky'), attemptCount: 1, attempts: [{ retry: 0, status: 'passed', durationMs: 20, startedAt: current.startedAt, workerIndex: 0, errors: [], attachments: [] }] }];
+    const earlier = run('complete-earlier', '2026-01-01T00:00:00.000Z');
+    earlier.tests = [testRecord('case')];
+    const partial = run('partial-earlier', '2026-01-02T00:00:00.000Z');
+    partial.complete = false;
+    partial.tests = [testRecord('case')];
+    const priorSummary = buildReportModel({ run: earlier, summaries: [] }).history[0]!;
+    const model = buildReportModel({
+      run: current,
+      summaries: [priorSummary],
+      recentRuns: [earlier, partial],
+      flaky: [{ testId: 'case', title: 'case', file: 'tests/a.spec.ts', project: 'chromium', runs: 3, passes: 2, fails: 0, flakyRuns: 1, flips: 1, score: 0.5 }],
+    });
+    const file = path.join(directory, 'index.html');
+    await fs.writeFile(file, renderReport(model));
+    await page.goto(pathToFileURL(file).href);
+    await page.locator('[data-tab="trends"]').click();
+    await expect(page.locator('#tab-trends')).toContainText('Incomplete runs are omitted');
+    await expect(page.locator('#tab-trends .trend-card').nth(0).locator('tbody tr')).toHaveCount(1);
+    await page.locator('[data-tab="flaky"]').click();
+    await expect(page.locator('#tab-flaky .flaky-matrix .matrix-cell')).toHaveCount(3);
+    await expect(page.locator('#tab-flaky .flaky-matrix .matrix-cell').nth(0)).toHaveText('P');
+    await expect(page.locator('#tab-flaky .flaky-matrix .matrix-cell').nth(1)).toHaveText('—');
+    await expect(page.locator('#tab-flaky .flaky-matrix .matrix-cell').nth(2)).toHaveText('—');
+    await page.locator('[data-tab="run"]').click();
+    await expect(page.locator('#tab-run')).toContainText('Timeline is unavailable for sharded runs.');
+    const unsharded = run('unsharded', '2026-01-04T00:00:00.000Z');
+    unsharded.tests = [{ ...testRecord('timed'), durationMs: 20, attemptCount: 1, attempts: [{ retry: 0, status: 'passed', durationMs: 20, startedAt: unsharded.startedAt, workerIndex: 2, errors: [], attachments: [] }] }];
+    const unshardedFile = path.join(directory, 'unsharded.html');
+    await fs.writeFile(unshardedFile, renderReport(buildReportModel({ run: unsharded, summaries: [] })));
+    await page.goto(pathToFileURL(unshardedFile).href);
+    await page.locator('[data-tab="run"]').click();
+    await expect(page.locator('#tab-run .timeline')).toBeVisible();
+    await expect(page.locator('#tab-run .timeline-wrap')).toBeVisible();
+    await expect(page.locator('#tab-run .timeline .worker-lane')).toHaveCount(1);
+    await expect(page.locator('#tab-run .timeline .timeline-time')).toHaveCount(5);
+    await expect(page.locator('#tab-run .timeline rect[role="button"]')).toHaveAttribute('aria-label', /worker 2/);
+    await expect(page.locator('#tab-run table')).toContainText('Started');
+    await expect(page.locator('#tab-run table')).toContainText('20ms');
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
 test('report stays inside the viewport at mobile and tablet widths', async ({ page }) => {
+  await page.goto(report + '#tab=tests');
+  await page.setViewportSize({ width: 768, height: 900 });
+  await page.locator('#lb-status-filter summary').click();
+  const tabletFilters = await page.locator('.test-filters').evaluate(toolbar => {
+    const top = (selector: string) => Math.round(toolbar.querySelector<HTMLElement>(selector)!.getBoundingClientRect().top);
+    const primary = ['#lb-status-filter summary', '#lb-project', '#lb-tag'].map(top);
+    const secondary = ['#lb-sort', '#lb-group', '#lb-changed'].map(top);
+    return { primaryRows: new Set(primary).size, secondaryRows: new Set(secondary).size, statusOptions: toolbar.querySelectorAll('[data-status]').length };
+  });
+  expect(tabletFilters).toEqual({ primaryRows: 1, secondaryRows: 1, statusOptions: 4 });
+  await page.setViewportSize({ width: 360, height: 900 });
+  await expect(page.locator('#lb-status-filter .filter-menu')).toBeVisible();
+  const phoneFiltersFit = await page.locator('#lb-status-filter .filter-menu').evaluate(menu => menu.getBoundingClientRect().right <= window.innerWidth);
+  expect(phoneFiltersFit).toBe(true);
+
   await page.goto(report);
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
@@ -250,6 +418,12 @@ test('report stays inside the viewport at mobile and tablet widths', async ({ pa
       if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#lb-theme').click();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, `horizontal overflow at ${width}px in ${theme}`).toBeLessThanOrEqual(1);
+      await page.locator('.overview-test-row').first().click();
+      await expect(page.locator('#lb-panel')).toBeVisible();
+      const detailBounds = await page.locator('#lb-panel').evaluate(element => ({ left: element.getBoundingClientRect().left, right: element.getBoundingClientRect().right, viewport: window.innerWidth }));
+      expect(detailBounds.left, `popup left edge at ${width}px in ${theme}`).toBeGreaterThanOrEqual(-1);
+      expect(detailBounds.right, `popup right edge at ${width}px in ${theme}`).toBeLessThanOrEqual(detailBounds.viewport + 1);
+      await page.getByRole('button', { name: 'Back to report' }).click();
     }
   }
 });
@@ -275,12 +449,14 @@ test('measures filtering a 10,000-test report', async ({ page }) => {
     const file = path.join(dir, 'index.html');
     await fs.writeFile(file, renderReport(buildReportModel({ run: source, summaries: [] })));
     await page.goto(pathToFileURL(file).href);
+  await page.locator('[data-tab="tests"]').click();
   await expect(page.locator('#lb-tests-body tr[data-test-id]')).toHaveCount(200);
   await expect(page.locator('#lb-pagination')).toBeVisible();
   await expect(page.locator('#lb-more')).toHaveText('Show next 200 tests');
+    await page.locator('#lb-status-filter summary').click();
     const milliseconds = await page.evaluate(() => {
       const start = performance.now();
-      (document.querySelector('[data-status="passed"]') as HTMLButtonElement).click();
+      (document.querySelector('[data-status="passed"]') as HTMLInputElement).click();
       return performance.now() - start;
     });
     console.log(`10,000-test browser filter: ${milliseconds.toFixed(1)}ms`);

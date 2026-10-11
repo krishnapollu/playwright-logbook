@@ -2,26 +2,28 @@ import { describe, expect, it } from 'vitest';
 import { Script } from 'node:vm';
 import { buildReportModel } from '../src/model.js';
 import { renderReport } from '../src/render.js';
-import { buildClientScript, buildStyles } from '../src/template.js';
+import { buildClientScript } from '../src/template.js';
 import { run, testRecord } from './factories.js';
 
 const model = () => buildReportModel({ run: run('report-run'), summaries: [], generatedAt: null });
 
 describe('renderReport', () => {
-  it('embeds exactly recoverable model data and all six tabs', () => {
+  it('embeds exactly recoverable model data and all seven destinations', () => {
     const data = model();
     const html = renderReport(data);
     const match = html.match(/<script type="application\/json" id="lb-data">([\s\S]*?)<\/script>/);
     expect(match).not.toBeNull();
     expect(JSON.parse(match![1]!)).toEqual(data);
-    for (const tab of ['tests', 'failures', 'trends', 'flaky', 'run', 'project']) {
+    for (const tab of ['overview', 'tests', 'failures', 'flaky', 'trends', 'run', 'project']) {
       expect(html).toContain(`data-tab="${tab}"`);
       expect(html).toContain(`id="tab-${tab}"`);
     }
+    expect(html).toContain('id="lb-overview-content"');
+    expect(html).toContain('id="nav-overview"');
     expect(html).toContain('id="lb-header"');
-    expect(html).toContain('id="lb-cards"');
     expect(html).toContain('Project <strong>sample</strong>');
-    expect(html).toContain('<dt>Run ID</dt>');
+    expect(html).toContain('Run report-run');
+    expect(html).toContain('<time datetime="2026-01-01T00:00:00.000Z" title="2026-01-01T00:00:00.000Z">01 Jan 2026, 00:00 UTC</time>');
     expect(html).toContain('<summary>Environment details</summary>');
     expect(html).toContain('No earlier run to compare yet');
   });
@@ -40,17 +42,21 @@ describe('renderReport', () => {
     expect(html).not.toMatch(/<script[^>]*\ssrc=/i);
     expect(html).not.toMatch(/<link\b/i);
     expect(html).not.toContain('@import');
-    expect(html).not.toMatch(/https?:\/\//i);
+    expect(html).not.toMatch(/<(?:script|img|link)\b[^>]*https?:\/\//i);
+    expect(html).not.toMatch(/url\(\s*["']?https?:\/\//i);
     const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
-    expect(scripts).toHaveLength(1);
-    expect(() => new Function(scripts[0]![1]!)).not.toThrow();
+    expect(scripts).toHaveLength(2);
+    expect(() => new Function(scripts.at(-1)![1]!)).not.toThrow();
     expect(() => new Script(buildClientScript())).not.toThrow();
     expect(buildClientScript()).not.toMatch(/\b(?:innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval|new Function)\b/);
-    expect(buildStyles().length + buildClientScript().length).toBeLessThan(120_000);
+    const nonDataHtml = html
+      .replace(/<script type="application\/json" id="lb-data">[\s\S]*?<\/script>/, '')
+      .replace(/<script type="application\/json" id="lb-links">[\s\S]*?<\/script>/, '');
+    expect(Buffer.byteLength(nonDataHtml)).toBeLessThanOrEqual(130 * 1024);
     expect(html).toContain('<noscript>');
     expect(html).toContain('<dialog');
     expect(html).toContain('@media print');
-    expect((html.match(/data-tab="/g) ?? [])).toHaveLength(6);
+    expect((html.match(/data-tab="/g) ?? [])).toHaveLength(7);
   });
   it('computes relative attachment links', () => {
     const source = run('attachment');
@@ -82,7 +88,12 @@ describe('renderReport', () => {
   it('shows incomplete runs and is byte identical without a timestamp', () => {
     const data = model();
     data.run.complete = false;
-    expect(renderReport(data)).toContain('INCOMPLETE');
+    data.run.expectedShards = 2;
+    data.run.receivedShards = [1];
+    const html = renderReport(data);
+    expect(html).toContain('<span class="status-chip incomplete">INCOMPLETE</span>');
+    expect(html).toContain('Incomplete run.</strong> Missing shards 2');
+    expect(html).toContain('Counts and comparisons may be partial.');
     expect(renderReport(data)).toBe(renderReport(data));
     expect(renderReport(data)).not.toContain('Generated ');
   });
@@ -91,9 +102,9 @@ describe('renderReport', () => {
     data.delta = { previousRunId: 'earlier-run', passRatePp: 2.5, failed: -1, flaky: 0, durationPct: 10 };
     const html = renderReport(data);
     expect(html).toContain('Changes since previous run');
-    expect(html).toContain('Compared with <code>earlier-run</code>');
-    expect(html).toContain('<span>Pass rate change</span><strong>+2.5 pp</strong>');
-    expect(html).toContain('<span>Failed change</span><strong>-1</strong>');
+    expect(html).toContain('vs <code>earlier-run</code>');
+    expect(html).toContain('<span>Pass rate</span><strong>+2.5 pp</strong>');
+    expect(html).toContain('<span>Failed</span><strong>-1</strong>');
     expect(html).not.toContain('id="lb-new-failures"');
   });
 });

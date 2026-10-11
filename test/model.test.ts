@@ -31,6 +31,7 @@ describe('buildReportModel', () => {
     const old = { ...run('old', '2025-01-01T00:00:00.000Z'), tests: [{ ...testRecord('pass', 'unexpected') }, testRecord('failure')] };
     const model = buildReportModel({ run: current, summaries: [], recentRuns: [old], comparison });
     expect(model.recent).toMatchObject({ pass: 'f', failure: 'p', flaky: '-' });
+    expect(model.recentRunLabels).toEqual([{ runId: 'old', startedAt: '2025-01-01T00:00:00.000Z', complete: true }]);
     expect(model.errorGroups[0]).toMatchObject({ signature: 'Error: locator.click: Timeout N ms exceeded.', count: 1, newCount: 1, testIds: ['failure'] });
   });
   it('keeps dated history for the same project and repeat without treating absent tests as passes', () => {
@@ -66,6 +67,24 @@ describe('buildReportModel', () => {
     expect(buildReportModel({ run: base, summaries: [old], historyLimit: 2 }).history.map((entry) => entry.runId)).toEqual(['old', 'golden-run']);
     const newer = { ...old, runId: 'newer', startedAt: '2027-01-01T00:00:00.000Z' };
     expect(buildReportModel({ run: base, summaries: [newer], historyLimit: 1 }).history.map((entry) => entry.runId)).toEqual(['golden-run']);
+  });
+  it('retains completeness and exact failed counts for report history', () => {
+    const base = sample();
+    const incomplete = {
+      ...buildReportModel({ run: run('incomplete'), summaries: [] }).history[0]!,
+      runId: 'incomplete', startedAt: '2025-01-02T00:00:00.000Z', complete: false,
+      summary: { total: 7, passed: 1, failed: 5, flaky: 0, skipped: 1 },
+    };
+    const complete = {
+      ...buildReportModel({ run: run('complete'), summaries: [] }).history[0]!,
+      runId: 'complete', startedAt: '2025-01-03T00:00:00.000Z',
+      summary: { total: 7, passed: 4, failed: 2, flaky: 0, skipped: 1 },
+    };
+    const model = buildReportModel({ run: base, summaries: [incomplete, complete] });
+    expect(model.history).toEqual(expect.arrayContaining([
+      expect.objectContaining({ runId: 'incomplete', complete: false, summary: expect.objectContaining({ failed: 5 }) }),
+      expect.objectContaining({ runId: 'complete', complete: true, summary: expect.objectContaining({ failed: 2 }) }),
+    ]));
   });
 });
 

@@ -26,6 +26,7 @@ export function buildStyles(): string {
 }
 
 export function buildClientScript(): string {
-  const pure = Object.entries(clientlib).filter(([, value]) => typeof value === 'function');
+  const used = new Set(['buildHash', 'filterTests', 'formatDuration', 'heatLevel', 'parseHash', 'recentToKinds', 'rerunCommand', 'safeHref', 'sortTests', 'statusKind', 'traceCommand']);
+  const pure = Object.entries(clientlib).filter(([name, value]) => used.has(name) && typeof value === 'function');
   return `(function(){'use strict';\n${pure.map(([name, fn]) => `const ${name}=(${fn.toString()});`).join('\n')}\nconst detectSignals=(${detectSignals.toString()});\nconst buildDebugPacket=(${buildDebugPacket.toString()});\nconst debugPacketMarkdown=(${debugPacketMarkdown.toString()});\nconst icons=${JSON.stringify(ICONS)};\ntry{${CORE_JS}${OVERVIEW_JS}${TESTS_JS}${PANEL_JS}${FAILURES_JS}${TRENDS_JS}${RUN_JS}${PROJECT_JS}${HELP_JS}\ninit()}catch(error){const banner=document.getElementById('lb-error');banner.hidden=false;banner.textContent='Report could not load: '+String(error)}})();`;
 }
