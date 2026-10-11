@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4
+
+- Improve report overview, failure scanning, status and history labels, tables, and test detail layout.
+- Add Ivory and GitHub color palettes for light and dark modes.
+
 ## 0.3.3
 
 - Add dated per-test history and execution comparison to the offline HTML report.

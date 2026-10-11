@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.23
+
+- Include the updated shared HTML report renderer and its Ivory and GitHub palettes in run and test exports.
+
 ## 0.2.22
 
 - Add one Runs/Tests sidebar switch. Tests indexes the latest loaded execution for each project, test, and repeat identity and shows the count at each folder.
