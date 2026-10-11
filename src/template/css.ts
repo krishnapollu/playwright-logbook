@@ -124,13 +124,29 @@ export const REPORT_CSS = `:root{${tokensToCss('light')} --topbar-h:56px; --side
 .failure-trend td:last-child{text-align:right;font-variant-numeric:tabular-nums}
 .history-chart{display:block;width:100%;height:auto;min-height:150px;margin:12px 0}
 .history-chart .chart-grid{stroke:var(--border);stroke-width:1}
-.history-chart .axis-label,.history-chart .axis-run{fill:var(--muted);font-size:11px}
+.history-chart .axis-label,.history-chart .axis-run{fill:var(--muted);font-size:12px}
 .history-chart .trend-line{fill:none;stroke:var(--accent);stroke-width:2.5}
 .history-chart .trend-dot{fill:var(--surface);stroke:var(--accent);stroke-width:2}
+.history-chart .trend-dot.current{fill:var(--accent);stroke:var(--text);stroke-width:3}
+.history-chart .trend-dot:focus{outline:none;stroke:var(--text);stroke-width:4}
+.history-chart .trend-mean{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:6 4}
+.history-chart .trend-crosshair{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3}
 .history-chart .duration-bar{fill:var(--accent);opacity:.72}
 .history-chart .duration-bar.current{fill:var(--failed);opacity:1}
 .trend-card h3{margin:0 0 4px}
 .trend-card>.muted{margin-bottom:8px}
+.trend-metrics{display:flex;align-items:center;gap:4px;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.metric-button{min-height:34px;padding:6px 10px;border:0;border-radius:7px;background:transparent;color:var(--muted);font:inherit;font-size:13px}
+.metric-button:hover{background:var(--surface-2);color:var(--text)}
+.metric-button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.trend-tooltip{min-height:20px;margin:0 0 12px;color:var(--text);font-size:13px;font-variant-numeric:tabular-nums}
+.trend-data{margin-top:8px}
+.trend-data summary{width:max-content;color:var(--accent);cursor:pointer;font-size:13px}
+.trend-data table{min-width:600px}
+.trend-data th{position:static;top:auto}
+.trend-data td:nth-child(2),.trend-data td:nth-child(4){font-family:var(--mono);font-size:12px}
+.trend-data td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.trend-axis-note{font-size:12px}
 .flaky-matrix table{font-variant-numeric:tabular-nums}
 .flaky-matrix table th:not(:first-child),.flaky-matrix table td:not(:first-child){text-align:center}
 .matrix-cell{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:6px;background:var(--surface-2);font-weight:700}

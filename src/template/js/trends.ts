@@ -1,6 +1,5 @@
 export const TRENDS_JS = `
 function renderTrends(){
-  const date=item=>h('time',{datetime:item.startedAt,title:item.startedAt,text:fmtDate(item.startedAt)});
   const panel=document.getElementById('tab-trends');clear(panel);panel.appendChild(h('h2',{text:'Trends'}));
   const history=(model.history||[]).filter(item=>item.complete);
   if((model.history||[]).some(item=>!item.complete))panel.appendChild(h('p',{class:'banner',text:'Incomplete runs are omitted from trend charts.'}));
@@ -8,104 +7,73 @@ function renderTrends(){
   const select=h('select',{'aria-label':'Filter branch'},h('option',{value:'',text:'All branches'}));
   for(const branch of branches)select.appendChild(h('option',{value:branch,text:branch}));
   const range=h('select',{'aria-label':'Runs to show'},...[[20,'Last 20 runs'],[10,'Last 10 runs'],[50,'Last 50 runs']].map(([count,label])=>h('option',{value:String(count),text:String(label)})));
-  const controls=h('div',{class:'toolbar trend-controls'},select,range);panel.appendChild(controls);
+  const metrics=[['pass','Pass rate'],['failed','Failed'],['flaky','Flaky'],['duration','Duration']];
+  let metric='pass';
+  const metricButtons=metrics.map(([value,label])=>{
+    const button=h('button',{type:'button',class:'metric-button',text:label,'aria-pressed':String(value===metric)});
+    button.addEventListener('click',()=>{metric=value;for(const [key] of metrics)metricButtons.find(item=>item.dataset.metric===key).setAttribute('aria-pressed',String(key===metric));draw()});
+    button.dataset.metric=value;
+    return button;
+  });
+  const metricControl=h('div',{class:'trend-metrics','role':'group','aria-label':'Trend metric'},...metricButtons);
+  const controls=h('div',{class:'toolbar trend-controls'},select,range,metricControl);panel.appendChild(controls);
   const content=h('div',{});panel.appendChild(content);
   select.addEventListener('change',draw);range.addEventListener('change',draw);
   function draw(){
     clear(content);
     const values=history.filter(item=>!select.value||item.branch===select.value).slice(-Number(range.value));
     if(!values.length){content.appendChild(h('p',{class:'empty',text:'No complete runs are available for this branch.'}));return}
-    const passRuns=values.filter(item=>item.summary.total>0);
-    const passCard=h('section',{class:'section-card trend-card','aria-labelledby':'lb-pass-trend-heading'});
-    passCard.appendChild(h('h3',{id:'lb-pass-trend-heading',text:'Pass rate'}));
-    passCard.appendChild(h('p',{class:'muted',text:'Percent of recorded tests passed in each complete run. Vertical axis: 0–100%.'}));
-    if(passRuns.length){
-      const chart=s('svg',{class:'chart history-chart','viewBox':'0 0 800 210',role:'img','aria-label':'Pass rate from zero to one hundred percent across complete runs'});
-      const left=46,right=20,top=20,bottom=36,plotWidth=800-left-right,plotHeight=210-top-bottom;
-      for(const tick of [0,50,100]){
-        const y=top+plotHeight*(1-tick/100);
-        chart.appendChild(s('line',{x1:left,y1:y,x2:800-right,y2:y,class:'chart-grid'}));
-        chart.appendChild(s('text',{x:4,y:y+4,class:'axis-label'},tick+'%'));
-      }
-      const points=passRuns.map((item,index)=>{
-        const x=left+(passRuns.length===1?plotWidth/2:index*plotWidth/(passRuns.length-1));
-        const rate=item.summary.passed/item.summary.total*100;
-        const y=top+plotHeight*(1-rate/100);
-        return {item,x,y,rate};
-      });
-      if(points.length>1)chart.appendChild(s('polyline',{points:points.map(point=>point.x+','+point.y).join(' '),class:'trend-line'}));
-      for(const point of points){
-        const marker=s('circle',{cx:point.x,cy:point.y,r:4,class:'trend-dot'});
-        marker.appendChild(s('title',{},point.item.runId+' · '+point.rate.toFixed(1)+'%'));
-        chart.appendChild(marker);
-      }
-      chart.appendChild(s('text',{x:left,y:202,class:'axis-run'},points[0].item.runId));
-      if(points.length>1)chart.appendChild(s('text',{x:800-right,y:202,'text-anchor':'end',class:'axis-run'},points[points.length-1].item.runId));
-      passCard.appendChild(chart);
-      passCard.appendChild(table(['Run','Date','Passed','Total','Pass rate'],passRuns.map(item=>[
-        item.runId+(item.runId===model.run.runId?' · current':''),
-        date(item),item.summary.passed,item.summary.total,
-        (100*item.summary.passed/item.summary.total).toFixed(1)+'%'
-      ])));
-    }else passCard.appendChild(h('p',{class:'empty',text:'No complete runs contain tests to calculate a pass rate.'}));
-    content.appendChild(passCard);
-
-    const failures=h('section',{class:'section-card trend-card','aria-labelledby':'lb-failure-trend-heading'});
-    failures.appendChild(h('h3',{id:'lb-failure-trend-heading',text:'Failed and flaky tests'}));
-    failures.appendChild(h('p',{class:'muted',text:'Recorded counts per complete run. Compare alongside test totals to account for suite-size changes.'}));
-    const legend=h('div',{class:'trend-legend','aria-label':'Chart legend'},
-      h('span',{},h('i',{}),'Failed'),h('span',{},h('i',{class:'flaky-dot'}),'Flaky'));
-    failures.appendChild(legend);
-    const maxCount=Math.max(1,...values.map(item=>Math.max(item.summary.failed,item.summary.flaky)));
-    const countChart=s('svg',{class:'chart history-chart failure-count-chart','viewBox':'0 0 800 210',role:'img','aria-label':'Failed and flaky test counts across complete runs'});
-    const countLeft=46,countRight=20,countTop=20,countBottom=36,countPlotWidth=800-countLeft-countRight,countPlotHeight=210-countTop-countBottom,countSlot=countPlotWidth/values.length;
-    for(const tick of [...new Set([0,maxCount])]){
-      const y=countTop+countPlotHeight*(1-tick/maxCount);
-      countChart.appendChild(s('line',{x1:countLeft,y1:y,x2:800-countRight,y2:y,class:'chart-grid'}));
-      countChart.appendChild(s('text',{x:8,y:y+4,class:'axis-label'},String(tick)));
+    const series=metric==='pass'?values.filter(item=>item.summary.total>0):values;
+    if(!series.length){content.appendChild(h('p',{class:'empty',text:'No complete runs contain tests to calculate a pass rate.'}));return}
+    const titles={pass:'Pass rate',failed:'Failed tests',flaky:'Flaky tests',duration:'Run duration'};
+    const valueOf=item=>metric==='pass'?item.summary.passed/item.summary.total*100:metric==='failed'?item.summary.failed:metric==='flaky'?item.summary.flaky:item.durationMs;
+    const format=value=>metric==='pass'?value.toFixed(1)+'%':metric==='duration'?formatDuration(value):String(Math.round(value));
+    const numbers=series.map(valueOf),minimum=Math.min(...numbers),maximum=Math.max(...numbers);
+    let floor=0,ceiling=Math.max(1,maximum);
+    if(metric==='pass'){
+      floor=Math.max(0,Math.floor((minimum-5)/10)*10);
+      ceiling=Math.min(100,Math.ceil((maximum+5)/10)*10);
+      if(ceiling-floor<10){floor=Math.max(0,ceiling-10);ceiling=Math.min(100,floor+10)}
     }
-    values.forEach((item,index)=>{
-      const width=Math.max(2,countSlot*.24),base=countLeft+index*countSlot+countSlot*.25;
-      for(const [key,value,offset] of [['failed',item.summary.failed,0],['flaky',item.summary.flaky,width*1.4]]){
-        const height=countPlotHeight*value/maxCount;
-        const bar=s('rect',{x:base+offset,y:countTop+countPlotHeight-height,width,height:Math.max(1,height),class:key+'-bar',tabindex:'0','aria-label':item.runId+' · '+key+': '+value+' · '+item.summary.total+' total tests'});
-        bar.appendChild(s('title',{},item.runId+' · '+key+': '+value+' of '+item.summary.total+' tests'));
-        countChart.appendChild(bar);
-      }
+    const mean=numbers.reduce((sum,value)=>sum+value,0)/numbers.length;
+    const card=h('section',{class:'section-card trend-card','aria-labelledby':'lb-trend-heading'});
+    card.appendChild(h('h3',{id:'lb-trend-heading',text:titles[metric]}));
+    card.appendChild(h('p',{class:'muted',text:metric==='pass'?'Pass rate uses a data-scaled axis; the labelled floor avoids flattening small changes.':metric==='duration'?'Total recorded duration per complete run; vertical axis starts at zero.':'Recorded test count per complete run; vertical axis starts at zero.'}));
+    if(metric==='pass')card.appendChild(h('p',{class:'muted trend-axis-note',text:'Axis starts at '+floor+'%'}));
+    const chart=s('svg',{class:'chart history-chart','viewBox':'0 0 800 240',role:'img','aria-label':titles[metric]+' over complete runs'});
+    const left=54,right=20,top=22,bottom=50,width=800-left-right,height=240-top-bottom;
+    const yFor=value=>top+height-(value-floor)/(ceiling-floor)*height;
+    for(let index=0;index<=2;index++){
+      const value=floor+(ceiling-floor)*index/2,y=yFor(value);
+      chart.appendChild(s('line',{x1:left,y1:y,x2:800-right,y2:y,class:'chart-grid'}));
+      chart.appendChild(s('text',{x:4,y:y+4,class:'axis-label'},format(value)));
+    }
+    const meanY=yFor(mean);
+    chart.appendChild(s('line',{x1:left,y1:meanY,x2:800-right,y2:meanY,class:'trend-mean'}));
+    const points=series.map((item,index)=>{
+      const x=left+(series.length===1?width/2:index*width/(series.length-1));
+      return {item,x,y:yFor(valueOf(item)),value:valueOf(item)};
     });
-    countChart.appendChild(s('text',{x:countLeft,y:202,class:'axis-run'},values[0].runId));
-    if(values.length>1)countChart.appendChild(s('text',{x:800-countRight,y:202,'text-anchor':'end',class:'axis-run'},values[values.length-1].runId));
-    failures.appendChild(countChart);
-    failures.appendChild(table(['Run','Date','Failed','Flaky','Total tests'],values.map(item=>[
-      item.runId+(item.runId===model.run.runId?' · current':''),
-      date(item),item.summary.failed,item.summary.flaky,item.summary.total
-    ])));
-    content.appendChild(failures);
-
-    const durationCard=h('section',{class:'section-card trend-card','aria-labelledby':'lb-duration-trend-heading'});
-    durationCard.appendChild(h('h3',{id:'lb-duration-trend-heading',text:'Run duration'}));
-    durationCard.appendChild(h('p',{class:'muted',text:'Total recorded duration per complete run. Vertical axis starts at 0 seconds.'}));
-    const maxDuration=Math.max(1,...values.map(item=>item.durationMs));
-    const chart=s('svg',{class:'chart history-chart','viewBox':'0 0 800 210',role:'img','aria-label':'Run duration from zero to '+formatDuration(maxDuration)+' across complete runs'});
-    const left=46,right=20,top=20,bottom=36,plotWidth=800-left-right,plotHeight=210-top-bottom;
-    const slot=plotWidth/values.length;
-    chart.appendChild(s('line',{x1:left,y1:top+plotHeight,x2:800-right,y2:top+plotHeight,class:'chart-grid'}));
-    chart.appendChild(s('text',{x:4,y:top+plotHeight+4,class:'axis-label'},'0s'));
-    chart.appendChild(s('text',{x:4,y:top+4,class:'axis-label'},formatDuration(maxDuration)));
-    values.forEach((item,index)=>{
-      const barHeight=plotHeight*item.durationMs/maxDuration;
-      const rect=s('rect',{x:left+index*slot+slot*.2,y:top+plotHeight-barHeight,width:Math.max(2,slot*.6),height:Math.max(1,barHeight),class:item.runId===model.run.runId?'duration-bar current':'duration-bar'});
-      rect.appendChild(s('title',{},item.runId+' · '+formatDuration(item.durationMs)));
-      chart.appendChild(rect);
-    });
-    chart.appendChild(s('text',{x:left,y:202,class:'axis-run'},values[0].runId));
-    if(values.length>1)chart.appendChild(s('text',{x:800-right,y:202,'text-anchor':'end',class:'axis-run'},values[values.length-1].runId));
-    durationCard.appendChild(chart);
-    durationCard.appendChild(table(['Run','Date','Duration'],values.map(item=>[
-      item.runId+(item.runId===model.run.runId?' · current':''),
-      date(item),formatDuration(item.durationMs)
-    ])));
-    content.appendChild(durationCard);
+    const crosshair=s('line',{x1:0,y1:top,x2:0,y2:top+height,class:'trend-crosshair',visibility:'hidden'});
+    chart.appendChild(crosshair);
+    if(points.length>1)chart.appendChild(s('polyline',{points:points.map(point=>point.x+','+point.y).join(' '),class:'trend-line'}));
+    const tooltip=h('p',{class:'trend-tooltip',role:'status','aria-live':'polite',text:'Focus or point to a chart mark for run details.'});
+    const detail=point=>point.item.runId+' · '+fmtDate(point.item.startedAt)+' · branch '+(point.item.branch||'unknown')+' · SHA '+(point.item.commit?point.item.commit.slice(0,7):'unavailable')+' · '+format(point.value);
+    for(const point of points){
+      const marker=s('circle',{cx:point.x,cy:point.y,r:5,class:'trend-dot'+(point.item.runId===model.run.runId?' current':''),tabindex:'0','aria-label':detail(point)});
+      marker.appendChild(s('title',{},detail(point)));
+      const show=()=>{crosshair.setAttribute('x1',String(point.x));crosshair.setAttribute('x2',String(point.x));crosshair.setAttribute('visibility','visible');tooltip.textContent=detail(point)};
+      const hide=()=>{crosshair.setAttribute('visibility','hidden');tooltip.textContent='Focus or point to a chart mark for run details.'};
+      marker.addEventListener('pointerenter',show);marker.addEventListener('pointerleave',hide);
+      marker.addEventListener('focus',show);marker.addEventListener('blur',hide);
+      chart.appendChild(marker);
+    }
+    const labelEvery=Math.max(1,Math.ceil(points.length/6));
+    points.forEach((point,index)=>{if(index%labelEvery===0||index===points.length-1)chart.appendChild(s('text',{x:point.x,y:226,'text-anchor':index===0?'start':index===points.length-1?'end':'middle',class:'axis-run'},point.item.runId))});
+    card.appendChild(chart);card.appendChild(tooltip);
+    const rows=series.map(item=>[item.runId+(item.runId===model.run.runId?' · current':''),h('time',{datetime:item.startedAt,title:item.startedAt,text:fmtDate(item.startedAt)}),item.branch||'—',item.commit?item.commit.slice(0,7):'—',format(valueOf(item))]);
+    const data= h('details',{class:'trend-data'},h('summary',{text:'Show data table'}),table(['Run','Date','Branch','SHA','Value'],rows));
+    card.appendChild(data);content.appendChild(card);
   }
   draw();
 }
