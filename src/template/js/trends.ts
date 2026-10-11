@@ -1,13 +1,15 @@
 export const TRENDS_JS = `
 function renderTrends(){
-  const panel=document.getElementById('tab-trends');clear(panel);panel.appendChild(h('h2',{text:'Trends'}));
+  const panel=document.getElementById('tab-trends');clear(panel);panel.appendChild(h('h2',{text:'Chart builder'}));
+  panel.appendChild(h('p',{class:'muted',text:'Build a chart from the complete runs saved in this report. Choose a metric, branch, run window and chart style; inspect values in the data table.'}));
   const history=(model.history||[]).filter(item=>item.complete);
   if((model.history||[]).some(item=>!item.complete))panel.appendChild(h('p',{class:'banner',text:'Incomplete runs are omitted from trend charts.'}));
   const branches=[...new Set(history.map(item=>item.branch).filter(Boolean))].sort();
   const select=h('select',{'aria-label':'Filter branch'},h('option',{value:'',text:'All branches'}));
   for(const branch of branches)select.appendChild(h('option',{value:branch,text:branch}));
   const range=h('select',{'aria-label':'Runs to show'},...[[20,'Last 20 runs'],[10,'Last 10 runs'],[50,'Last 50 runs']].map(([count,label])=>h('option',{value:String(count),text:String(label)})));
-  const metrics=[['pass','Pass rate'],['failed','Failed'],['flaky','Flaky'],['duration','Duration']];
+  const metrics=[['pass','Pass rate'],['passed','Passed'],['failed','Failed'],['flaky','Flaky'],['skipped','Skipped'],['total','Total'],['duration','Duration']];
+  const style=h('select',{'aria-label':'Chart style'},h('option',{value:'line',text:'Line chart'}),h('option',{value:'bar',text:'Bar chart'}));
   let metric='pass';
   const metricButtons=metrics.map(([value,label])=>{
     const button=h('button',{type:'button',class:'metric-button',text:label,'aria-pressed':String(value===metric)});
@@ -16,21 +18,21 @@ function renderTrends(){
     return button;
   });
   const metricControl=h('div',{class:'trend-metrics','role':'group','aria-label':'Trend metric'},...metricButtons);
-  const controls=h('div',{class:'toolbar trend-controls'},select,range,metricControl);panel.appendChild(controls);
+  const controls=h('div',{class:'toolbar trend-controls'},select,range,style,metricControl);panel.appendChild(controls);
   const content=h('div',{});panel.appendChild(content);
-  select.addEventListener('change',draw);range.addEventListener('change',draw);
+  select.addEventListener('change',draw);range.addEventListener('change',draw);style.addEventListener('change',draw);
   function draw(){
     clear(content);
     const values=history.filter(item=>!select.value||item.branch===select.value).slice(-Number(range.value));
     if(!values.length){content.appendChild(h('p',{class:'empty',text:'No complete runs are available for this branch.'}));return}
     const series=metric==='pass'?values.filter(item=>item.summary.total>0):values;
     if(!series.length){content.appendChild(h('p',{class:'empty',text:'No complete runs contain tests to calculate a pass rate.'}));return}
-    const titles={pass:'Pass rate',failed:'Failed tests',flaky:'Flaky tests',duration:'Run duration'};
-    const valueOf=item=>metric==='pass'?item.summary.passed/item.summary.total*100:metric==='failed'?item.summary.failed:metric==='flaky'?item.summary.flaky:item.durationMs;
+    const titles={pass:'Pass rate',passed:'Passed tests',failed:'Failed tests',flaky:'Flaky tests',skipped:'Skipped tests',total:'Recorded tests',duration:'Run duration'};
+    const valueOf=item=>metric==='pass'?item.summary.passed/item.summary.total*100:metric==='duration'?item.durationMs:item.summary[metric];
     const format=value=>metric==='pass'?value.toFixed(1)+'%':metric==='duration'?formatDuration(value):String(Math.round(value));
     const numbers=series.map(valueOf),minimum=Math.min(...numbers),maximum=Math.max(...numbers);
     let floor=0,ceiling=Math.max(1,maximum);
-    if(metric==='pass'){
+    if(metric==='pass'&&style.value==='line'){
       floor=Math.max(0,Math.floor((minimum-5)/10)*10);
       ceiling=Math.min(100,Math.ceil((maximum+5)/10)*10);
       if(ceiling-floor<10){floor=Math.max(0,ceiling-10);ceiling=Math.min(100,floor+10)}
@@ -38,8 +40,9 @@ function renderTrends(){
     const mean=numbers.reduce((sum,value)=>sum+value,0)/numbers.length;
     const card=h('section',{class:'section-card trend-card','aria-labelledby':'lb-trend-heading'});
     card.appendChild(h('h3',{id:'lb-trend-heading',text:titles[metric]}));
-    card.appendChild(h('p',{class:'muted',text:metric==='pass'?'Pass rate uses a data-scaled axis; the labelled floor avoids flattening small changes.':metric==='duration'?'Total recorded duration per complete run; vertical axis starts at zero.':'Recorded test count per complete run; vertical axis starts at zero.'}));
-    if(metric==='pass')card.appendChild(h('p',{class:'muted trend-axis-note',text:'Axis starts at '+floor+'%'}));
+    if(metric==='pass'&&style.value==='bar')ceiling=100;
+    card.appendChild(h('p',{class:'muted',text:metric==='pass'&&style.value==='line'?'Pass rate uses a data-scaled axis; the labelled floor avoids flattening small changes.':metric==='duration'?'Total recorded duration per complete run; vertical axis starts at zero.':'Vertical axis starts at zero.'}));
+    if(metric==='pass'&&style.value==='line')card.appendChild(h('p',{class:'muted trend-axis-note',text:'Axis starts at '+floor+'%'}));
     const chart=s('svg',{class:'chart history-chart','viewBox':'0 0 800 240',role:'img','aria-label':titles[metric]+' over complete runs'});
     const left=54,right=20,top=22,bottom=50,width=800-left-right,height=240-top-bottom;
     const yFor=value=>top+height-(value-floor)/(ceiling-floor)*height;
@@ -56,11 +59,12 @@ function renderTrends(){
     });
     const crosshair=s('line',{x1:0,y1:top,x2:0,y2:top+height,class:'trend-crosshair',visibility:'hidden'});
     chart.appendChild(crosshair);
-    if(points.length>1)chart.appendChild(s('polyline',{points:points.map(point=>point.x+','+point.y).join(' '),class:'trend-line'}));
+    if(style.value==='line'&&points.length>1)chart.appendChild(s('polyline',{points:points.map(point=>point.x+','+point.y).join(' '),class:'trend-line'}));
     const tooltip=h('p',{class:'trend-tooltip',role:'status','aria-live':'polite',text:'Focus or point to a chart mark for run details.'});
     const detail=point=>point.item.runId+' · '+fmtDate(point.item.startedAt)+' · branch '+(point.item.branch||'unknown')+' · SHA '+(point.item.commit?point.item.commit.slice(0,7):'unavailable')+' · '+format(point.value);
     for(const point of points){
-      const marker=s('circle',{cx:point.x,cy:point.y,r:5,class:'trend-dot'+(point.item.runId===model.run.runId?' current':''),tabindex:'0','aria-label':detail(point)});
+      const barWidth=Math.min(38,width/points.length*.7);
+      const marker=style.value==='bar'?s('rect',{x:point.x-barWidth/2,y:point.y,width:barWidth,height:Math.max(2,top+height-point.y),class:'trend-bar'+(point.item.runId===model.run.runId?' current':''),tabindex:'0','aria-label':detail(point)}):s('circle',{cx:point.x,cy:point.y,r:5,class:'trend-dot'+(point.item.runId===model.run.runId?' current':''),tabindex:'0','aria-label':detail(point)});
       marker.appendChild(s('title',{},detail(point)));
       const show=()=>{crosshair.setAttribute('x1',String(point.x));crosshair.setAttribute('x2',String(point.x));crosshair.setAttribute('visibility','visible');tooltip.textContent=detail(point)};
       const hide=()=>{crosshair.setAttribute('visibility','hidden');tooltip.textContent='Focus or point to a chart mark for run details.'};

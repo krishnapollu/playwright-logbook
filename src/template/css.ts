@@ -119,6 +119,7 @@ dialog.detail-panel .evidence-body{max-height:min(55vh,480px);overflow:auto}
 .history-chart .trend-line{fill:none;stroke:var(--accent);stroke-width:2.5}
 .history-chart .trend-dot{fill:var(--surface);stroke:var(--accent);stroke-width:2}
 .history-chart .trend-dot.current{fill:var(--accent);stroke:var(--text);stroke-width:3}
+.history-chart .trend-bar{fill:var(--accent);stroke:none}.history-chart .trend-bar.current{fill:var(--failed)}
 .history-chart .trend-dot:focus{outline:none;stroke:var(--text);stroke-width:4}
 .history-chart .trend-mean{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:6 4}
 .history-chart .trend-crosshair{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3}
@@ -126,7 +127,7 @@ dialog.detail-panel .evidence-body{max-height:min(55vh,480px);overflow:auto}
 .history-chart .duration-bar.current{fill:var(--failed);opacity:1}
 .trend-card h3{margin:0 0 4px}
 .trend-card>.muted{margin-bottom:8px}
-.trend-metrics{display:flex;align-items:center;gap:4px;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.trend-metrics{display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
 .metric-button{min-height:34px;padding:6px 10px;border:0;border-radius:7px;background:transparent;color:var(--muted);font:inherit;font-size:13px}
 .metric-button:hover{background:var(--surface-2);color:var(--text)}
 .metric-button[aria-pressed="true"]{background:var(--accent);color:#fff}
@@ -165,7 +166,6 @@ dialog.detail-panel #lb-panel-content{max-width:900px;margin:auto}
 .brand-links .brand-cutout{fill:var(--surface)}
 .topbar-actions button{min-height:34px;border-color:transparent;background:transparent;color:var(--muted);font-size:12px;font-weight:550}
 .topbar-actions button:hover{border-color:var(--border);background:var(--surface-2);color:var(--text)}
-.topbar-actions .palette-select{width:100px;min-width:0;min-height:34px;font-size:12px;background-color:var(--surface);color:var(--text)}
 .toolbar .chip-button{min-height:34px;padding:6px 11px;border-color:var(--border);border-radius:8px;background:var(--surface);color:var(--muted);font-size:12px;font-weight:550;transition:background 140ms,border-color 140ms,color 140ms}
 .toolbar .chip-button:hover{border-color:var(--accent);color:var(--text)}
 .toolbar .chip-button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent)}
@@ -296,6 +296,11 @@ body{letter-spacing:-.008em}
 .export-popover button{display:flex;width:100%;align-items:center;gap:8px;padding:8px 10px;border:0;border-radius:6px;background:none;color:var(--text);font-size:var(--t-sm);text-align:left;cursor:pointer}
 .export-popover button:hover{background:var(--surface-2)}
 .export-wrap{position:relative}
+.theme-wrap{position:relative}
+.theme-popover{width:min(260px,calc(100vw - 20px))}
+.theme-popover-title{margin:0 0 8px;font-weight:650}.theme-popover [role="group"]{border-top:1px solid var(--border);padding:6px 0}.theme-popover [role="group"] p{margin:2px 8px;color:var(--muted);font-size:var(--t-xs)}
+.theme-popover button[aria-pressed="true"]{outline:1px solid var(--accent);background:var(--surface-2);font-weight:650}
+.theme-swatch{display:inline-block;width:20px;height:20px;flex:none;border:1px solid var(--border);border-radius:5px}
 /* flaky legend */
 .flaky-legend{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px;font-size:var(--t-xs)}
 .flaky-legend span{display:inline-flex;align-items:center;gap:4px;color:var(--muted)}
@@ -313,7 +318,6 @@ body{letter-spacing:-.008em}
 @media(max-width:640px){.triage-strip{grid-template-columns:1fr}.seg-legend{gap:8px}}
 @media(max-width:640px){.comparison-grid{grid-template-columns:repeat(6,minmax(0,1fr))}.comparison-metric:nth-child(-n+3){grid-column:span 2}.comparison-metric:nth-child(n+4){grid-column:span 3}.comparison-metric strong{font-size:15px}}
 @media(max-width:800px){.report-sidebar::after{content:"";position:absolute;right:0;bottom:0;width:24px;height:50px;pointer-events:none;background:linear-gradient(90deg,transparent,var(--surface))}.tabs{scroll-snap-type:x proximity}.tabs button{scroll-snap-align:start}}
-@media(max-width:420px){.topbar-actions .palette-select{width:82px;padding-left:7px;padding-right:19px;background-position:right 6px center}}
 /* slowest tests bar chart in run tab */
 .slowest-chart{margin:12px 0}
 .slowest-chart .bar-row{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:var(--t-xs)}

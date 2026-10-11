@@ -332,6 +332,11 @@ test('offline report navigation and debugging', async ({ page }) => {
   await expect(page.locator('#tab-trends .trend-card h3')).toHaveText('Flaky tests');
   await page.getByRole('button', { name: 'Duration', exact: true }).click();
   await expect(page.locator('#tab-trends .trend-card h3')).toHaveText('Run duration');
+  await page.getByRole('button', { name: 'Passed', exact: true }).click();
+  await page.getByLabel('Chart style').selectOption('bar');
+  await expect(page.locator('#tab-trends .trend-bar')).toHaveCount(10);
+  await page.getByRole('button', { name: 'Skipped', exact: true }).click();
+  expect(await page.locator('#tab-trends .trend-bar').evaluateAll(bars => bars.every(bar => Number(bar.getAttribute('height')) >= 2))).toBe(true);
   await page.locator('[data-tab="flaky"]').click();
   await expect(page.locator('#tab-flaky .flaky-matrix')).toBeVisible();
   await expect(page.locator('#tab-flaky .flaky-matrix')).toContainText('P passed');
@@ -375,9 +380,11 @@ test('offline report navigation and debugging', async ({ page }) => {
   await expect(page.locator('#lb-panel-content')).toContainText('Error');
   await page.locator('#lb-panel-close').click();
   await page.locator('#lb-theme').click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', /light|dark/);
-  await expect(page.locator('#lb-theme')).toHaveAttribute('title', 'Switch to light mode');
-  await expect(page.locator('#lb-theme')).toHaveAttribute('aria-label', 'Switch to light mode');
+  await expect(page.locator('#lb-theme-popover [data-theme-choice]')).toHaveCount(6);
+  await page.getByRole('button', { name: 'Midnight', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('#lb-theme')).toHaveAttribute('title', 'Theme: Midnight');
+  await expect(page.locator('#lb-theme')).toHaveAttribute('aria-label', 'Choose report theme');
   expect(errors).toEqual([]);
   expect(network).toEqual([]);
 });
@@ -458,7 +465,10 @@ test('report stays inside the viewport at mobile and tablet widths', async ({ pa
       expect(rows[3]).toBeGreaterThan(rows[0]!);
     }
     for (const theme of ['light', 'dark']) {
-      if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#lb-theme').click();
+      if (await page.locator('html').getAttribute('data-theme') !== theme) {
+        await page.locator('#lb-theme').click();
+        await page.getByRole('button', { name: theme === 'light' ? 'Daybreak' : 'Midnight', exact: true }).click();
+      }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, `horizontal overflow at ${width}px in ${theme}`).toBeLessThanOrEqual(1);
       await page.locator('.overview-test-row').first().click();
@@ -476,6 +486,7 @@ test('print view uses light colors and remains offline', async ({ page }) => {
   page.on('request', (request) => { if (!request.url().startsWith('file:')) network.push(request.url()); });
   await page.goto(report);
   await page.locator('#lb-theme').click();
+  await page.getByRole('button', { name: 'Midnight', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.emulateMedia({ media: 'print' });
   const colors = await page.evaluate(() => ({ theme: getComputedStyle(document.documentElement).colorScheme, actions: getComputedStyle(document.querySelector('.topbar-actions')!).display }));
@@ -483,23 +494,40 @@ test('print view uses light colors and remains offline', async ({ page }) => {
   expect(network).toEqual([]);
 });
 
-test('palette choices persist across light and dark modes without network requests', async ({ page }) => {
+test('six named themes persist and stay offline', async ({ page }) => {
   const network: string[] = [];
   page.on('request', request => { if (!request.url().startsWith('file:')) network.push(request.url()); });
   await page.goto(report);
-  await page.getByLabel('Color palette').selectOption('ivory');
-  await expect(page.locator('html')).toHaveAttribute('data-palette', 'ivory');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(245, 240, 231)');
-  await page.locator('#lb-theme').click();
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(23, 21, 17)');
-  await page.getByLabel('Color palette').selectOption('github');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(13, 17, 23)');
+  for (const [name, mode, palette, background] of [
+    ['Daybreak', 'light', 'default', 'rgb(246, 247, 250)'],
+    ['Parchment', 'light', 'ivory', 'rgb(245, 240, 231)'],
+    ['Workbench', 'light', 'github', 'rgb(246, 248, 250)'],
+    ['Midnight', 'dark', 'default', 'rgb(13, 17, 25)'],
+    ['Espresso', 'dark', 'ivory', 'rgb(23, 21, 17)'],
+    ['Carbon', 'dark', 'github', 'rgb(13, 17, 23)'],
+  ]) {
+    await page.locator('#lb-theme').click();
+    await page.getByRole('button', { name, exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', mode);
+    await expect(page.locator('html')).toHaveAttribute('data-palette', palette);
+    await expect(page.locator('body')).toHaveCSS('background-color', background);
+  }
   await page.reload();
-  await expect(page.getByLabel('Color palette')).toHaveValue('github');
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.locator('#lb-theme').click();
+  await expect(page.getByRole('button', { name: 'Carbon', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Workbench', exact: true }).click();
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(246, 248, 250)');
   await page.setViewportSize({ width: 360, height: 900 });
+  await page.keyboard.press('t');
+  await expect(page.locator('#lb-theme-popover')).toBeVisible();
+  expect(await page.locator('#lb-theme-popover').evaluate(element => element.getBoundingClientRect().right <= window.innerWidth)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#lb-theme-popover')).toBeHidden();
+  await expect(page.locator('#lb-theme')).toBeFocused();
+  await page.keyboard.press('t');
+  await page.keyboard.press('t');
+  await expect(page.locator('#lb-theme')).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
   await page.emulateMedia({ media: 'print' });
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');

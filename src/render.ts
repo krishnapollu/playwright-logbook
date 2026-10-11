@@ -85,8 +85,10 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
 <header class="topbar"><div class="topbar-inner">
   <span class="wordmark">logbook</span><span class="topbar-title">${escapeHtml(focus?.title ?? projectName + ' / run ' + run.runId)}</span>
   <div class="topbar-actions">
-    <select id="lb-palette" class="select palette-select" aria-label="Color palette" title="Color palette"><option value="default">Default</option><option value="ivory">Ivory</option><option value="github">GitHub</option></select>
-    <button id="lb-theme" class="btn btn-icon" type="button" aria-label="Switch to dark mode"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M20 15a8 8 0 0 1-11-11 8 8 0 1 0 11 11"/></svg></button>
+    <div class="theme-wrap">
+      <button id="lb-theme" class="btn btn-icon" type="button" aria-label="Choose report theme" aria-controls="lb-theme-popover" aria-expanded="false" title="Choose report theme"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M20 15a8 8 0 0 1-11-11 8 8 0 1 0 11 11"/></svg></button>
+      <div id="lb-theme-popover" class="export-popover theme-popover" hidden><p class="theme-popover-title">Choose a theme</p><div role="group" aria-label="Light themes"><p>Light</p><button type="button" data-theme-choice="light/default"><span class="theme-swatch" style="background:#4e5fd0"></span>Daybreak</button><button type="button" data-theme-choice="light/ivory"><span class="theme-swatch" style="background:#674696"></span>Parchment</button><button type="button" data-theme-choice="light/github"><span class="theme-swatch" style="background:#0969da"></span>Workbench</button></div><div role="group" aria-label="Dark themes"><p>Dark</p><button type="button" data-theme-choice="dark/default"><span class="theme-swatch" style="background:#a5b2ff"></span>Midnight</button><button type="button" data-theme-choice="dark/ivory"><span class="theme-swatch" style="background:#c7a6f0"></span>Espresso</button><button type="button" data-theme-choice="dark/github"><span class="theme-swatch" style="background:#79c0ff"></span>Carbon</button></div></div>
+    </div>
     <div class="export-wrap">
       <button id="lb-export-btn" class="btn optional" type="button" aria-haspopup="true" aria-expanded="false">Export ▾</button>
       <div id="lb-export-popover" class="export-popover" hidden>
