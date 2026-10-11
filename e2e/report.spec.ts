@@ -250,6 +250,8 @@ test('offline report navigation and debugging', async ({ page }) => {
   for (const link of await brandLinks.all()) await expect(link.locator('svg')).toHaveCount(1);
   await expect(page.getByRole('region', { name: 'Changes since previous run' })).toBeVisible();
   await expect(page.locator('#lb-cards')).toBeVisible();
+  await expect(page.locator('.sparkline-value')).toContainText('demo-12');
+  await expect(page.locator('.spark-delta')).toContainText('vs demo-11');
   await expect(page.getByRole('navigation', { name: 'Report sections' })).toBeVisible();
   await expect(page.locator('#nav-overview')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.overview-test-row').first()).toBeVisible();

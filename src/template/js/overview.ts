@@ -79,7 +79,7 @@ function renderOverview(){
   // Pass-rate sparkline
   const rates=model.history.filter(entry=>entry.complete&&entry.summary.total>0).slice(-12);
   const passRate=h('section',{class:'overview-card','aria-labelledby':'lb-pass-rate-heading'});
-  passRate.appendChild(h('div',{class:'overview-card-head'},h('h2',{id:'lb-pass-rate-heading',text:'Pass rate'}),h('span',{class:'muted',text:rates.length?'Last '+rates.length+' runs':'No history'})));
+  passRate.appendChild(h('div',{class:'overview-card-head'},h('h2',{id:'lb-pass-rate-heading',text:'Pass rate'}),h('span',{class:'muted',text:rates.length?'Last '+rates.length+' complete runs':'No history'})));
   if(rates.length){
     const vals=rates.map(e=>Math.round(e.summary.passed/e.summary.total*100));
     const cur=vals[vals.length-1];
@@ -93,9 +93,9 @@ function renderOverview(){
     if(pts.length>1)spark.appendChild(s('polyline',{points:pts.map(p=>p.x+','+p.y).join(' '),fill:'none',stroke:'var(--accent)','stroke-width':'2','stroke-linejoin':'round'}));
     const last=pts[pts.length-1];
     spark.appendChild(s('circle',{cx:last.x,cy:last.y,r:4,fill:'var(--accent)'}));
-    const deltaText=delta2===null?'':delta2>0?'+'+delta2+' pp':delta2<0?delta2+' pp':'no change';
+    const deltaText=delta2===null?'':(delta2>0?'+'+delta2+' pp':delta2<0?delta2+' pp':'no change')+' vs '+rates[rates.length-2].runId;
     const deltaClass=delta2===null?'delta-neutral':delta2>0?'delta-good':delta2<0?'delta-bad':'delta-neutral';
-    passRate.appendChild(h('div',{class:'sparkline-card'},spark,h('div',{class:'sparkline-value'},h('strong',{text:cur+'%'}),h('span',{class:'spark-delta '+deltaClass,text:deltaText}))));
+    passRate.appendChild(h('div',{class:'sparkline-card'},spark,h('div',{class:'sparkline-value'},h('strong',{text:cur+'%'}),h('span',{class:'muted',text:rates[rates.length-1].runId}),h('span',{class:'spark-delta '+deltaClass,text:deltaText}))));
   }else{
     passRate.appendChild(h('p',{class:'empty overview-empty',text:'A pass-rate history needs a complete run with recorded tests.'}));
   }
