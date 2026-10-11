@@ -2,6 +2,8 @@
 
 Status: revised product and implementation plan, 2026-09-30. This document is a plan, not a claim that the features exist. The baseline is the committed v0.2 Playwright reporter, schema v1, and offline six-tab report. `docs/SPEC.md` (and local `docs/SPEC-v2.md`, if present) are historical context. Current tested behavior wins over obsolete design notes; light mode remains the default.
 
+The later [HTML report revamp plan](SPEC-html-report-revamp.md) is a separate task sequence. It keeps this plan's offline, privacy, and schema boundaries while replacing the six-tab presentation after its own checks pass.
+
 ## 1. Product focus and correction
 
 Logbook is **for Playwright Test**, not a generic test-run aggregator. It should be a best-in-class Playwright reporter and an evidence-grounded AI debugging companion. Every v3 feature must materially improve at least one of these two outcomes:
