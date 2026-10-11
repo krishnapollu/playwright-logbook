@@ -21,7 +21,7 @@ export function sparkPath(values: number[], width: number, height: number, pad: 
 export interface HashState { tab: string; q: string; status: string[]; project: string; tag: string; sort: string; group: string; changed: boolean; test: string; attempt: number }
 export function parseHash(hash: string): HashState {
   const query = new URLSearchParams(hash.replace(/^#/, ''));
-  const tabs = ['overview', 'tests', 'failures', 'trends', 'flaky', 'run', 'project'];
+  const tabs = ['overview', 'tests', 'failures', 'trends', 'flaky', 'perf', 'run', 'project'];
   const sorts = ['default', 'slowest', 'fastest', 'title', 'attempts', 'severity'];
   const statuses = ['passed', 'failed', 'flaky', 'skipped'];
   const attempt = Number(query.get('attempt'));

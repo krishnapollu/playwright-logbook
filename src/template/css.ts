@@ -325,4 +325,11 @@ body{letter-spacing:-.008em}
 .slowest-chart .bar-track{flex:1;height:14px;background:var(--surface-2);border-radius:3px;overflow:hidden}
 .slowest-chart .bar-fill{height:100%;background:var(--accent);border-radius:3px}
 .slowest-chart .bar-val{flex:none;width:52px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.perf-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}
+.perf-stat{display:flex;flex-direction:column;gap:4px;margin:0}.perf-stat span{color:var(--muted);font-size:12px}.perf-stat strong{font-size:24px}.perf-stat small{line-height:1.35}
+.perf-slow h3,.perf-steps h3{margin:0 0 4px}.perf-slow>.muted,.perf-steps>.muted{margin:0 0 12px}
+.perf-test{display:grid;grid-template-columns:minmax(120px,2fr) minmax(90px,3fr) 70px;align-items:center;gap:12px;width:100%;padding:8px 4px;border:0;border-top:1px solid var(--border);background:transparent;color:var(--text);text-align:left}
+.perf-test:hover{background:var(--surface-2)}.perf-test-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.perf-test-track{height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden}.perf-test-track span{display:block;height:100%;border-radius:5px;background:var(--accent)}.perf-test-value{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.perf-scope{margin-top:16px;font-size:12px}
+@media(max-width:640px){.perf-test{grid-template-columns:minmax(100px,1fr) 70px}.perf-test-track{display:none}}
 `;

@@ -9,6 +9,7 @@ export const ICONS: Record<string, string> = {
   tests: 'M9 6h12M9 12h12M9 18h12M3 6l1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2',
   flaky: 'M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.8-2L20 12M4 12l2.6 5a7 7 0 0 0 11.8-2',
   trends: 'M3 18l6-6 4 3 8-9M15 6h6v6',
+  perf: 'M4 19V5M4 19h16M8 15l4-5 3 2 5-7',
   run: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2',
   project: 'M3 5h7l2 2h9v12H3zM3 10h18',
   branch: 'M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9c0 3.31-2.69 6-6 6H6',

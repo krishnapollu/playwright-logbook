@@ -24,7 +24,7 @@ function fmtDate(iso: string | null | undefined): string {
 }
 const escapeHtml = (value: string): string => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 const safeJson = (value: unknown): string => JSON.stringify(value).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026').replaceAll('\u2028', '\\u2028').replaceAll('\u2029', '\\u2029');
-const tabs = ['overview', 'tests', 'failures', 'flaky', 'trends', 'run', 'project'];
+const tabs = ['overview', 'tests', 'failures', 'flaky', 'trends', 'perf', 'run', 'project'];
 
 function attachmentLinks(model: ReportModel, reportDir: string, portableLinks?: Record<string, string>): Record<string, string> {
   const links: Record<string, string> = {};
@@ -55,7 +55,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
   const title = options.title ?? options.focusTest?.title ?? run.title ?? 'Playwright Logbook';
   const focus = options.focusTest;
   const reportDir = options.reportDir ?? path.posix.join(run.paths.outputDir, 'report');
-  const labels: Record<string, string> = { overview: 'Overview', tests: 'Tests', failures: 'Failures', flaky: 'Flaky', trends: 'Trends', run: 'Run & timeline', project: 'Project' };
+  const labels: Record<string, string> = { overview: 'Overview', tests: 'Tests', failures: 'Failures', flaky: 'Flaky', trends: 'Trends', perf: 'Performance', run: 'Run & timeline', project: 'Project' };
   const counts: Record<string, number | undefined> = { tests: run.summary.total, failures: run.summary.failed, flaky: run.summary.flaky };
   const tabButtons = tabs.map((tab) => `<button type="button" id="nav-${tab}" data-tab="${tab}" data-icon="${tab}"${counts[tab] === undefined ? '' : ` data-count="${counts[tab]}"`} aria-controls="tab-${tab}">${labels[tab]}</button>`);
   const panels = tabs.slice(1).map((tab) => `<section class="panel" id="tab-${tab}" aria-labelledby="nav-${tab}" hidden></section>`).join('');

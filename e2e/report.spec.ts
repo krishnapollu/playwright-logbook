@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { buildReportModel } from '../src/model.js';
+import type { TestRecord } from '../src/schema.js';
 import { buildDebugPacket, debugPacketMarkdown } from '../src/debugpacket.js';
 import { renderReport } from '../src/render.js';
 import { renderTestReport } from '../src/testrender.js';
@@ -15,6 +16,36 @@ import { run, testRecord } from '../test/factories.js';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const report = pathToFileURL(path.join(root, '.logbook-demo', 'report', 'index.html')).href;
 const loadPackage = createRequire(import.meta.url);
+
+test('performance view calculates test and retry timings from the run', async ({ page }) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-perf-browser-'));
+  try {
+    const source = run('perf-browser');
+    const makeTest = (id: string, durationMs: number): TestRecord => ({
+      ...testRecord(id), durationMs, finalDurationMs: durationMs, attemptCount: 1,
+      attempts: [{ retry: 0, status: 'passed' as const, durationMs, startedAt: source.startedAt, workerIndex: 0, errors: [], attachments: [], steps: [{ title: 'Open '+id, category: 'test.step', durationMs: durationMs / 2, depth: 0, failed: false }] }],
+    });
+    const retried = makeTest('retried', 500);
+    retried.attemptCount = 2;
+    retried.attempts = [
+      { ...retried.attempts[0]!, retry: 0, status: 'failed', durationMs: 40, steps: [] },
+      { ...retried.attempts[0]!, retry: 1, durationMs: 460, steps: [{ title: 'Open retried', category: 'test.step', durationMs: 250, depth: 0, failed: false }] },
+    ];
+    source.tests = [makeTest('fast', 100), makeTest('middle', 300), retried];
+    source.summary.total = 3;
+    const file = path.join(directory, 'index.html');
+    await fs.writeFile(file, renderReport(buildReportModel({ run: source, summaries: [] })));
+    await page.goto(pathToFileURL(file).href+'#tab=perf');
+    await expect(page.locator('#lb-error')).toBeHidden();
+    await expect(page.locator('.perf-stat strong')).toHaveText(['300ms', '500ms', '40ms', '1.0s']);
+    await expect(page.locator('.perf-test')).toHaveCount(3);
+    await expect(page.locator('.perf-test').first()).toContainText('retried');
+    await expect(page.locator('.perf-steps tbody tr').first()).toContainText('Open retried');
+    await expect(page.locator('.perf-scope')).toContainText('not captured by reporter-only setup');
+    await page.locator('.perf-test').first().click();
+    await expect(page.locator('#lb-panel')).toBeVisible();
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
 
 test('CommonJS reporter entry renders a fully initialized offline report', async ({ page }) => {
   const entry = loadPackage('playwright-logbook') as { renderReport: typeof renderReport; buildReportModel: typeof buildReportModel };
@@ -352,11 +383,11 @@ test('offline report navigation and debugging', async ({ page }) => {
   await expect(page.locator('#lb-tests-body .recent').first()).toHaveAttribute('aria-label', /oldest to newest:/);
   await page.locator('[data-tab="run"]').click();
   await expect(page.locator('#tab-run')).toContainText('Timeline is unavailable for sharded runs.');
-  for (const tab of ['overview', 'failures', 'trends', 'flaky', 'run', 'project']) {
+  for (const tab of ['overview', 'failures', 'trends', 'flaky', 'perf', 'run', 'project']) {
     await page.locator(`[data-tab="${tab}"]`).click();
     await expect(page.locator(`#tab-${tab}`)).toBeVisible();
   }
-  for (const [index, tab] of ['overview', 'tests', 'failures', 'flaky', 'trends', 'run', 'project'].entries()) {
+  for (const [index, tab] of ['overview', 'tests', 'failures', 'flaky', 'trends', 'perf', 'run', 'project'].entries()) {
     await page.keyboard.press(String(index + 1));
     await expect(page.locator(`#tab-${tab}`)).toBeVisible();
   }

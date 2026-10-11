@@ -8,13 +8,13 @@ import { run, testRecord } from './factories.js';
 const model = () => buildReportModel({ run: run('report-run'), summaries: [], generatedAt: null });
 
 describe('renderReport', () => {
-  it('embeds exactly recoverable model data and all seven destinations', () => {
+  it('embeds exactly recoverable model data and all eight destinations', () => {
     const data = model();
     const html = renderReport(data);
     const match = html.match(/<script type="application\/json" id="lb-data">([\s\S]*?)<\/script>/);
     expect(match).not.toBeNull();
     expect(JSON.parse(match![1]!)).toEqual(data);
-    for (const tab of ['overview', 'tests', 'failures', 'flaky', 'trends', 'run', 'project']) {
+    for (const tab of ['overview', 'tests', 'failures', 'flaky', 'trends', 'perf', 'run', 'project']) {
       expect(html).toContain(`data-tab="${tab}"`);
       expect(html).toContain(`id="tab-${tab}"`);
     }
@@ -67,11 +67,11 @@ describe('renderReport', () => {
     const nonDataHtml = html
       .replace(/<script type="application\/json" id="lb-data">[\s\S]*?<\/script>/, '')
       .replace(/<script type="application\/json" id="lb-links">[\s\S]*?<\/script>/, '');
-    expect(Buffer.byteLength(nonDataHtml)).toBeLessThanOrEqual(130 * 1024);
+    expect(Buffer.byteLength(nonDataHtml)).toBeLessThanOrEqual(140 * 1024);
     expect(html).toContain('<noscript>');
     expect(html).toContain('<dialog');
     expect(html).toContain('@media print');
-    expect((html.match(/data-tab="/g) ?? [])).toHaveLength(7);
+    expect((html.match(/data-tab="/g) ?? [])).toHaveLength(8);
   });
   it('computes relative attachment links', () => {
     const source = run('attachment');
