@@ -330,6 +330,13 @@ test('offline report navigation and debugging', async ({ page }) => {
   await expect(page.locator('#tab-flaky .flaky-matrix thead')).toContainText('Current run');
   await page.locator('[data-tab="project"]').click();
   await expect(page.locator('#tab-project .project-bar').first()).toHaveAttribute('aria-label', /passed, .* failed, .* flaky/);
+  for (const [kind, color] of [['failed', 'rgb(189, 56, 68)'], ['flaky', 'rgb(150, 96, 13)']]) {
+    const bar = page.locator(`#tab-project .heat.${kind} span`).first();
+    await expect(bar).toHaveCSS('background-color', color);
+  }
+  await page.locator('[data-tab="tests"]').click();
+  await expect(page.locator('#lb-tests-body .recent').first()).toHaveAttribute('role', 'img');
+  await expect(page.locator('#lb-tests-body .recent').first()).toHaveAttribute('aria-label', /oldest to newest:/);
   await page.locator('[data-tab="run"]').click();
   await expect(page.locator('#tab-run')).toContainText('Timeline is unavailable for sharded runs.');
   for (const tab of ['overview', 'failures', 'trends', 'flaky', 'run', 'project']) {

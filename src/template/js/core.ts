@@ -13,7 +13,7 @@ function s(tag,props,...children){const el=document.createElementNS(svgNS,tag);f
 function clear(el){while(el.firstChild)el.removeChild(el.firstChild)}
 function icon(name){const svg=s('svg',{viewBox:'0 0 24 24',class:'icon','aria-hidden':'true'});svg.appendChild(s('path',{d:icons[name]||icons.alert}));return svg}
 function chip(kind){const labels={passed:'Passed',failed:'Failed',timedout:'Timed out',flaky:'Flaky',skipped:'Skipped'};const marks={passed:'✓',failed:'×',timedout:'!',flaky:'↝',skipped:'–'};return h('span',{class:'status-chip '+kind},h('span',{class:'mark','aria-hidden':'true',text:marks[kind]||'!'}),labels[kind]||kind)}
-function recentStrip(value){const wrap=h('span',{class:'recent','aria-label':'Previous results: '+recentToKinds(value||'').join(', ')});for(const kind of recentToKinds(value||''))wrap.appendChild(h('span',{class:kind,title:kind}));return wrap}
+function recentStrip(value){const kinds=recentToKinds(value||'');const wrap=h('span',{class:'recent',role:'img','aria-label':kinds.length?'Previous results, oldest to newest: '+kinds.join(', '):'No previous results'});for(const kind of kinds)wrap.appendChild(h('span',{class:kind,title:kind,'aria-hidden':'true'}));return wrap}
 function attachmentHref(url){return new RegExp('^data:(?:image/(?:png|jpeg)|video/(?:mp4|webm)|application/octet-stream);base64,[A-Za-z0-9+/=]+$').test(url||'')?url:safeHref(url||'')}
 function link(label,url,filename=label){const href=attachmentHref(url);return href?h('a',{href,download:href.startsWith('data:')?filename:null,rel:'noopener noreferrer',text:label}):h('span',{text:label})}
 function syncHash(){const hash=buildHash(state);if(location.hash!==hash)history.replaceState(null,'',location.pathname+location.search+hash)}

@@ -21,8 +21,8 @@ function renderProject(){
     clear(files);const key=sort.value;
     const ordered=[...model.files].sort((a,b)=>key==='file'?(a.file<b.file?-1:a.file>b.file?1:0):b[key]-a[key]||(a.file<b.file?-1:1));
     const rows=ordered.map(item=>{
-      const failed=h('span',{},String(item.failed),h('span',{class:'heat hot'},h('span',{style:'width:'+(item.total?Math.round(item.failed/item.total*100):0)+'%'})));
-      const flaky=h('span',{},String(item.flaky),h('span',{class:'heat'},h('span',{style:'width:'+(item.total?Math.round(item.flaky/item.total*100):0)+'%'})));
+      const failed=h('span',{},String(item.failed),h('span',{class:'heat failed'},h('span',{style:'width:'+(item.total?Math.round(item.failed/item.total*100):0)+'%'})));
+      const flaky=h('span',{},String(item.flaky),h('span',{class:'heat flaky'},h('span',{style:'width:'+(item.total?Math.round(item.flaky/item.total*100):0)+'%'})));
       return [item.file,item.total,failed,flaky,item.skipped,formatDuration(item.durationMs)];
     });
     files.appendChild(table(['File','Total','Failed','Flaky','Skipped','Duration'],rows));

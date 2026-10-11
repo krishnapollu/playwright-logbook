@@ -154,6 +154,7 @@ dialog.detail-panel .evidence-body{max-height:min(55vh,480px);overflow:auto}
 .project-bar{display:flex;width:min(260px,100%);height:12px;overflow:hidden;border-radius:8px;background:var(--surface-2)}
 .project-bar span{height:100%}
 .project-bar .passed{background:var(--passed)}.project-bar .failed{background:var(--failed)}.project-bar .flaky{background:var(--flaky)}.project-bar .skipped{background:var(--skipped)}
+.heat.failed span{background:var(--failed)}.heat.flaky span{background:var(--flaky)}
 .timeline text{font-size:10px}
 .timeline rect:focus{stroke:var(--text);stroke-width:2}
 .focused-report .report-shell{display:block;max-width:1200px}
