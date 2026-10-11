@@ -7,6 +7,9 @@ function renderOverview(){
   const run=model.run,sum=run.summary,comparison=model.comparison;
   // Verdict band
   const band=h('section',{id:'lb-cards',class:'verdict-band','aria-label':'Run verdict'});
+  const newFailures=comparison?.newFailures.length||0;
+  const verdict=!sum.total?'No tests were recorded in this run.':(run.complete?'':'Incomplete run · ')+sum.failed+' failed'+(newFailures?' ('+newFailures+' new)':'')+' · '+sum.flaky+' flaky · '+sum.passed+' passed'+(sum.skipped?' · '+sum.skipped+' skipped':'')+'.';
+  band.appendChild(h('p',{class:'verdict-copy',text:verdict}));
   // Segmented bar
   const bar=h('div',{class:'seg-bar','role':'group','aria-label':'Filter tests by result status'});
   for(const [kind,count] of [['passed',sum.passed],['failed',sum.failed],['flaky',sum.flaky],['skipped',sum.skipped]]){

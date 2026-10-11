@@ -45,11 +45,10 @@ function renderFailures(){
       item.summary.failed
     ])));
   }
-  panel.appendChild(trend);
   const groups=model.errorGroups||[];
-  if(!groups.length){panel.appendChild(h('p',{class:'empty',text:'No failures or flaky tests in this run.'}));return}
-  for(const group of groups){
-    const box=h('details',{class:'section-card'});
+  if(!groups.length)panel.appendChild(h('p',{class:'empty',text:'No failures or flaky tests in this run.'}));
+  for(const [index,group] of groups.entries()){
+    const box=h('details',{class:'section-card',...(index===0?{open:''}:{})});
     box.appendChild(h('summary',{},group.signature+' · '+group.count+' tests · '+group.projects.join(', '),
       group.newCount?h('span',{class:'status-chip failed',text:' NEW '+group.newCount}):null));
     for(const id of group.testIds){
@@ -59,5 +58,6 @@ function renderFailures(){
     }
     panel.appendChild(box);
   }
+  panel.appendChild(trend);
 }
 `;

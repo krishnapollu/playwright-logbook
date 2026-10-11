@@ -250,6 +250,7 @@ test('offline report navigation and debugging', async ({ page }) => {
   for (const link of await brandLinks.all()) await expect(link.locator('svg')).toHaveCount(1);
   await expect(page.getByRole('region', { name: 'Changes since previous run' })).toBeVisible();
   await expect(page.locator('#lb-cards')).toBeVisible();
+  await expect(page.locator('.verdict-copy')).toHaveText('4 failed (1 new) · 3 flaky · 72 passed · 1 skipped.');
   await expect(page.locator('.sparkline-value')).toContainText('demo-12');
   await expect(page.locator('.spark-delta')).toContainText('vs demo-11');
   await expect(page.getByRole('navigation', { name: 'Report sections' })).toBeVisible();
@@ -304,6 +305,11 @@ test('offline report navigation and debugging', async ({ page }) => {
   await expect(page.locator('#tab-failures .failure-chart')).toBeVisible();
   await expect(page.locator('#tab-failures .failure-trend table tbody tr')).toHaveCount(12);
   await expect(page.locator('#tab-failures .failure-trend')).toContainText('counts do not imply the same tests failed');
+  expect(await page.locator('#tab-failures').evaluate(panel => {
+    const group = panel.querySelector('details.section-card');
+    return group?.compareDocumentPosition(panel.querySelector('.failure-trend')!) & Node.DOCUMENT_POSITION_FOLLOWING;
+  })).toBeTruthy();
+  await expect(page.locator('#tab-failures details.section-card').first()).toHaveAttribute('open', '');
   await page.locator('[data-tab="trends"]').click();
   await expect(page.locator('#tab-trends .trend-card')).toHaveCount(1);
   await expect(page.locator('#tab-trends .trend-card h3')).toHaveText('Pass rate');
@@ -444,6 +450,13 @@ test('report stays inside the viewport at mobile and tablet widths', async ({ pa
   await page.goto(report);
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
+    if (width === 360) {
+      const rows = await page.locator('.comparison-metric').evaluateAll(items => items.map(item => Math.round(item.getBoundingClientRect().top)));
+      expect(rows[0]).toBe(rows[1]);
+      expect(rows[1]).toBe(rows[2]);
+      expect(rows[3]).toBe(rows[4]);
+      expect(rows[3]).toBeGreaterThan(rows[0]!);
+    }
     for (const theme of ['light', 'dark']) {
       if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#lb-theme').click();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
