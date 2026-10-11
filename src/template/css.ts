@@ -243,7 +243,6 @@ dialog.detail-panel #lb-panel-content{max-width:900px;margin:auto}
 .timeline rect{cursor:pointer;transition:filter 120ms,opacity 120ms}
 .timeline rect:hover,.timeline rect:focus{filter:brightness(.9);stroke:var(--text);stroke-width:1.5}
 #tab-run .table-wrap{margin-top:14px}
-@media(min-width:701px){.panel .table-wrap{overflow:visible}}
 @media(max-width:700px){.table-wrap th{top:0}}
 @media(max-width:1100px){.test-filters{grid-template-columns:repeat(4,minmax(0,1fr)) auto auto}.test-filters #lb-search{grid-column:1/-1}}
 @media(max-width:700px){.test-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px}.test-filters #lb-search{grid-column:1/-1}.test-filters>.chip-button{min-width:0;justify-content:center}}

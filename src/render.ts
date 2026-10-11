@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { ReportModel } from './model.js';
 import type { TestRecord } from './schema.js';
-import { formatDuration, safeHref } from './clientlib.js';
+import { formatDuration } from './clientlib.js';
 import { buildClientScript, buildStyles } from './template.js';
 
 function fmtDate(iso: string | null | undefined): string {
@@ -70,9 +70,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
     `<span class="meta-chip">Playwright ${escapeHtml(run.env.playwrightVersion)}</span>`,
     `<span class="meta-chip">Workers ${run.env.workers}</span>`,
   ].filter(Boolean).join('');
-  const buildUrl = run.env.ci?.buildUrl;
-  const ciButton = buildUrl && /^https?:\/\//i.test(buildUrl) && safeHref(buildUrl) ? `<a class="btn btn-secondary" href="${escapeHtml(buildUrl)}" target="_blank" rel="noopener noreferrer">CI build ↗</a>` : '';
-  const footer = `${model.generatedAt ? `Generated ${escapeHtml(fmtDate(model.generatedAt))} · ` : ''}playwright-logbook v${escapeHtml(model.generator?.version ?? '0.1.0')} · Press ? for shortcuts`;
+  const footer = `${model.generatedAt ? `Generated ${escapeHtml(fmtDate(model.generatedAt))} · ` : ''}playwright-logbook v${escapeHtml(model.generator?.version ?? '0.1.0')}`;
   const startedAt = fmtDate(run.startedAt);
   const statusKind = !run.complete ? 'incomplete' : run.status === 'passed' ? 'passed' : 'failed';
   const statusLabel = !run.complete ? 'INCOMPLETE' : escapeHtml(run.status.toUpperCase());
@@ -86,11 +84,6 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
 <a class="skip-link" href="#main-content">Skip to report content</a>
 <header class="topbar"><div class="topbar-inner">
   <span class="wordmark">logbook</span><span class="topbar-title">${escapeHtml(focus?.title ?? projectName + ' / run ' + run.runId)}</span>
-  <nav class="brand-links" aria-label="Logbook links">
-    <a href="https://github.com/krishnapollu/playwright-logbook" target="_blank" rel="noopener noreferrer" aria-label="Logbook on GitHub" title="GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.53v-2.06c-3.1.68-3.76-1.32-3.76-1.32-.5-1.29-1.24-1.63-1.24-1.63-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 1.71 2.62 1.22 3.26.93.1-.72.39-1.22.71-1.5-2.48-.28-5.09-1.24-5.09-5.52 0-1.22.44-2.22 1.15-3-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.05 1.15a10.6 10.6 0 0 1 5.55 0c2.12-1.45 3.05-1.15 3.05-1.15.61 1.54.23 2.68.11 2.96.72.78 1.15 1.78 1.15 3 0 4.29-2.61 5.23-5.1 5.51.4.35.76 1.03.76 2.08V22c0 .29.2.64.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg></a>
-    <a href="https://www.npmjs.com/package/playwright-logbook" target="_blank" rel="noopener noreferrer" aria-label="Logbook on npm" title="npm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h20v12H12v-2H8v2H2z"/><path class="brand-cutout" d="M8 9h4v5h-2v-3H8zm6 0h4v7h-2v-5h-2z"/></svg></a>
-    <a href="https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode" target="_blank" rel="noopener noreferrer" aria-label="Logbook on Visual Studio Marketplace" title="Visual Studio Marketplace"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.7 2.2 8.3 10.7 4.4 7.8 2 9v6l2.4 1.2 3.9-2.9 9.4 8.5L22 20V4zm0 5.1v9.4l-5.2-4.7zM4.5 10.2l2.3 1.8-2.3 1.8z"/></svg></a>
-  </nav>
   <div class="topbar-actions">
     <button id="lb-theme" class="btn btn-icon" type="button" aria-label="Switch to dark mode"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M20 15a8 8 0 0 1-11-11 8 8 0 1 0 11 11"/></svg></button>
     <div class="export-wrap">
@@ -101,8 +94,12 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
         <button id="lb-print" type="button"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print</button>
       </div>
     </div>
-    <button id="lb-help" class="btn btn-icon" type="button" aria-label="Keyboard shortcuts">?</button>
   </div>
+  <nav class="brand-links" aria-label="Logbook links">
+    <a href="https://github.com/krishnapollu/playwright-logbook" target="_blank" rel="noopener noreferrer" aria-label="Logbook on GitHub" title="GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.53v-2.06c-3.1.68-3.76-1.32-3.76-1.32-.5-1.29-1.24-1.63-1.24-1.63-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 1.71 2.62 1.22 3.26.93.1-.72.39-1.22.71-1.5-2.48-.28-5.09-1.24-5.09-5.52 0-1.22.44-2.22 1.15-3-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.05 1.15a10.6 10.6 0 0 1 5.55 0c2.12-1.45 3.05-1.15 3.05-1.15.61 1.54.23 2.68.11 2.96.72.78 1.15 1.78 1.15 3 0 4.29-2.61 5.23-5.1 5.51.4.35.76 1.03.76 2.08V22c0 .29.2.64.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg></a>
+    <a href="https://www.npmjs.com/package/playwright-logbook" target="_blank" rel="noopener noreferrer" aria-label="Logbook on npm" title="npm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h20v12H12v-2H8v2H2z"/><path class="brand-cutout" d="M8 9h4v5h-2v-3H8zm6 0h4v7h-2v-5h-2z"/></svg></a>
+    <a href="https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode" target="_blank" rel="noopener noreferrer" aria-label="Logbook on Visual Studio Marketplace" title="Visual Studio Marketplace"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.7 2.2 8.3 10.7 4.4 7.8 2 9v6l2.4 1.2 3.9-2.9 9.4 8.5L22 20V4zm0 5.1v9.4l-5.2-4.7zM4.5 10.2l2.3 1.8-2.3 1.8z"/></svg></a>
+  </nav>
 </div></header>
 <main id="main-content" class="report-shell" tabindex="-1">
   <aside class="report-sidebar"><nav class="tabs" aria-label="Report sections"><div class="nav-group"><p class="nav-label">Investigate</p>${tabButtons.slice(0, 4).join('')}</div><div class="nav-group"><p class="nav-label">Analyze</p>${tabButtons.slice(4).join('')}</div></nav></aside>
@@ -118,7 +115,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
           <span class="meta-chip">Run ${escapeHtml(run.runId)}</span>
           <span class="meta-chip"><time datetime="${escapeHtml(run.startedAt)}" title="${escapeHtml(run.startedAt)}">${escapeHtml(startedAt)}</time></span>
           <span class="meta-chip">${formatDuration(run.durationMs)}</span>
-          ${meta}${ciButton}
+          ${meta}
         </div>
       </div></header>
       <div id="lb-overview-content"></div>${comparison(model)}
@@ -126,7 +123,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
     ${panels}<dialog id="lb-panel" class="detail-panel" aria-labelledby="lb-panel-heading"><div class="panel-head"><h2 id="lb-panel-heading" tabindex="-1"></h2><button id="lb-panel-close" class="button" type="button" aria-label="Back to report">Back to report</button></div><div id="lb-panel-content"></div></dialog><footer>${footer}</footer>
   </div>
 </main>
-<div id="lb-toast" class="toast" role="status" aria-live="polite" hidden></div><dialog id="lb-help-dialog" class="help-dialog"></dialog><dialog id="lb-lightbox" class="lightbox"></dialog>
+<div id="lb-toast" class="toast" role="status" aria-live="polite" hidden></div><dialog id="lb-lightbox" class="lightbox"></dialog>
 <noscript>Enable JavaScript to explore tests and report details.</noscript><script type="application/json" id="lb-data">${safeJson(model)}</script><script type="application/json" id="lb-links">${safeJson(attachmentLinks(model, reportDir, options.attachmentLinks))}</script>${focus ? `<script>location.hash='test='+encodeURIComponent(${safeJson(focus.testId)})</script>` : ''}<script>${buildClientScript()}</script>
 </body></html>`;
 }

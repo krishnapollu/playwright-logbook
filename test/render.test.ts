@@ -30,6 +30,18 @@ describe('renderReport', () => {
     expect(html).toContain('<span class="meta-chip">Playwright 1.63</span>');
     expect(html).toContain('No earlier run to compare yet');
   });
+  it('keeps CI build and shortcut-help links out of the report chrome', () => {
+    const source = run('build-link');
+    source.env.ci = { provider: 'github', buildId: '42', buildUrl: 'https://github.test/build/42' };
+    const html = renderReport(buildReportModel({ run: source, summaries: [] }));
+    expect(html).not.toContain('CI build');
+    expect(html).not.toContain('Open CI build');
+    expect(html).not.toContain('Keyboard shortcuts');
+    expect(html).not.toContain('Press ? for shortcuts');
+    expect(html).not.toContain('id="lb-help"');
+    expect(html).not.toContain('id="lb-help-dialog"');
+    expect(html.indexOf('class="topbar-actions"')).toBeLessThan(html.indexOf('<nav class="brand-links"'));
+  });
   it('escapes script-breaking titles and special JSON characters', () => {
     const source = run('hostile');
     source.tests = [{ ...testRecord('x'), title: '</script><img src=x> & \u2028 \u2029 😄' }];

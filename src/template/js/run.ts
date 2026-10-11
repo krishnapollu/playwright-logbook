@@ -11,7 +11,6 @@ function renderRun(){
   ];
   for(const [name,values] of sections)cards.appendChild(h('div',{class:'section-card'},h('h3',{text:name}),...values.map(([label,value])=>h('p',{},label+': '+(value??'—')))));
   panel.appendChild(cards);
-  if(env.ci?.buildUrl)panel.appendChild(link('Open CI build',env.ci.buildUrl));
   panel.appendChild(h('h3',{class:'timeline-heading',text:'Execution timeline'}));
   panel.appendChild(h('p',{class:'timeline-description muted',text:'Approximate execution windows by worker. Select a test bar to inspect its evidence.'}));
   if((run.expectedShards??1)!==1){panel.appendChild(h('p',{class:'empty',text:'Timeline is unavailable for sharded runs.'}));return}
