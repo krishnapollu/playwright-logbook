@@ -26,7 +26,11 @@ It works with the Playwright setup you already have. There is no hosted service,
 - [Use it in CI](#use-it-in-ci) · [Portable CI run bundles](#portable-ci-run-bundles) · [Terminal commands](#terminal-commands)
 - [Reporter options](#reporter-options) · [Attachments and privacy](#attachments-and-privacy) · [What happens to your data?](#what-happens-to-your-data) · [Documentation](#documentation)
 
-![Playwright Logbook dark report](docs/img/report-dark.png)
+<picture>
+  <source media="(max-width: 600px)" srcset="docs/img/report-mobile.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/report-dark.png">
+  <img src="docs/img/report-light.png" alt="Playwright Logbook report overview showing run results, recent changes, failures, and pass-rate history">
+</picture>
 
 ## Why teams use it
 
