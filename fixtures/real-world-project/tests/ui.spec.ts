@@ -12,15 +12,21 @@ test.describe('checkout @smoke', () => {
   });
 
   test('assertion mismatch', async ({ page }) => {
-    await page.goto('data:text/html,<h1>Total: 10</h1>');
-    await test.step('check displayed total', async () => {
+    await test.step('open receipt showing the wrong total', async () => {
+      await page.goto('data:text/html,<h1>Total: 10</h1>');
+    });
+    await test.step('compare displayed and expected totals', async () => {
       await expect(page.getByRole('heading')).toHaveText('Total: 20');
     });
   });
 
   test('locator timeout', async ({ page }) => {
-    await page.goto('data:text/html,<h1>Waiting</h1>');
-    await expect(page.getByRole('button', { name: 'Never appears' })).toBeVisible({ timeout: 350 });
+    await test.step('open checkout without the action button', async () => {
+      await page.goto('data:text/html,<h1>Waiting</h1>');
+    });
+    await test.step('wait for the missing action button', async () => {
+      await expect(page.getByRole('button', { name: 'Never appears' })).toBeVisible({ timeout: 350 });
+    });
   });
 
   test('flaky retry succeeds', async ({ page }, testInfo) => {

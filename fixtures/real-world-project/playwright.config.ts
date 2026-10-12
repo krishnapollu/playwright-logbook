@@ -8,7 +8,7 @@ export default defineConfig({
   timeout: 5_000,
   expect: { timeout: 500 },
   outputDir: 'test-results',
-  reporter: [['../../dist/index.js', { outputDir: '.logbook', autoReport: true, captureDetails: true }]],
+  reporter: [['../../dist/index.js', { title: 'Playwright showcase', outputDir: '.logbook', autoReport: true, captureDetails: true }]],
   projects: [
     {
       name: 'chromium-ui',

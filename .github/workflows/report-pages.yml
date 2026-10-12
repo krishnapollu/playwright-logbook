@@ -1,0 +1,75 @@
+name: Report showcase
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: report-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - uses: actions/cache@v6
+        with:
+          path: |
+            fixtures/real-world-project/.logbook/runs
+            fixtures/real-world-project/.logbook/index.jsonl
+          key: report-showcase-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: report-showcase-
+      - name: Run the intentionally failing showcase suite
+        working-directory: fixtures/real-world-project
+        env:
+          LOGBOOK_RUN_ID: pages-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set +e
+          node ../../node_modules/@playwright/test/cli.js test
+          status=$?
+          set -e
+          test "$status" -eq 1
+          node --input-type=module -e '
+            import assert from "node:assert/strict";
+            import { readFileSync } from "node:fs";
+            const run = JSON.parse(readFileSync(`.logbook/runs/${process.env.LOGBOOK_RUN_ID}.json`, "utf8"));
+            assert.equal(run.complete, true);
+            assert.deepEqual(run.summary, { total: 7, passed: 3, failed: 2, flaky: 1, skipped: 1 });
+          '
+      - name: Stage the standalone report and its synthetic artifacts
+        working-directory: fixtures/real-world-project
+        env:
+          LOGBOOK_RUN_ID: pages-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          node ../../dist/cli/bin.js report --run "$LOGBOOK_RUN_ID" --out index.html --no-timestamp
+          mkdir -p ../../.pages-site
+          cp index.html ../../.pages-site/index.html
+          cp -R test-results ../../.pages-site/test-results
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: .pages-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

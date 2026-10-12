@@ -134,6 +134,10 @@ The merge creates `.logbook/report/index.html` and updates local history. Persis
 
 See [CI recipes](docs/CI.md) for GitHub Actions, Azure DevOps, artifact retention, and Playwright blob-report workflows.
 
+### Public report showcase
+
+The [report showcase workflow](.github/workflows/report-pages.yml) runs the synthetic UI/API fixture on pushes to `main` or by manual dispatch, then publishes its Logbook HTML report and test artifacts to GitHub Pages. The suite deliberately produces two failures and one flaky test so those report views stay populated; the workflow checks that exact outcome before deploying. Enable **Settings → Pages → Build and deployment → GitHub Actions** in the repository first. The published page is `https://krishnapollu.github.io/playwright-logbook/` after the first successful deployment. Cached run history adds trend points across runs when the cache is available.
+
 ## Portable CI run bundles
 
 Export a saved run as a ZIP and import runs from other machines into existing local history. Optional file attachments include screenshots, videos, traces, and custom logs. See [setup, CI recipe, and import behavior](docs/RUN-BUNDLES.md). Bundle support requires **playwright-logbook 0.3.0 or newer**.

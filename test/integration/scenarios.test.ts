@@ -13,7 +13,7 @@ const temporary: string[] = [];
 interface Attachment { name: string; contentType: string; path: string | null }
 interface Attempt { retry: number; status: string; attachments: Attachment[]; steps?: { title: string; failed: boolean }[]; stdout?: string | null }
 interface TestCase { title: string; project: string; expectedStatus: string; outcome: string; status: string; tags: string[]; caseIds: string[]; attempts: Attempt[] }
-interface Run { summary: { total: number; passed: number; failed: number; flaky: number; skipped: number }; tests: TestCase[] }
+interface Run { title: string; summary: { total: number; passed: number; failed: number; flaky: number; skipped: number }; tests: TestCase[] }
 
 afterEach(async () => {
   for (const directory of temporary.splice(0)) await fs.rm(directory, { recursive: true, force: true });
@@ -37,11 +37,13 @@ it('captures a real Playwright UI/API, retry, trace and artifact matrix without 
     expect(test, `missing ${title}`).toBeDefined();
     return test!;
   };
+  expect(run.title).toBe('Playwright showcase');
   expect(run.summary).toEqual({ total: 7, passed: 3, failed: 2, flaky: 1, skipped: 1 });
   expect(byTitle('validates an API payload without a browser @contract')).toMatchObject({ project: 'api-contract', outcome: 'expected', status: 'passed' });
   expect(byTitle('renders receipt @critical')).toMatchObject({ project: 'chromium-ui', tags: ['@critical', '@smoke'], caseIds: ['SHOP-42'] });
   expect(byTitle('renders receipt @critical').attempts[0]?.steps?.some((step) => step.title === 'verify receipt')).toBe(true);
   expect(byTitle('assertion mismatch')).toMatchObject({ outcome: 'unexpected', status: 'failed' });
+  expect(byTitle('assertion mismatch').attempts[0]?.steps?.some((step) => step.title === 'compare displayed and expected totals' && step.failed)).toBe(true);
   expect(byTitle('locator timeout')).toMatchObject({ outcome: 'unexpected', status: 'failed' });
   expect(byTitle('flaky retry succeeds').attempts.map((attempt) => attempt.status)).toEqual(['failed', 'passed']);
   expect(byTitle('flaky retry succeeds').attempts[0]?.stdout).toContain('flaky attempt 0');
