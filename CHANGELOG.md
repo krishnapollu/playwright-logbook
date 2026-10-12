@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.7
+
+- Restore the status bar without the duplicate pass and fail summary text.
+- Show shard counts only for sharded or incomplete runs, with clearer labels for planned and received parts.
+
+## 0.3.6
+
+- Use one report title in the HTML overview, with the package project name as the fallback.
+
+## 0.3.5
+
+- Add named light and dark report themes, a customizable run-history chart, and the reporter-only Performance tab with test and retry timing insights.
+
+## 0.3.4
+
+- Improve report overview, failure scanning, status and history labels, tables, and test detail layout.
+- Add Ivory and GitHub color palettes for light and dark modes.
+
 ## 0.3.3
 
 - Add dated per-test history and execution comparison to the offline HTML report.

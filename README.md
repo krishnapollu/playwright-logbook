@@ -66,6 +66,8 @@ npx playwright test
 
 Then open `.logbook/report/index.html`. The report is a single local HTML file and works without a server.
 
+The **Performance** tab works with this reporter setup: it shows median and 95th-percentile test duration, retry time, run wall time, and the slowest tests. Set `captureDetails: true` in the reporter options to include longest recorded steps. Browser navigation, network, and Web Vitals measurements are not captured by this setup.
+
 ## VS Code extension
 
 Install [Playwright Logbook for VS Code](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode) alongside the reporter. Run your tests, then open **Logbook** in VS Code's activity bar. Open the folder containing your Playwright configuration; the extension reads its `.logbook/` history. It requires desktop VS Code 1.95+.

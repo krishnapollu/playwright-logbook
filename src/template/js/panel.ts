@@ -1,9 +1,11 @@
 export const PANEL_JS = `
 let panelShown='',comparisonBaseline='';
 function renderPanel(){
-  const panel=document.getElementById('lb-panel'),backdrop=document.getElementById('lb-backdrop');
+  const panel=document.getElementById('lb-panel');
   const content=document.getElementById('lb-panel-content'),test=byId.get(state.test);
-  panel.hidden=!test;backdrop.hidden=!test;if(!test){panelShown='';return}
+  if(!test){if(panel.open)panel.close();panel.removeAttribute('open');panelShown='';return}
+  if(document.body.classList.contains('focused-report')){panel.setAttribute('open','');panel.removeAttribute('aria-modal')}
+  else {panel.setAttribute('aria-modal','true');if(!panel.open)panel.showModal()}
   clear(content);
   const heading=document.getElementById('lb-panel-heading');heading.textContent=test.title;
   panel.dataset.status=statusKind(test);
@@ -83,7 +85,7 @@ function renderPanel(){
     const button=sameRevision?null:h('button',{class:'button',type:'button','aria-pressed':String(comparisonBaseline===entry.runId),text:'Compare'});
     button?.addEventListener('click',()=>{comparisonBaseline=entry.runId;renderPanel();document.getElementById('lb-test-comparison')?.scrollIntoView({block:'center'})});
     content.appendChild(h('div',{class:'test-history-row'},h('span',{},chip(entry.outcome==='flaky'?'flaky':entry.status==='timedOut'?'failed':entry.status)),
-      h('span',{text:entry.startedAt.replace('T',' ').slice(0,19)+' UTC · '+entry.runId+(entry.branch?' · '+entry.branch:'')+(entry.complete?'':' · incomplete')}),
+      h('span',{},h('time',{datetime:entry.startedAt,title:entry.startedAt,text:fmtDate(entry.startedAt)}),' · '+entry.runId+(entry.branch?' · '+entry.branch:'')+(entry.complete?'':' · incomplete')),
       h('span',{text:formatDuration(entry.durationMs)}),button||h('small',{class:'muted',text:'Same commit'})));
   }
   const baseline=history.find(entry=>entry.runId===comparisonBaseline);
@@ -104,7 +106,7 @@ function renderPanel(){
   if(fresh)heading.focus();
 }
 function comparisonSide(label,result,meta){const card=h('section',{class:'comparison-side'},h('h4',{text:label+' · '+meta.runId}),
-  h('p',{class:'muted',text:meta.startedAt.replace('T',' ').slice(0,19)+' UTC · '+(meta.branch||'Branch unknown')+' · '+(meta.complete?'Complete':'Incomplete')}),
+  h('p',{class:'muted'},h('time',{datetime:meta.startedAt,title:meta.startedAt,text:fmtDate(meta.startedAt)}),' · '+(meta.branch||'Branch unknown')+' · '+(meta.complete?'Complete':'Incomplete')),
   chip(result.outcome==='flaky'?'flaky':result.status==='timedOut'?'failed':result.status));
   for(const [name,value] of [['Expected status',result.expectedStatus],['Outcome',result.outcome],['Project',result.project||'Unknown'],['Source',result.file+':'+result.line],['Commit',meta.commit||'Unknown']])
     card.appendChild(h('p',{},h('strong',{text:name+' · '}),String(value)));

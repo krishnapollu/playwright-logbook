@@ -19,7 +19,12 @@ describe('client helpers', () => {
   it('round-trips hash state and ignores invalid values', () => {
     const state = lib.parseHash('#tab=failures&q=save&status=failed,flaky&project=mobile&sort=slowest&group=file&changed=1&test=x&attempt=2');
     expect(lib.parseHash(lib.buildHash(state))).toEqual(state);
-    expect(lib.parseHash('#tab=bogus&status=bad&sort=oops&attempt=-2')).toMatchObject({ tab: 'tests', status: [], sort: 'default', attempt: 0 });
+    expect(lib.parseHash('#tab=bogus&status=bad&sort=oops&attempt=-2')).toMatchObject({ tab: 'overview', status: [], sort: 'default', attempt: 0 });
+    expect(lib.parseHash('#tab=tests&q=save')).toMatchObject({ tab: 'tests', q: 'save' });
+    expect(lib.parseHash('#tab=perf')).toMatchObject({ tab: 'perf' });
+    expect(lib.parseHash('#q=save')).toMatchObject({ tab: 'tests', q: 'save' });
+    expect(lib.parseHash(lib.buildHash(lib.parseHash('#tab=overview&q=save')))).toMatchObject({ tab: 'overview', q: 'save' });
+    expect(lib.parseHash('')).toMatchObject({ tab: 'overview' });
     expect(lib.buildHash(lib.parseHash(''))).toBe('');
   });
   it('filters, sorts, groups, and classifies timing', () => {
