@@ -272,7 +272,8 @@ test('offline report navigation and debugging', async ({ page }) => {
   await page.goto(report);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(page.locator('#lb-header')).toBeVisible();
-  await expect(page.locator('#lb-header .eyebrow')).toContainText('demo');
+  await expect(page.locator('#lb-header h1')).toHaveText('Demo suite');
+  await expect(page.locator('#lb-header .eyebrow')).toHaveText('80 tests in this run');
   const brandLinks = page.getByRole('navigation', { name: 'Logbook links' }).getByRole('link');
   await expect(brandLinks).toHaveCount(3);
   await expect(brandLinks.nth(0)).toHaveAttribute('href', 'https://github.com/krishnapollu/playwright-logbook');

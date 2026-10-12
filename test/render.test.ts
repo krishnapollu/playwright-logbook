@@ -21,7 +21,9 @@ describe('renderReport', () => {
     expect(html).toContain('id="lb-overview-content"');
     expect(html).toContain('id="nav-overview"');
     expect(html).toContain('id="lb-header"');
-    expect(html).toContain('Project <strong>sample</strong>');
+    expect(html).toContain('<h1>sample</h1>');
+    expect(html).toContain('1 test in this run');
+    expect(html).not.toContain('Project <strong>sample</strong>');
     expect(html).toContain('Run report-run');
     expect(html).toContain('<time datetime="2026-01-01T00:00:00.000Z" title="2026-01-01T00:00:00.000Z">01 Jan 2026, 00:00 UTC</time>');
     expect(html).not.toContain('Environment details');
@@ -29,6 +31,16 @@ describe('renderReport', () => {
     expect(html).toContain('<span class="meta-chip">Shards 1/1</span>');
     expect(html).toContain('<span class="meta-chip">Playwright 1.63</span>');
     expect(html).toContain('No earlier run to compare yet');
+  });
+  it('uses the configured report title once and falls back to the project name', () => {
+    const source = run('named');
+    source.title = 'Nightly regression';
+    const named = renderReport(buildReportModel({ run: source, summaries: [] }));
+    expect(named).toContain('<h1>Nightly regression</h1>');
+    expect(named).toContain('class="topbar-title">Nightly regression / run named');
+    expect(named).not.toContain('Project <strong>sample</strong>');
+    source.title = null;
+    expect(renderReport(buildReportModel({ run: source, summaries: [] }))).toContain('<h1>sample</h1>');
   });
   it('keeps CI build and shortcut-help links out of the report chrome', () => {
     const source = run('build-link');

@@ -52,7 +52,8 @@ function comparison(model: ReportModel): string {
 /** Render a self-contained, offline HTML report. */
 export function renderReport(model: ReportModel, options: { title?: string; reportDir?: string; attachmentLinks?: Record<string, string>; focusTest?: TestRecord } = {}): string {
   const run = model.run;
-  const title = options.title ?? options.focusTest?.title ?? run.title ?? 'Playwright Logbook';
+  const projectName = run.project.name || 'Playwright Logbook';
+  const title = options.title ?? options.focusTest?.title ?? run.title ?? projectName;
   const focus = options.focusTest;
   const reportDir = options.reportDir ?? path.posix.join(run.paths.outputDir, 'report');
   const labels: Record<string, string> = { overview: 'Overview', tests: 'Tests', failures: 'Failures', flaky: 'Flaky', trends: 'Trends', perf: 'Performance', run: 'Run & timeline', project: 'Project' };
@@ -61,7 +62,6 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
   const panels = tabs.slice(1).map((tab) => `<section class="panel" id="tab-${tab}" aria-labelledby="nav-${tab}" hidden></section>`).join('');
   const missing = Array.from({ length: run.expectedShards ?? 1 }, (_, index) => index + 1).filter((number) => !run.receivedShards.includes(number));
   const banner = run.complete ? '' : `<p class="banner" role="status"><strong>Incomplete run.</strong> Missing shards ${missing.join(', ') || 'unknown'}. Counts and comparisons may be partial.</p>`;
-  const projectName = run.project.name || 'Unnamed project';
   const meta = [
     run.env.git.branch && `<span class="meta-chip">Branch ${escapeHtml(run.env.git.branch)}</span>`,
     run.env.git.commit && `<span class="meta-chip mono" title="${escapeHtml(run.env.git.commit)}">Commit ${escapeHtml(run.env.git.commit.slice(0, 7))}<button class="meta-chip-copy" type="button" aria-label="Copy full commit SHA" data-copy-sha="${escapeHtml(run.env.git.commit)}"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M8 5h12v15H8zM4 16V3h12"/></svg></button></span>`,
@@ -83,7 +83,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
 <body${focus ? ' class="focused-report"' : ''}>
 <a class="skip-link" href="#main-content">Skip to report content</a>
 <header class="topbar"><div class="topbar-inner">
-  <span class="wordmark">logbook</span><span class="topbar-title">${escapeHtml(focus?.title ?? projectName + ' / run ' + run.runId)}</span>
+  <span class="wordmark">logbook</span><span class="topbar-title">${escapeHtml(title + ' / run ' + run.runId)}</span>
   <div class="topbar-actions">
     <div class="theme-wrap">
       <button id="lb-theme" class="btn btn-icon" type="button" aria-label="Choose report theme" aria-controls="lb-theme-popover" aria-expanded="false" title="Choose report theme"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M20 15a8 8 0 0 1-11-11 8 8 0 1 0 11 11"/></svg></button>
@@ -112,7 +112,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
     <p id="lb-error" class="error-banner" hidden></p>
     <section class="panel overview-panel" id="tab-overview" aria-labelledby="nav-overview" hidden>
       <header id="lb-header" class="overview-header"><div>
-        <p class="eyebrow">Project <strong>${escapeHtml(projectName)}</strong> · ${run.summary.total} tests</p>
+        <p class="eyebrow">${run.summary.total} ${run.summary.total === 1 ? 'test' : 'tests'} in this run</p>
         <div class="overview-title-row"><h1>${escapeHtml(title)}</h1><span class="status-chip ${statusKind}">${statusLabel}</span></div>
         <div class="overview-meta-row">
           <span class="meta-chip">Run ${escapeHtml(run.runId)}</span>

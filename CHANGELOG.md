@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.6
+
+- Use one report title in the HTML overview, with the package project name as the fallback.
+
 ## 0.3.5
 
 - Add named light and dark report themes, a customizable run-history chart, and the reporter-only Performance tab with test and retry timing insights.
