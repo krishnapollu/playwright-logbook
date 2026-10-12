@@ -13,7 +13,7 @@
   <a href="https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode"><img src="https://img.shields.io/badge/VS_Code-Install_Logbook-007ACC" alt="Install Playwright Logbook for VS Code"></a>
 </p>
 
-**[Install from npm](https://www.npmjs.com/package/playwright-logbook)** · **[VS Code extension](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode)** · **[View the source on GitHub](https://github.com/krishnapollu/playwright-logbook)**
+**[Install from npm](https://www.npmjs.com/package/playwright-logbook)** · **[VS Code extension](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode)** · **[Live HTML report](https://krishnapollu.github.io/playwright-logbook/)** · **[View the source on GitHub](https://github.com/krishnapollu/playwright-logbook)**
 
 Playwright Logbook turns every test run into a searchable, self-contained report with failure details, retry history, flaky-test tracking, project views, and CI-friendly summaries. It also gives coding agents focused evidence from a selected failure and its history, helping them investigate likely causes and evaluate proposed fixes across runs.
 
@@ -136,7 +136,7 @@ See [CI recipes](docs/CI.md) for GitHub Actions, Azure DevOps, artifact retentio
 
 ### Public report showcase
 
-The [report showcase workflow](.github/workflows/report-pages.yml) runs the synthetic UI/API fixture on pushes to `main` or by manual dispatch, then publishes its Logbook HTML report and test artifacts to GitHub Pages. The suite deliberately produces two failures and one flaky test so those report views stay populated; the workflow checks that exact outcome before deploying. Enable **Settings → Pages → Build and deployment → GitHub Actions** in the repository first. The published page is `https://krishnapollu.github.io/playwright-logbook/` after the first successful deployment. Cached run history adds trend points across runs when the cache is available.
+The [report showcase workflow](.github/workflows/report-pages.yml) runs the synthetic UI/API fixture on pushes to `main` or by manual dispatch, then publishes its Logbook HTML report and test artifacts to GitHub Pages. The suite deliberately produces two failures and one flaky test so those report views stay populated; the workflow checks that exact outcome before deploying. Open the [live report](https://krishnapollu.github.io/playwright-logbook/). Cached run history adds trend points across runs when the cache is available.
 
 ## Portable CI run bundles
 
