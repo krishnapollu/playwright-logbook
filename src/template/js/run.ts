@@ -7,7 +7,7 @@ function renderRun(){
     ['Git',[['Branch',env.git.branch],['Commit',env.git.commit],['PR',env.git.prNumber]]],
     ['Machine',[['OS',env.machine.os],['Architecture',env.machine.arch],['Node',env.machine.node],['CPUs',env.machine.cpus]]],
     ['Playwright',[['Version',env.playwrightVersion],['Workers',env.workers]]],
-    ['Shards',[['Expected',run.expectedShards],['Received',run.receivedShards.join(', ')]]]
+    ...((run.expectedShards??1)>1||!run.complete?[['Shards',[['Expected parts',run.expectedShards],['Received parts',run.receivedShards.join(', ')]]]]:[])
   ];
   for(const [name,values] of sections)cards.appendChild(h('div',{class:'section-card'},h('h3',{text:name}),...values.map(([label,value])=>h('p',{},label+': '+(value??'—')))));
   panel.appendChild(cards);

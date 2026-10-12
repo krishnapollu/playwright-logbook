@@ -28,7 +28,7 @@ describe('renderReport', () => {
     expect(html).toContain('<time datetime="2026-01-01T00:00:00.000Z" title="2026-01-01T00:00:00.000Z">01 Jan 2026, 00:00 UTC</time>');
     expect(html).not.toContain('Environment details');
     expect(html).toContain('<span class="meta-chip">Branch main</span>');
-    expect(html).toContain('<span class="meta-chip">Shards 1/1</span>');
+    expect(html).not.toContain('<span class="meta-chip">Shards 1/1</span>');
     expect(html).toContain('<span class="meta-chip">Playwright 1.63</span>');
     expect(html).toContain('No earlier run to compare yet');
   });
@@ -120,6 +120,7 @@ describe('renderReport', () => {
     const html = renderReport(data);
     expect(html).toContain('<span class="status-chip incomplete">INCOMPLETE</span>');
     expect(html).toContain('Incomplete run.</strong> Missing shards 2');
+    expect(html).toContain('<span class="meta-chip">Shards 1/2</span>');
     expect(html).toContain('Counts and comparisons may be partial.');
     expect(renderReport(data)).toBe(renderReport(data));
     expect(renderReport(data)).not.toContain('Generated ');

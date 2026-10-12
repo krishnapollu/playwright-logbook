@@ -253,7 +253,6 @@ body{letter-spacing:-.008em}
 @media print{:root,:root[data-theme],:root[data-theme][data-palette]{${tokensToCss('light')}color-scheme:light}body{background:var(--surface)}.topbar-actions,.tabs,.toolbar,.button,.chip-button,.panel-head button,.toast,.skip-link{display:none!important}.report-shell{display:block;max-width:none}.report-sidebar{display:none}.report-content{padding:0}.overview-panel,.panel[hidden]{display:block!important}.detail-panel{position:static;width:auto;box-shadow:none;border:0}.panel-backdrop{display:none}.section-card,tr{break-inside:avoid}a{color:var(--text)}}
 /* verdict band */
 .verdict-band{border:1px solid var(--border);border-radius:var(--r-card);background:var(--surface);padding:16px 18px;margin:0 0 14px}
-.verdict-copy{margin:0 0 12px;font-size:var(--t-lg);font-weight:600}
 .seg-bar{display:flex;height:22px;border-radius:var(--r-pill);overflow:hidden;background:var(--surface-2);margin:0 0 10px}
 .seg-bar button{height:100%;min-width:6px;border:0;padding:0;cursor:pointer;transition:filter 120ms}
 .seg-bar button:hover{filter:brightness(.85)}

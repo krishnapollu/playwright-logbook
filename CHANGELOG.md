@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.7
+
+- Restore the status bar without the duplicate pass and fail summary text.
+- Show shard counts only for sharded or incomplete runs, with clearer labels for planned and received parts.
+
 ## 0.3.6
 
 - Use one report title in the HTML overview, with the package project name as the fallback.

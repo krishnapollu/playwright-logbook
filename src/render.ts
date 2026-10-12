@@ -66,7 +66,7 @@ export function renderReport(model: ReportModel, options: { title?: string; repo
     run.env.git.branch && `<span class="meta-chip">Branch ${escapeHtml(run.env.git.branch)}</span>`,
     run.env.git.commit && `<span class="meta-chip mono" title="${escapeHtml(run.env.git.commit)}">Commit ${escapeHtml(run.env.git.commit.slice(0, 7))}<button class="meta-chip-copy" type="button" aria-label="Copy full commit SHA" data-copy-sha="${escapeHtml(run.env.git.commit)}"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M8 5h12v15H8zM4 16V3h12"/></svg></button></span>`,
     run.env.git.prNumber && `<span class="meta-chip">PR #${run.env.git.prNumber}</span>`,
-    `<span class="meta-chip">Shards ${run.receivedShards.length}/${run.expectedShards ?? 1}</span>`,
+    ((run.expectedShards ?? 1) > 1 || !run.complete) && `<span class="meta-chip">Shards ${run.receivedShards.length}/${run.expectedShards ?? '?'}</span>`,
     `<span class="meta-chip">Playwright ${escapeHtml(run.env.playwrightVersion)}</span>`,
     `<span class="meta-chip">Workers ${run.env.workers}</span>`,
   ].filter(Boolean).join('');

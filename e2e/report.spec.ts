@@ -282,7 +282,8 @@ test('offline report navigation and debugging', async ({ page }) => {
   for (const link of await brandLinks.all()) await expect(link.locator('svg')).toHaveCount(1);
   await expect(page.getByRole('region', { name: 'Changes since previous run' })).toBeVisible();
   await expect(page.locator('#lb-cards')).toBeVisible();
-  await expect(page.locator('.verdict-copy')).toHaveText('4 failed (1 new) · 3 flaky · 72 passed · 1 skipped.');
+  await expect(page.locator('.verdict-copy')).toHaveCount(0);
+  await expect(page.locator('#lb-cards .seg-legend')).toContainText('Failed 4');
   await expect(page.locator('.sparkline-value')).toContainText('demo-12');
   await expect(page.locator('.spark-delta')).toContainText('vs demo-11');
   await expect(page.getByRole('navigation', { name: 'Report sections' })).toBeVisible();
@@ -454,12 +455,15 @@ test('history charts and flaky matrix mark incomplete and sharded data unavailab
     await expect(page.locator('#tab-flaky .flaky-matrix .matrix-cell').nth(2)).toHaveText('—');
     await page.locator('[data-tab="run"]').click();
     await expect(page.locator('#tab-run')).toContainText('Timeline is unavailable for sharded runs.');
+    await expect(page.locator('#tab-run')).toContainText('Expected parts: 2');
+    await expect(page.locator('#tab-run')).toContainText('Received parts: 1');
     const unsharded = run('unsharded', '2026-01-04T00:00:00.000Z');
     unsharded.tests = [{ ...testRecord('timed'), durationMs: 20, attemptCount: 1, attempts: [{ retry: 0, status: 'passed', durationMs: 20, startedAt: unsharded.startedAt, workerIndex: 2, errors: [], attachments: [] }] }];
     const unshardedFile = path.join(directory, 'unsharded.html');
     await fs.writeFile(unshardedFile, renderReport(buildReportModel({ run: unsharded, summaries: [] })));
     await page.goto(pathToFileURL(unshardedFile).href);
     await page.locator('[data-tab="run"]').click();
+    await expect(page.locator('#tab-run .run-meta-grid')).not.toContainText('Shards');
     await expect(page.locator('#tab-run .timeline')).toBeVisible();
     await expect(page.locator('#tab-run .timeline-wrap')).toBeVisible();
     await expect(page.locator('#tab-run .timeline .worker-lane')).toHaveCount(1);
