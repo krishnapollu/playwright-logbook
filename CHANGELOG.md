@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.5
+
+- Add named light and dark report themes, a customizable run-history chart, and the reporter-only Performance tab with test and retry timing insights.
+
 ## 0.3.4
 
 - Improve report overview, failure scanning, status and history labels, tables, and test detail layout.
