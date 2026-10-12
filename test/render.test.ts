@@ -46,8 +46,7 @@ describe('renderReport', () => {
     const source = run('build-link');
     source.env.ci = { provider: 'github', buildId: '42', buildUrl: 'https://github.test/build/42' };
     const html = renderReport(buildReportModel({ run: source, summaries: [] }));
-    expect(html).not.toContain('CI build');
-    expect(html).not.toContain('Open CI build');
+    expect(html).not.toContain('<a href="https://github.test/build/42"');
     expect(html).not.toContain('Keyboard shortcuts');
     expect(html).not.toContain('Press ? for shortcuts');
     expect(html).not.toContain('id="lb-help"');

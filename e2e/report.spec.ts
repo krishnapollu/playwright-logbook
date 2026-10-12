@@ -17,6 +17,33 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const report = pathToFileURL(path.join(root, '.logbook-demo', 'report', 'index.html')).href;
 const loadPackage = createRequire(import.meta.url);
 
+test('Run view shows CI details and a safe build link only for CI runs', async ({ page }) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-ci-report-'));
+  try {
+    const source = run('ci-report');
+    const file = path.join(directory, 'index.html');
+    let version = 0;
+    const open = async () => {
+      await fs.writeFile(file, renderReport(buildReportModel({ run: source, summaries: [] })));
+      await page.goto(pathToFileURL(file).href + '?v=' + version++ + '#tab=run');
+      await expect(page.locator('#lb-error')).toBeHidden();
+    };
+    await open();
+    await expect(page.locator('#tab-run .run-meta-grid')).not.toContainText('Build ID');
+    await expect(page.getByRole('link', { name: 'Open CI build' })).toHaveCount(0);
+
+    source.env.ci = { provider: 'github', buildId: '42', buildUrl: 'https://github.com/org/repo/actions/runs/42' };
+    await open();
+    await expect(page.locator('#tab-run .run-meta-grid')).toContainText('Build ID: 42');
+    await expect(page.getByRole('link', { name: 'Open CI build' })).toHaveAttribute('href', source.env.ci.buildUrl!);
+
+    source.env.ci.buildUrl = 'javascript:alert(1)';
+    await open();
+    await expect(page.locator('#tab-run .run-meta-grid')).toContainText('Build ID: 42');
+    await expect(page.getByRole('link', { name: 'Open CI build' })).toHaveCount(0);
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
 test('performance view calculates test and retry timings from the run', async ({ page }) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-perf-browser-'));
   try {

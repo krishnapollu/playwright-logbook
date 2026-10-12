@@ -3,13 +3,18 @@ function renderRun(){
   const panel=document.getElementById('tab-run');clear(panel);panel.appendChild(h('h2',{text:'Run details'}));
   const run=model.run,env=run.env,cards=h('div',{class:'grid-cards run-meta-grid'});
   const sections=[
-    ['CI',[['Provider',env.ci?.provider],['Build ID',env.ci?.buildId]]],
+    ...(env.ci?[['CI',[['Provider',env.ci.provider],['Build ID',env.ci.buildId]]]]:[]),
     ['Git',[['Branch',env.git.branch],['Commit',env.git.commit],['PR',env.git.prNumber]]],
     ['Machine',[['OS',env.machine.os],['Architecture',env.machine.arch],['Node',env.machine.node],['CPUs',env.machine.cpus]]],
     ['Playwright',[['Version',env.playwrightVersion],['Workers',env.workers]]],
     ...((run.expectedShards??1)>1||!run.complete?[['Shards',[['Expected parts',run.expectedShards],['Received parts',run.receivedShards.join(', ')]]]]:[])
   ];
-  for(const [name,values] of sections)cards.appendChild(h('div',{class:'section-card'},h('h3',{text:name}),...values.map(([label,value])=>h('p',{},label+': '+(value??'—')))));
+  for(const [name,values] of sections){
+    const card=h('div',{class:'section-card'},h('h3',{text:name}),...values.map(([label,value])=>h('p',{},label+': '+(value??'—'))));
+    const url=env.ci?.buildUrl;
+    if(name==='CI'&&url&&new RegExp('^https?://','i').test(url)&&safeHref(url))card.appendChild(link('Open CI build',url));
+    cards.appendChild(card);
+  }
   panel.appendChild(cards);
   panel.appendChild(h('h3',{class:'timeline-heading',text:'Execution timeline'}));
   panel.appendChild(h('p',{class:'timeline-description muted',text:'Approximate execution windows by worker. Select a test bar to inspect its evidence.'}));
