@@ -337,16 +337,14 @@ body.vscode-high-contrast .origin-pill, body.vscode-high-contrast-light .origin-
 .skip-reasons li + li { margin-top: 6px; }
 .skip-card { border-top-color: var(--rule); }
 
-/* Keep recorded detail regions steady as steps, logs, and history grow. */
-body[data-selection] .summary-card { height: clamp(220px, 32vh, 360px); overflow-y: auto; }
-body[data-selection] .error-card { height: clamp(180px, 24vh, 280px); overflow-y: auto; }
+/* Keep evidence and history steady without clipping summary or failure details. */
+body[data-selection] { padding-bottom: 12px; }
+body[data-selection] .detail-grid { align-items: stretch; }
 body[data-selection] .attempts-card { height: clamp(300px, 52vh, 620px); display: flex; flex-direction: column; }
-body[data-selection] .history,
-body[data-selection] .diagnostics > section:only-child { height: clamp(300px, 80vh, 920px); }
-body[data-selection] .history,
-body[data-selection] .diagnostics > .error-card:only-child { overflow-y: auto; }
+body[data-selection] .history { height: 0; min-height: 100%; overflow-y: auto; }
+@media (max-width: 700px) { body[data-selection] .history { height: clamp(300px, 52vh, 620px); min-height: 0; } }
 body[data-selection] .attempt-workspace,
 body[data-selection] .attempt-workspace > [role="tabpanel"],
 body[data-selection] .evidence-workspace { display: flex; flex: 1; flex-direction: column; min-height: 0; }
-body[data-selection] .evidence-workspace > [role="tabpanel"] { flex: 1; min-height: 0; overflow-y: auto; }
+body[data-selection] .evidence-workspace > [role="tabpanel"] { position: relative; flex: 1; min-height: 0; overflow-y: auto; }
 body[data-selection] .evidence-workspace pre { max-height: none; }
