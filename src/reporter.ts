@@ -66,7 +66,10 @@ export class LogbookReporter {
     try {
       this.config = config;
       this.suite = suite;
-      this.root = config.configFile ? path.dirname(config.configFile) : (this.deps.cwd ?? process.cwd)();
+      const configDir = config.configFile ? path.dirname(config.configFile) : undefined;
+      this.root = configDir
+        ? (path.basename(configDir) === 'config' ? path.dirname(configDir) : configDir)
+        : (this.deps.cwd ?? process.cwd)();
       this.startedAt = (this.deps.clock ?? (() => new Date()))();
       this.detected = detectEnv({ ...this.deps, root: this.root, runId: this.options.runId });
     } catch (error) { this.warning(error); }

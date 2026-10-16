@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const compare = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0;
 
-/** Find default stores one directory below a workspace root or under packages/. */
+/** Find default stores in child suites, packages, and their config/ directories. */
 export async function discoverPackageRoots(root: string): Promise<string[]> {
   const entries = await fs.readdir(root, { withFileTypes: true });
   const candidates: string[] = [];
@@ -27,10 +27,13 @@ export async function discoverPackageRoots(root: string): Promise<string[]> {
   }
   const found: string[] = [];
   for (const candidate of candidates) {
-    try {
-      if ((await fs.lstat(path.join(candidate, '.logbook'))).isDirectory()) found.push(candidate);
-    } catch (error) {
-      if (!(typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT')) throw error;
+    for (const directory of [candidate, path.join(candidate, 'config')]) {
+      try {
+        if (directory !== candidate && !(await fs.lstat(directory)).isDirectory()) continue;
+        if ((await fs.lstat(path.join(directory, '.logbook'))).isDirectory()) found.push(directory);
+      } catch (error) {
+        if (!(typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT')) throw error;
+      }
     }
   }
   return found.sort((left, right) => compare(left, right));

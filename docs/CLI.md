@@ -15,11 +15,12 @@ Both `logbook` and `playwright-logbook` invoke the same CLI. Run `npx playwright
 | `import` | `--from <file...>`, `--dry-run`, `--project-id <key>` | Ingest distinct bundled runs into existing history with duplicate/conflict checks |
 | `ci list` | `--repo <owner/repo>`, `--artifact-name <name>` | List up to 100 recent unexpired matching GitHub Actions artifacts |
 | `ci fetch` | `--repo <owner/repo>`, `--artifact-name <name>`, `--project-id <key>` on first import | Fetch the newest matching artifact and import its Logbook ZIP into local history |
-| `discover` | `--json` | List default `.logbook` stores in direct child suites and `packages/*` |
+| `discover` | `--json` | List default `.logbook` stores in direct child suites, `packages/*`, and their `config/` directories |
 
 `discover` uses `--root` as the workspace root and prints project-relative paths.
 It does not infer package-specific custom output directories from `--output-dir`.
 Open a suite as its own workspace root when using a custom history path.
+It also finds older default stores beside configs under a suite's `config/` directory.
 
 `export` and `import` require 0.3.0 or newer. Bundle import is distinct from shard
 merge. See [portable run bundles](RUN-BUNDLES.md) for project binding, validation,

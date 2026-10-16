@@ -74,7 +74,9 @@ The **Performance** tab works with this reporter setup: it shows median and 95th
 
 ## VS Code extension
 
-Install [Playwright Logbook for VS Code](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode) alongside the reporter. Run your tests, then open **Logbook** in VS Code's activity bar. Open the folder containing your Playwright configuration; the extension reads its `.logbook/` history. It requires desktop VS Code 1.95+.
+Install [Playwright Logbook for VS Code](https://marketplace.visualstudio.com/items?itemName=krishnapollu.playwright-logbook-vscode) alongside the reporter. Run your tests, then open **Logbook** in VS Code's activity bar. Open the suite or workspace root containing its `.logbook/` history. It requires desktop VS Code 1.95+.
+
+For a monorepo, open the workspace root. A config at `packages/tenant-1/config/playwright-config.js` writes history to `packages/tenant-1/.logbook/`, which appears under `packages/tenant-1` in the Runs tree. Invoke Playwright with `--config packages/tenant-1/config/playwright-config.js` for that custom filename.
 
 - **Find a run or test:** Filter Recent Runs by status, branch, test name, ID, project, or path. You can also filter to a spec or test from the editor. Open a run overview for counts and project breakdowns.
 - **Browse tests across runs:** Switch the sidebar to Tests to see each folder's indexed test count and open the newest loaded execution for history and comparison.

@@ -302,7 +302,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
         store.watchers.push(watcher, watcher.onDidCreate(update), watcher.onDidChange(update), watcher.onDidDelete(update));
       }
     }
-    // Default stores in direct child suites and packages/* share the CLI discovery rule.
+    // Default stores in child suites, packages/*, and their config/ directories share the CLI discovery rule.
     for (const rootFolder of vscode.workspace.workspaceFolders ?? []) {
       if (rootFolder.uri.scheme !== 'file' || vscode.env.remoteName) continue;
       try {
@@ -351,7 +351,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
             }
           } catch { /* An unsafe or unreadable package store is omitted. */ }
         }
-        const discoveryWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(rootFolder, '{*/.logbook,packages/*/.logbook}'));
+        const discoveryWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(rootFolder, '{*/.logbook,*/config/.logbook,packages/*/.logbook,packages/*/config/.logbook}'));
         const rescan = () => { void this.setup(); };
         stores.get(rootKey)?.watchers.push(discoveryWatcher, discoveryWatcher.onDidCreate(rescan), discoveryWatcher.onDidDelete(rescan));
       } catch { /* Workspace directory may disappear while setup runs. */ }

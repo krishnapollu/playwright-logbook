@@ -19,6 +19,22 @@ const setup = (config = baseConfig, overrides: ConstructorParameters<typeof Logb
 };
 
 describe('LogbookReporter', () => {
+  it('uses the tenant root for a config/ Playwright file and writes discoverable history', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-nested-config-'));
+    try {
+      await fs.mkdir(path.join(root, 'config'));
+      const configFile = path.join(root, 'config', 'playwright-config.js');
+      const reporter = new LogbookReporter({ runId: 'nested-config', quiet: true, autoMerge: false }, {
+        env: {}, exec: () => { throw new Error('no git'); }, clock: () => new Date('2026-01-01T00:00:00.000Z'),
+      });
+      const test: PwTest = { title: 'tenant test', location: { file: path.join(root, 'tests', 'tenant.spec.ts'), line: 1, column: 1 }, parent: { type: 'file', title: 'tenant.spec.ts' }, expectedStatus: 'passed', results: [], outcome: () => 'expected' };
+      reporter.onBegin({ ...baseConfig, configFile, rootDir: path.join(root, 'tests'), projects: [{ name: 'alpha', testDir: path.join(root, 'tests') }] }, { allTests: () => [test] });
+      await reporter.onEnd({ status: 'passed' });
+      const shard = JSON.parse(await fs.readFile(path.join(root, '.logbook', 'shards', 'nested-config', 'shard-1-of-1.json'), 'utf8')) as ShardFile;
+      expect(shard.project).toMatchObject({ configFile: 'config/playwright-config.js', projects: [{ testDir: 'tests' }] });
+      expect(shard.tests[0]?.file).toBe('tests/tenant.spec.ts');
+    } finally { await fs.rm(root, { recursive: true, force: true }); }
+  });
   it('filters and caps opt-in steps and embedded images', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-capture-'));
     try {

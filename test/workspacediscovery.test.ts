@@ -13,10 +13,11 @@ afterEach(async () => {
 it('discovers default stores in direct suites and packages in code-unit order', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-discover-'));
   temporary.push(root);
-  for (const relative of ['z-suite/.logbook', 'packages/b-ui/.logbook', 'packages/A-api/.logbook', 'other/empty', '.hidden/.logbook']) {
+  for (const relative of ['z-suite/.logbook', 'packages/b-ui/.logbook', 'packages/A-api/.logbook', 'packages/tenant-1/config/.logbook', 'packages/tenant-2/config/.logbook', 'suite/config/.logbook', 'other/empty', '.hidden/.logbook']) {
     await fs.mkdir(path.join(root, relative), { recursive: true });
   }
-  const expected = ['packages/A-api', 'packages/b-ui', 'z-suite'];
+  await fs.writeFile(path.join(root, 'packages/tenant-1/config/playwright-config.js'), '');
+  const expected = ['packages/A-api', 'packages/b-ui', 'packages/tenant-1/config', 'packages/tenant-2/config', 'suite/config', 'z-suite'];
   expect((await discoverPackageRoots(root)).map(item => path.relative(root, item).split(path.sep).join('/'))).toEqual(expected);
   let stdout = '', stderr = '';
   expect(await runCli(['--root', root, 'discover', '--json'], {
@@ -28,6 +29,15 @@ it('discovers default stores in direct suites and packages in code-unit order', 
   expect(parsed.packages.map(item => item.outputDir)).toEqual(expected.map(item => `${item}/.logbook`));
   expect(parsed.packages.every(item => item.runs.length === 0)).toBe(true);
   expect(stdout).not.toContain(root);
+});
+
+it('does not follow symlinked config directories', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-discover-'));
+  temporary.push(root);
+  await fs.mkdir(path.join(root, 'external/.logbook'), { recursive: true });
+  await fs.mkdir(path.join(root, 'packages/tenant-1'), { recursive: true });
+  await fs.symlink(path.join(root, 'external'), path.join(root, 'packages/tenant-1/config'));
+  expect(await discoverPackageRoots(root)).toEqual([path.join(root, 'external')]);
 });
 
 it('reports a missing workspace root instead of a successful empty result', async () => {
