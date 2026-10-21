@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.24
+
+- Show a history store only once when a workspace mapping and nested-folder discovery point to the same `.logbook` directory.
+
 ## 0.2.23
 
 - Include the updated shared HTML report renderer and its Ivory and GitHub palettes in run and test exports.
