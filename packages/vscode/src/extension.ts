@@ -302,6 +302,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
         store.watchers.push(watcher, watcher.onDidCreate(update), watcher.onDidChange(update), watcher.onDidDelete(update));
       }
     }
+    const claimedStoreRoots = new Set([...stores.values()].filter(store => !store.error).map(store => store.storeRoot));
     // Default stores in child suites, packages/*, and their config/ directories share the CLI discovery rule.
     for (const rootFolder of vscode.workspace.workspaceFolders ?? []) {
       if (rootFolder.uri.scheme !== 'file' || vscode.env.remoteName) continue;
@@ -313,6 +314,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
             const pkgFolderUri = vscode.Uri.file(pkgPath);
             const pkgConfig = vscode.workspace.getConfiguration('logbook', pkgFolderUri);
             const pkgStoreRoot = await permittedRoot(pkgPath, '.logbook', vscode.workspace.isTrusted);
+            if (claimedStoreRoots.has(pkgStoreRoot)) continue;
             const pkgSourceRoot = await permittedRoot(pkgPath, '.', vscode.workspace.isTrusted);
             const pkgLocal = new LocalHistoryFiles(pkgStoreRoot);
             const pkgReader = new HistoryReader({
@@ -339,6 +341,7 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
                 parentFolderKey: rootKey,
               };
               stores.set(pkgKey, pkgStore);
+              claimedStoreRoots.add(pkgStoreRoot);
               // Watch package .logbook
               if (!pkgConfig.get<boolean>('autoRefresh', true)) continue;
               const pkgWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(pkgStoreRoot), '{index.jsonl,runs/*.json}'));

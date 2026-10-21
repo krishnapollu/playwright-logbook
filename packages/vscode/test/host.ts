@@ -311,12 +311,19 @@ async function journey(): Promise<void> {
   assert.equal(grouped.description, '8 runs', 'Workspace folder sums its own and package runs');
   assert.ok((await logbook.getChildren(packageNode)).some(item => item.runId === 'current'), 'Package history remains separate from root history');
   assert.ok((await logbook.getChildren(grouped)).some(item => item.runId === 'current'), 'Root history remains visible beside package history');
+  const rootHistory = vscode.workspace.getConfiguration('logbook', vscode.Uri.file(mappedRoot));
+  await rootHistory.update('historyPath', 'packages/suite-a/.logbook', vscode.ConfigurationTarget.WorkspaceFolder);
+  await logbook.setup();
+  const mappedGroup = (await logbook.getChildren()).find(item => item.label === 'first')!;
+  assert.equal(mappedGroup.description, '4 runs', 'A configured tenant history is counted only once');
+  assert.ok(!(await logbook.getChildren(mappedGroup)).some(item => item.kind === 'package' && item.label === 'packages/suite-a'), 'Discovery does not repeat a configured history store');
+  await rootHistory.update('historyPath', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+  await logbook.setup();
   filterControl.setTestFilter({ query: 'ci-imported', file: null, title: null, folderKey: null });
   const filteredCounts = await logbook.getChildren();
   assert.equal(filteredCounts.find(item => item.label === 'first')?.description, '2 shown', 'Root count follows visible filter matches');
   assert.equal((await logbook.getChildren(filteredCounts.find(item => item.label === 'first'))).find(item => item.kind === 'package')?.description, '1 shown', 'Package count follows visible filter matches');
   await vscode.commands.executeCommand('logbook.clearTestFilter');
-  const rootHistory = vscode.workspace.getConfiguration('logbook', vscode.Uri.file(mappedRoot));
   await rootHistory.update('historyPath', '.logbook-missing', vscode.ConfigurationTarget.WorkspaceFolder);
   await logbook.setup();
   // The setting change also triggers a setup, which may supersede the explicit setup.
