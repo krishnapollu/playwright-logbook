@@ -257,8 +257,8 @@ it('groups attachment rows by type while keeping their original action indices',
   expect(html.indexOf('Screenshots and images')).toBeLessThan(html.indexOf('Traces'));
   expect(html.indexOf('Traces')).toBeLessThan(html.indexOf('Videos'));
   expect(html.indexOf('Videos')).toBeLessThan(html.indexOf('Other files'));
-  expect(html).toContain('data-attachment="2" title="Open in an adjacent VS Code tab">shot');
-  expect(html).toContain('data-attachment="1" title="Open in an adjacent VS Code tab">trace');
+  expect(html).toContain('data-attachment="2" title="Open in the current VS Code editor group">shot');
+  expect(html).toContain('data-attachment="1" title="Open in the current VS Code editor group">trace');
   expect(html).not.toContain('data-attachment="5"');
   const inlineImage = renderAttemptWorkspace([{ retry: 0, status: 'failed', durationMs: 1, errors: [], attachments: [
     { ...attachment('inline shot', 'image/png', null), dataUri: 'data:image/png;base64,AA==' },

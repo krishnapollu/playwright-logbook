@@ -212,11 +212,15 @@ async function journey(): Promise<void> {
   await waitForActiveTab('Logbook recorded result');
   assert.equal(vscode.window.tabGroups.activeTabGroup.tabs.find(tab => tab.label === 'Logbook recorded result')?.isActive, true, 'Result opens in the active editor group');
   console.log('Host journey: result and history opened');
+  const resultGroup = vscode.window.tabGroups.activeTabGroup;
+  const groupCount = vscode.window.tabGroups.all.length;
   const panelActions = logbook as unknown as { handlePanel(message: unknown): Promise<void> };
   await panelActions.handlePanel({ type: 'openAttachment', identity: failure.resultKey, attempt: 0, attachment: 0 });
   await waitForActiveDocumentText('Recorded attachment evidence');
   assert.equal(vscode.window.activeTextEditor?.document.getText(), 'Recorded attachment evidence');
   assert.equal(vscode.window.tabGroups.activeTabGroup.activeTab?.isPreview, false, 'Attachment opens a retained editor tab');
+  assert.equal(vscode.window.tabGroups.activeTabGroup, resultGroup, 'Attachment opens in the current editor group');
+  assert.equal(vscode.window.tabGroups.all.length, groupCount, 'Attachment does not split the editor');
   assert.ok(vscode.window.tabGroups.all.flatMap(group => group.tabs).some(tab => tab.label === 'Logbook recorded result'), 'Attachment preserves the result panel');
   await panelActions.handlePanel({ type: 'openAttachment', identity: 'stale', attempt: 0, attachment: 0 });
   assert.equal(vscode.window.activeTextEditor?.document.getText(), 'Recorded attachment evidence', 'Stale attachment clicks have no effect');

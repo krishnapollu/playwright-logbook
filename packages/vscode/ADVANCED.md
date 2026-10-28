@@ -30,7 +30,7 @@ await testInfo.attach('Framework log', {
 
 The extension shows attachment metadata. Export with `--artifacts` to include files in a portable bundle, subject to evidence limits. A file shared across parallel tests cannot reliably identify which test produced each line; use separate files per test.
 
-In the **Attachments** tab, click a path or screenshot preview to open the recorded file in an adjacent IDE tab. Imported artifacts use the import catalog mapping. Missing, expired, or unsafe files produce an availability message; attachments without a recorded file path retain their embedded preview only. Videos, traces, and other files show metadata; playback and trace viewing are not available in the extension.
+In the **Attachments** tab, click a name or screenshot preview to open the recorded file in the current VS Code editor group, or use the folder button to reveal it in Finder or File Explorer. Imported artifacts use the import catalog mapping. Missing, expired, or unsafe files produce an availability message; attachments without a recorded file path retain their embedded preview only. Videos, traces, and other files show metadata; playback and trace viewing are not available in the extension.
 
 ## Workspaces, privacy, and upgrades
 
