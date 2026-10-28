@@ -4,6 +4,7 @@
 
 - Group test attachments by type in compact rows with clickable names and screenshot previews.
 - Open retained attachment files in the current VS Code editor group, or reveal them in Finder or File Explorer with the folder button.
+- Update bundled Zod to a version that clears the release dependency audit.
 
 ## 0.2.24
 
