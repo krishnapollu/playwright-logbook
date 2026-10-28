@@ -234,12 +234,34 @@ it('retains recorded attachments and previews only bounded embedded PNG/JPEG ima
   expect(html).toContain('Attachments'); expect(html).toContain('Logs');
   expect(html).toContain(`src="${dataUri}"`); expect(html).toContain('alt="&lt;screenshot&gt;"');
   expect(html).not.toContain('src="https:'); expect(html.match(/<img /g)).toHaveLength(1);
-  expect(html).toContain('Video attachment recorded; open the file in the IDE.');
-  expect(html).toContain('Screenshot preview unavailable');
+  expect(html).toContain('Screenshots and images');
+  expect(html).toContain('Videos');
+  expect(html).toContain('test-results/failure.png');
   expect(html).toContain('class="attachment-link" data-action="openAttachment" data-attempt="0" data-attachment="0"');
   expect(html).toContain('class="attachment-image"');
+  expect(html).toContain('class="attachment-open" data-action="openAttachment" data-attempt="0" data-attachment="0"');
   const missing = renderAttemptWorkspace([{ ...record.tests[0]!.attempts![0]!, attachments: undefined }]);
   expect(missing).toContain('Attachment metadata not recorded');
   const bounded = renderAttemptWorkspace([{ ...record.tests[0]!.attempts![0]!, attachments: Array.from({ length: 17 }, () => attachment) }]);
   expect(bounded.match(/<img /g)).toHaveLength(16); expect(bounded).toContain('Showing the first 16 attachments');
+});
+
+it('groups attachment rows by type while keeping their original action indices', () => {
+  const attachment = (name: string, contentType: string, path: string | null) => ({ name, contentType, path, inline: false, sizeBytes: null });
+  const html = renderAttemptWorkspace([{ retry: 0, status: 'failed', durationMs: 1, errors: [], attachments: [
+    attachment('log', 'text/plain', 'results/log.txt'), attachment('trace', 'application/zip', 'results/trace.zip'),
+    attachment('shot', 'image/png', 'results/shot.png'), attachment('archive', 'application/zip', 'results/archive.zip'),
+    attachment('video', 'video/webm', 'results/video.webm'), attachment('inline', 'text/plain', null),
+  ] }]);
+  expect(html.indexOf('Screenshots and images')).toBeLessThan(html.indexOf('Traces'));
+  expect(html.indexOf('Traces')).toBeLessThan(html.indexOf('Videos'));
+  expect(html.indexOf('Videos')).toBeLessThan(html.indexOf('Other files'));
+  expect(html).toContain('data-attachment="2" title="Open in an adjacent VS Code tab">shot');
+  expect(html).toContain('data-attachment="1" title="Open in an adjacent VS Code tab">trace');
+  expect(html).not.toContain('data-attachment="5"');
+  const inlineImage = renderAttemptWorkspace([{ retry: 0, status: 'failed', durationMs: 1, errors: [], attachments: [
+    { ...attachment('inline shot', 'image/png', null), dataUri: 'data:image/png;base64,AA==' },
+  ] }]);
+  expect(inlineImage).toContain('<summary>Preview image</summary><img');
+  expect(inlineImage).not.toContain('data-action="openAttachment"');
 });

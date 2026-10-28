@@ -56,10 +56,12 @@ test('compact AI actions send picker and handoff messages and ignore stale updat
   await expect(actions.locator('pre')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); expect(failures).toEqual([]);
   await page.getByRole('tab', { name: 'Attachments 1' }).click();
-  await page.getByRole('button', { name: 'test-results/failure.png', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Screenshot preview in VS Code' }).click();
   const attachmentMessage = { type: 'openAttachment', identity: executionIdentity(record.runId, record.tests[0]!), attempt: 0, attachment: 0 };
   await expect.poll(() => messages.at(-1)).toEqual(attachmentMessage);
-  await page.getByRole('button', { name: 'Open Screenshot in IDE' }).click();
+  await page.getByRole('button', { name: 'Screenshot', exact: true }).click();
   await expect.poll(() => messages.filter(message => (message as { type: string }).type === 'openAttachment').length).toBe(2);
+  await page.getByRole('button', { name: 'Open Screenshot in VS Code' }).click();
+  await expect.poll(() => messages.filter(message => (message as { type: string }).type === 'openAttachment').length).toBe(3);
   expect(messages.at(-1)).toEqual(attachmentMessage);
 });

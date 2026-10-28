@@ -43,12 +43,23 @@ export function contextPill(label: string, value: string, kind = 'context'): str
 function renderAttachments(attachments: NonNullable<ReaderResult['attempts']>[number]['attachments'], attempt: number): string {
   if (attachments == null) return '<p>Attachment metadata not recorded.</p>';
   if (!attachments.length) return '<p>No attachments recorded.</p>';
-  return `<div class="attachments-grid">${attachments.slice(0, 16).map((attachment, index) => {
+  const groups = [
+    { label: 'Screenshots and images', items: [] as { attachment: NonNullable<typeof attachments>[number]; index: number }[] },
+    { label: 'Traces', items: [] as { attachment: NonNullable<typeof attachments>[number]; index: number }[] },
+    { label: 'Videos', items: [] as { attachment: NonNullable<typeof attachments>[number]; index: number }[] },
+    { label: 'Other files', items: [] as { attachment: NonNullable<typeof attachments>[number]; index: number }[] },
+  ];
+  attachments.slice(0, 16).forEach((attachment, index) => {
+    const group = attachment.contentType.startsWith('image/') ? 0 : attachment.name === 'trace' && attachment.contentType === 'application/zip' ? 1 : attachment.contentType.startsWith('video/') ? 2 : 3;
+    groups[group]!.items.push({ attachment, index });
+  });
+  return `${groups.filter((group) => group.items.length).map((group) => `<section class="attachment-group"><h3>${group.label} <span class="section-count">${group.items.length}</span></h3><ul class="attachment-list">${group.items.map(({ attachment, index }) => {
     const image = attachment.dataUri && attachment.dataUri.length <= 350000 && /^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(attachment.dataUri) && attachment.dataUri.startsWith(`data:${attachment.contentType};base64,`) ? attachment.dataUri : null;
     const action = `data-action="openAttachment" data-attempt="${attempt}" data-attachment="${index}"`;
-    const preview = image ? `<img loading="lazy" src="${escapeHtml(image)}" alt="${escapeHtml(attachment.name || 'Recorded screenshot')}"/>` : '';
-    return `<figure class="attachment-card"><figcaption><strong>${escapeHtml(attachment.name || 'Unnamed attachment')}</strong><small>${escapeHtml(attachment.contentType)}</small></figcaption>${preview ? attachment.path ? `<button class="attachment-image" ${action} aria-label="Open ${escapeHtml(attachment.name || 'screenshot')} in IDE">${preview}</button>` : preview : `<p class="empty-message">${attachment.contentType.startsWith('video/') ? 'Video attachment recorded; open the file in the IDE.' : attachment.contentType.startsWith('image/') ? 'Screenshot preview unavailable; open the image file in the IDE.' : 'File attachment recorded.'}</p>`}${attachment.path ? `<button class="attachment-link" ${action} title="Open attachment in an adjacent IDE tab"><code>${escapeHtml(attachment.path)}</code></button>` : '<small>File path not recorded.</small>'}</figure>`;
-  }).join('')}</div>${attachments.length > 16 ? '<p>Showing the first 16 attachments.</p>' : ''}`;
+    const name = escapeHtml(attachment.name || attachment.path?.split('/').pop() || 'Unnamed attachment');
+    const preview = image ? `<img loading="lazy" src="${escapeHtml(image)}" alt="${name}"/>` : '';
+    return `<li class="attachment-row">${preview && attachment.path ? `<button class="attachment-image" ${action} aria-label="Open ${name} preview in VS Code">${preview}</button>` : ''}<div class="attachment-info">${attachment.path ? `<button class="attachment-link" ${action} title="Open in an adjacent VS Code tab">${name} <span aria-hidden="true">↗</span></button>` : `<strong>${name}</strong>`}<small>${attachment.path ? escapeHtml(attachment.path) : 'File path not recorded'}</small>${preview && !attachment.path ? `<details class="attachment-inline-preview"><summary>Preview image</summary>${preview}</details>` : ''}</div>${attachment.path ? `<button class="attachment-open" ${action} aria-label="Open ${name} in VS Code">Open</button>` : ''}</li>`;
+  }).join('')}</ul></section>`).join('')}${attachments.length > 16 ? '<p>Showing the first 16 attachments.</p>' : ''}`;
 }
 
 export function renderAttemptWorkspace(attempts: ReaderResult['attempts']): string {
