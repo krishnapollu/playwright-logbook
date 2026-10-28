@@ -80,7 +80,7 @@ window and updates the counts.
 ### Test evidence
 
 - Switch between attempts, then open **Steps**, **Logs**, **Errors**, or **Attachments**.
-- Click an attachment path or image preview to open the recorded file in an IDE tab. Missing or unsafe files show an availability message.
+- Click an attachment name or image preview to open the recorded file in the current editor group. Use the folder button to reveal it in Finder or File Explorer. Missing or unsafe files show an availability message.
 
 <img src="media/pw-test-evidence.png" alt="pw-test retry evidence with attachment links" width="694">
 

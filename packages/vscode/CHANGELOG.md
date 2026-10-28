@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.25
+
+- Group test attachments by type in compact rows with clickable names and screenshot previews.
+- Open retained attachment files in the current VS Code editor group, or reveal them in Finder or File Explorer with the folder button.
+
 ## 0.2.24
 
 - Show a history store only once when a workspace mapping and nested-folder discovery point to the same `.logbook` directory.

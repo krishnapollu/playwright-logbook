@@ -219,7 +219,8 @@ async function journey(): Promise<void> {
   await waitForActiveDocumentText('Recorded attachment evidence');
   assert.equal(vscode.window.activeTextEditor?.document.getText(), 'Recorded attachment evidence');
   assert.equal(vscode.window.tabGroups.activeTabGroup.activeTab?.isPreview, false, 'Attachment opens a retained editor tab');
-  assert.equal(vscode.window.tabGroups.activeTabGroup, resultGroup, 'Attachment opens in the current editor group');
+  assert.equal(vscode.window.tabGroups.activeTabGroup.viewColumn, resultGroup.viewColumn, 'Attachment opens in the current editor group');
+  assert.ok(vscode.window.tabGroups.activeTabGroup.tabs.some(tab => tab.label === 'Logbook recorded result'), 'Attachment shares the result editor group');
   assert.equal(vscode.window.tabGroups.all.length, groupCount, 'Attachment does not split the editor');
   assert.ok(vscode.window.tabGroups.all.flatMap(group => group.tabs).some(tab => tab.label === 'Logbook recorded result'), 'Attachment preserves the result panel');
   await panelActions.handlePanel({ type: 'openAttachment', identity: 'stale', attempt: 0, attachment: 0 });
@@ -324,7 +325,11 @@ async function journey(): Promise<void> {
   await rootHistory.update('historyPath', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
   await logbook.setup();
   filterControl.setTestFilter({ query: 'ci-imported', file: null, title: null, folderKey: null });
-  const filteredCounts = await logbook.getChildren();
+  let filteredCounts = await logbook.getChildren();
+  for (let attempt = 0; filteredCounts.find(item => item.label === 'first')?.description !== '2 shown' && attempt < 100; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    filteredCounts = await logbook.getChildren();
+  }
   assert.equal(filteredCounts.find(item => item.label === 'first')?.description, '2 shown', 'Root count follows visible filter matches');
   assert.equal((await logbook.getChildren(filteredCounts.find(item => item.label === 'first'))).find(item => item.kind === 'package')?.description, '1 shown', 'Package count follows visible filter matches');
   await vscode.commands.executeCommand('logbook.clearTestFilter');
