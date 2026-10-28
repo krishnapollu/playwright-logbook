@@ -9,8 +9,8 @@ afterEach(async () => { await Promise.all(roots.splice(0).map(root => fs.rm(root
 async function root(): Promise<string> { const value = await fs.mkdtemp(path.join(os.tmpdir(), 'logbook-attachments-')); roots.push(value); return fs.realpath(value); }
 const result = (file: string) => ({ ...testRecord('test'), attempts: [{ retry: 0, status: 'passed' as const, durationMs: 1, startedAt: '2026-01-01T00:00:00.000Z', workerIndex: 0, errors: [], attachments: [{ name: 'evidence', contentType: 'text/plain', path: file, inline: false, sizeBytes: 1 }] }] });
 it('accepts index-only attachment messages and rejects malformed requests', () => {
-  expect(attachmentAction({ type: 'openAttachment', identity: 'selected', attempt: 1, attachment: 0 })).toEqual({ identity: 'selected', attempt: 1, attachment: 0 });
-  for (const value of [null, {}, { type: 'openAttachment', identity: 'selected', attempt: -1, attachment: 0 }, { type: 'openAttachment', identity: 'selected', attempt: 0, attachment: 'file' }, { type: 'openAttachment', identity: 'selected', attempt: 0.5, attachment: 0 }]) expect(attachmentAction(value)).toBeNull();
+  for (const type of ['openAttachment', 'revealAttachment']) expect(attachmentAction({ type, identity: 'selected', attempt: 1, attachment: 0 })).toEqual({ type, identity: 'selected', attempt: 1, attachment: 0 });
+  for (const value of [null, {}, { type: 'otherAttachment', identity: 'selected', attempt: 0, attachment: 0 }, { type: 'openAttachment', identity: 'selected', attempt: -1, attachment: 0 }, { type: 'revealAttachment', identity: 'selected', attempt: 0, attachment: 'file' }, { type: 'revealAttachment', identity: 'selected', attempt: 0.5, attachment: 0 }]) expect(attachmentAction(value)).toBeNull();
 });
 it('resolves only recorded local files and rejects missing files, traversal, URLs and symlink escape', async () => {
   const project = await root(), store = await root(), outside = await root();

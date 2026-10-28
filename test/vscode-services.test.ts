@@ -239,7 +239,8 @@ it('retains recorded attachments and previews only bounded embedded PNG/JPEG ima
   expect(html).toContain('test-results/failure.png');
   expect(html).toContain('class="attachment-link" data-action="openAttachment" data-attempt="0" data-attachment="0"');
   expect(html).toContain('class="attachment-image"');
-  expect(html).toContain('class="attachment-open" data-action="openAttachment" data-attempt="0" data-attachment="0"');
+  expect(html).toContain('class="attachment-reveal" data-action="revealAttachment" data-attempt="0" data-attachment="0"');
+  expect(html).not.toContain('↗');
   const missing = renderAttemptWorkspace([{ ...record.tests[0]!.attempts![0]!, attachments: undefined }]);
   expect(missing).toContain('Attachment metadata not recorded');
   const bounded = renderAttemptWorkspace([{ ...record.tests[0]!.attempts![0]!, attachments: Array.from({ length: 17 }, () => attachment) }]);

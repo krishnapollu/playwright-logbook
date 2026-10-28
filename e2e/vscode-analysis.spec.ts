@@ -61,7 +61,7 @@ test('compact AI actions send picker and handoff messages and ignore stale updat
   await expect.poll(() => messages.at(-1)).toEqual(attachmentMessage);
   await page.getByRole('button', { name: 'Screenshot', exact: true }).click();
   await expect.poll(() => messages.filter(message => (message as { type: string }).type === 'openAttachment').length).toBe(2);
-  await page.getByRole('button', { name: 'Open Screenshot in VS Code' }).click();
-  await expect.poll(() => messages.filter(message => (message as { type: string }).type === 'openAttachment').length).toBe(3);
-  expect(messages.at(-1)).toEqual(attachmentMessage);
+  await page.getByRole('button', { name: 'Reveal Screenshot in file manager' }).click();
+  await expect.poll(() => messages.at(-1)).toEqual({ ...attachmentMessage, type: 'revealAttachment' });
+  expect(messages.filter(message => (message as { type: string }).type === 'openAttachment')).toHaveLength(2);
 });

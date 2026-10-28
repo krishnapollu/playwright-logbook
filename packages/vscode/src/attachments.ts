@@ -2,12 +2,12 @@ import { readImportCatalog } from '../../../src/bundles/ingest.js';
 import { resolveRecordedFile } from '../../../src/historyfiles.js';
 import type { ReaderResult } from '../../../src/historyreader.js';
 
-export function attachmentAction(value: unknown): { identity: string; attempt: number; attachment: number } | null {
-  if (!value || typeof value !== 'object' || !('type' in value) || value.type !== 'openAttachment'
+export function attachmentAction(value: unknown): { type: 'openAttachment' | 'revealAttachment'; identity: string; attempt: number; attachment: number } | null {
+  if (!value || typeof value !== 'object' || !('type' in value) || (value.type !== 'openAttachment' && value.type !== 'revealAttachment')
     || !('identity' in value) || typeof value.identity !== 'string'
     || !('attempt' in value) || typeof value.attempt !== 'number' || !Number.isSafeInteger(value.attempt) || value.attempt < 0
     || !('attachment' in value) || typeof value.attachment !== 'number' || !Number.isSafeInteger(value.attachment) || value.attachment < 0) return null;
-  return { identity: value.identity, attempt: value.attempt, attachment: value.attachment };
+  return { type: value.type, identity: value.identity, attempt: value.attempt, attachment: value.attachment };
 }
 
 /** Select paths only from the recording; imported artifacts resolve within their store. */

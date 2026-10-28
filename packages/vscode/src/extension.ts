@@ -734,7 +734,8 @@ class Logbook implements vscode.TreeDataProvider<TreeNode>, vscode.WebviewViewPr
         if (!result) return;
         const file = await recordedAttachment(roots.sourceRoot, roots.storeRoot, run.runId, result, attachment.attempt, attachment.attachment);
         if (this.selection !== selected) return;
-        await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(file), { viewColumn: vscode.ViewColumn.Beside, preview: false });
+        if (attachment.type === 'revealAttachment') await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(file));
+        else await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(file), { viewColumn: vscode.ViewColumn.Beside, preview: false });
       } catch {
         if (this.selection === selected) await vscode.window.showWarningMessage('Attachment is missing or inaccessible. Check retained artifacts and source mapping.');
       }
